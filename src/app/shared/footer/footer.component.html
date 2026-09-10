@@ -1,0 +1,31 @@
+<footer class="footer">
+  <div class="footer__inner container">
+    <div class="footer__about">
+      <div class="footer__logo">Manufest</div>
+      <p>Direct from manufacturer — handpicked sarees, transparent pricing, authentic craft.</p>
+      <p class="footer__contact">manufest&#64;example.com &middot; 1800-000-0000</p>
+    </div>
+
+    <div class="footer__columns">
+      @for (col of columns; track col.title) {
+        <div class="footer__col">
+          <h3>{{ col.title }}</h3>
+          <ul>
+            @for (link of col.links; track link.label) {
+              <li><a [routerLink]="link.path">{{ link.label }}</a></li>
+            }
+          </ul>
+        </div>
+      }
+    </div>
+  </div>
+
+  <div class="footer__bottom container">
+    <span>&copy; {{ 2026 }} Manufest. All rights reserved.</span>
+    <div class="footer__socials">
+      @for (s of socials; track s.label) {
+        <a [routerLink]="s.path" [attr.aria-label]="s.label">{{ s.label.charAt(0) }}</a>
+      }
+    </div>
+  </div>
+</footer>

@@ -1,0 +1,115 @@
+@if (loading()) {
+  <div class="container state-message">Loading product...</div>
+} @else if (error()) {
+  <div class="container state-message state-message--error">{{ error() }}</div>
+} @else {
+  @if (product(); as p) {
+    <div class="container pd">
+      <nav class="pd__crumbs" aria-label="Breadcrumb">
+        <a routerLink="/">Home</a> / <span>{{ p.category.name }}</span> / <span>{{ p.productName }}</span>
+      </nav>
+
+      <div class="pd__layout">
+        <div class="pd__gallery">
+          <div class="pd__main-media">
+            @if (selectedMediaUrl()) {
+              <img [src]="selectedMediaUrl()" [alt]="p.productName" />
+            } @else {
+              <div class="pd__media-placeholder" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="40" height="40" fill="none"><rect x="3" y="4" width="18" height="16" rx="2" stroke="currentColor" stroke-width="1.2"/><path d="M3 16l5-5 4 4 3-3 6 6" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>
+              </div>
+            }
+          </div>
+
+          @if (selectedVariant()?.media?.length) {
+            <div class="pd__thumbs">
+              @for (m of selectedVariant()?.media; track m.uuid) {
+                <button type="button" class="pd__thumb" (click)="selectMedia(m.url)">
+                  <img [src]="mediaSrc(m.url)" alt="" />
+                </button>
+              }
+            </div>
+          }
+        </div>
+
+        <div class="pd__info">
+          <h1>{{ p.productName }}</h1>
+          <!-- No seller name here: `GET /public/products/detail/:uuid` only
+               returns `seller: { uuid }` (see toPublicProductDetail() in
+               manufest_be's products.api.js) — the name is only present on
+               the list endpoints' summaries. Showing a made-up label here
+               instead of the real name would be worse than showing nothing. -->
+
+          @if (selectedVariant()?.pricing; as pricing) {
+            <div class="pd__price-row">
+              <span class="pd__price">{{ formatPrice(pricing!.sellingPrice) }}</span>
+              @if (pricing!.discountPercent > 0) {
+                <span class="pd__price-strike">{{ formatPrice(pricing!.checkoutPrice) }}</span>
+                <span class="pd__price-off">{{ pricing!.discountPercent }}% off</span>
+              }
+            </div>
+          }
+
+          @if (selectedVariant(); as v) {
+            <p class="pd__stock" [class.pd__stock--out]="!v.inventory.isInStock">
+              {{ v.inventory.isInStock ? 'In stock' : 'Out of stock' }}
+            </p>
+          }
+
+          @if (p.variants.length > 1) {
+            <div class="pd__variants">
+              <p class="pd__variants-label">Colour</p>
+              <div class="pd__swatches">
+                @for (v of p.variants; track v.uuid) {
+                  <button
+                    type="button"
+                    class="pd__swatch"
+                    [class.pd__swatch--active]="v.uuid === selectedVariant()?.uuid"
+                    [style.background]="v.colorHex || '#ccc'"
+                    [attr.aria-label]="v.variantName || v.colorHex"
+                    (click)="selectVariant(v)"
+                  ></button>
+                }
+              </div>
+            </div>
+          }
+
+          <div class="pd__actions">
+            <a routerLink="/cart" class="btn btn--primary btn--full">Add to cart</a>
+            <a routerLink="/wishlist" class="btn btn--outline" aria-label="Add to wishlist">
+              <svg viewBox="0 0 24 24" fill="none" width="18" height="18"><path d="M12 20s-7-4.35-9.5-8.5C.6 8 2 4.5 5.5 4a5 5 0 0 1 6.5 2 5 5 0 0 1 6.5-2C22 4.5 23.4 8 21.5 11.5 19 15.65 12 20 12 20Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+            </a>
+          </div>
+
+          @if (p.productDesc) {
+            <div class="pd__desc">
+              <h2>Description</h2>
+              <p>{{ p.productDesc }}</p>
+            </div>
+          }
+
+          <div class="pd__attrs">
+            @if (p.attributes.material) {
+              <div><span>Material</span><span>{{ p.attributes.material.name }}</span></div>
+            }
+            @if (p.attributes.fabricPurity) {
+              <div><span>Fabric purity</span><span>{{ p.attributes.fabricPurity.name }}</span></div>
+            }
+            @if (p.attributes.zariType) {
+              <div><span>Zari type</span><span>{{ p.attributes.zariType.name }}</span></div>
+            }
+            @if (p.attributes.borderType) {
+              <div><span>Border</span><span>{{ p.attributes.borderType.name }}</span></div>
+            }
+            @if (p.attributes.sareeLength) {
+              <div><span>Saree length</span><span>{{ p.attributes.sareeLength }}</span></div>
+            }
+            @if (p.attributes.washCare) {
+              <div><span>Wash care</span><span>{{ p.attributes.washCare }}</span></div>
+            }
+          </div>
+        </div>
+      </div>
+    </div>
+  }
+}

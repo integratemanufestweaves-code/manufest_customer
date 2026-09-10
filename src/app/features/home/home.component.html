@@ -1,0 +1,101 @@
+<section class="hero container">
+  <div class="hero__panel">
+    <p class="hero__eyebrow">Special offer</p>
+    <h1 class="hero__title">Threads of tradition,<br />handpicked for you</h1>
+    <p class="hero__sub">Direct from India's finest handloom manufacturers — no middlemen, fair prices.</p>
+    <a routerLink="/new-arrivals" class="btn btn--primary hero__cta">Shop now</a>
+  </div>
+</section>
+
+<section class="badges container">
+  @for (badge of trustBadges; track badge.title) {
+    <div class="badges__item">
+      <div class="badges__icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none"><path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7l8-4Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>
+      </div>
+      <div>
+        <p class="badges__title">{{ badge.title }}</p>
+        <p class="badges__desc">{{ badge.desc }}</p>
+      </div>
+    </div>
+  }
+</section>
+
+<section class="section container">
+  <div class="section__header">
+    <div>
+      <h2 class="section__title">Featured products</h2>
+      <p class="section__subtitle">New arrivals, handpicked</p>
+    </div>
+    <a routerLink="/new-arrivals" class="section__link">View all &rarr;</a>
+  </div>
+
+  @if (productsLoading()) {
+    <div class="grid">
+      @for (i of [1, 2, 3, 4, 5]; track i) {
+        <div class="skeleton-card"></div>
+      }
+    </div>
+  } @else if (productsError()) {
+    <p class="state-message state-message--error">{{ productsError() }}</p>
+  } @else if (products().length === 0) {
+    <p class="state-message">No products to show yet — check back soon.</p>
+  } @else {
+    <div class="grid">
+      @for (product of products(); track product.uuid) {
+        <app-product-card [product]="product" />
+      }
+    </div>
+  }
+</section>
+
+<section class="section section--tint">
+  <div class="container">
+    <div class="section__header">
+      <div>
+        <h2 class="section__title">Shop by category</h2>
+        <p class="section__subtitle">Handpicked sarees, timeless elegance</p>
+      </div>
+      <a routerLink="/new-arrivals" class="section__link">View all &rarr;</a>
+    </div>
+
+    @if (categoriesLoading()) {
+      <div class="cat-grid">
+        @for (i of [1, 2, 3, 4, 5, 6]; track i) {
+          <div class="skeleton-tile"></div>
+        }
+      </div>
+    } @else if (categoriesError()) {
+      <p class="state-message state-message--error">{{ categoriesError() }}</p>
+    } @else if (categories().length === 0) {
+      <p class="state-message">No categories to show yet — check back soon.</p>
+    } @else {
+      <div class="cat-grid">
+        @for (cat of categories(); track cat.uuid) {
+          <a routerLink="/new-arrivals" class="cat-tile">
+            <div class="cat-tile__media">
+              @if (cat.imageUrl) {
+                <img [src]="cat.imageUrl" [alt]="cat.name" loading="lazy" />
+              } @else {
+                <span class="cat-tile__initial">{{ cat.name.charAt(0) }}</span>
+              }
+            </div>
+            <p>{{ cat.name }}</p>
+          </a>
+        }
+      </div>
+    }
+  </div>
+</section>
+
+<section class="section container stories">
+  <div class="stories__card">
+    <h2 class="section__title">Manufacturer stories &amp; customer reviews</h2>
+    <p>
+      We're building out verified manufacturer spotlights and real customer reviews —
+      backed by data, not placeholder numbers. Until that's live, we'd rather show you
+      nothing than something made up.
+    </p>
+    <a routerLink="/manufacturers" class="btn btn--outline">Coming soon</a>
+  </div>
+</section>
