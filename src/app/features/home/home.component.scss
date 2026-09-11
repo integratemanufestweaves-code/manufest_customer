@@ -1,64 +1,175 @@
+/* Top padding only — left/right come from the global `.container` class
+   this section also carries (`class="hero container"`), same reasoning as
+   `.section`'s own header comment in styles.scss. This used to hardcode
+   `24px`/`16px` side padding that happened to match `.container`'s, which
+   worked by coincidence rather than by sharing one source of truth. */
 .hero {
-  padding: 24px 24px 0;
+  padding-top: 24px;
 
   &__panel {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
     background: linear-gradient(120deg, var(--color-primary-dark), var(--color-primary));
     color: var(--color-white);
     border-radius: var(--radius-md);
-    padding: 48px 40px;
-    max-width: 640px;
+    overflow: hidden;
+  }
+
+  &__text {
+    flex: 1.1;
+    min-width: 0;
+    padding: 48px 44px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
   }
 
   &__eyebrow {
     text-transform: uppercase;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.14em;
     font-size: 0.75rem;
-    opacity: 0.85;
-    margin: 0 0 8px;
+    font-weight: 600;
+    color: var(--color-accent);
+    opacity: 1;
+    margin: 0 0 10px;
   }
 
   &__title {
-    font-size: clamp(1.6rem, 2vw + 1.3rem, 2.4rem);
-    line-height: 1.2;
-    margin: 0 0 12px;
+    font-size: clamp(1.9rem, 2.4vw + 1.4rem, 3rem);
+    line-height: 1.12;
+    margin: 0 0 10px;
     color: var(--color-white);
   }
 
-  &__sub {
-    margin: 0 0 20px;
-    opacity: 0.9;
-    max-width: 440px;
+  &__tagline {
+    margin: 0 0 6px;
+    opacity: 0.85;
+    font-style: italic;
+    max-width: 420px;
+    line-height: 1.5;
+  }
+
+  &__discount {
+    margin: 0 0 24px;
+    font-weight: 700;
+    font-size: 1.15rem;
+    letter-spacing: 0.02em;
+    color: var(--color-accent);
+  }
+
+  &__media {
+    flex: 1;
+    align-self: stretch;
+    border-radius: 0;
   }
 
   &__cta {
-    background: var(--color-white);
-    color: var(--color-primary);
-    border-color: var(--color-white);
+    align-self: flex-start;
+    background: transparent;
+    color: var(--color-accent);
+    border: 1.5px solid var(--color-accent);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-size: 0.8rem;
+    padding: 12px 28px;
 
     &:hover {
-      background: var(--color-bg-tint);
+      background: var(--color-accent);
       color: var(--color-primary-dark);
+      border-color: var(--color-accent);
     }
   }
 
   @media (max-width: 767px) {
-    padding: 16px 16px 0;
+    padding-top: 16px;
 
-    &__panel {
+    &__text {
       padding: 32px 24px;
+    }
+
+    &__media {
+      flex-basis: 96px;
+      flex-grow: 0;
+    }
+  }
+
+  @media (max-width: 480px) {
+    &__panel {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    &__text {
+      padding: 28px 20px;
+    }
+
+    &__media {
+      flex-basis: 160px;
     }
   }
 }
 
+/* ---- shared "swap this for a real photo" placeholder --------------------
+   One camera/image icon (same glyph product-card.component.html and
+   product-detail.component.html already use for a missing thumbnail),
+   recolored per section via a modifier class so each slot at least hints
+   at the eventual photo's tone instead of being a flat grey box
+   everywhere. See home.component.ts's header comment for the full list of
+   slots and why these are placeholders rather than real `<img>`s. */
+.ph-image {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+  color: rgba(255, 255, 255, 0.75);
+}
+
+/* Hero's placeholder bleeds edge-to-edge inside `.hero__panel` (which
+   already clips to `--radius-md`) rather than floating as a separate
+   rounded box with a gap around it — the "broken image tile in a corner"
+   look is what the design's actual model photo never has. */
+.ph-image--hero {
+  border-radius: 0;
+  background:
+    radial-gradient(circle at 50% 38%, rgba(255, 255, 255, 0.16), transparent 55%),
+    linear-gradient(160deg, var(--color-accent), var(--color-accent-dark));
+}
+
+/* Spotlight/grow both stand in for a real manufacturing-floor photo — one
+   consistent warm gold-brown family (not an arbitrary blue-grey) so the
+   placeholders read as "the same brand, photo pending" rather than
+   randomly-colored boxes. */
+.ph-image--spotlight {
+  background: linear-gradient(150deg, var(--color-accent-dark), #4a3420);
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.ph-image--grow {
+  background: linear-gradient(150deg, var(--color-accent), var(--color-accent-dark));
+}
+
+.ph-image--review {
+  border-radius: 50%;
+  background: var(--color-bg-tint);
+  color: var(--color-text-faint);
+}
+
+/* `padding-block` — left/right come from the global `.container` class
+   this section also carries (`class="badges container"`), same reasoning
+   as `.hero`'s comment above. Previously hardcoded `24px`/`16px` side
+   padding matched `.container`'s at the 767px breakpoint by coincidence,
+   but never had an override for `.container`'s 480px/14px step, so very
+   small screens got the wrong (wider) gutter. */
 .badges {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 16px;
-  padding: 32px 24px;
+  padding-block: 32px;
 
   @media (max-width: 767px) {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    padding: 24px 16px;
+    padding-block: 24px;
   }
 }
 
@@ -74,7 +185,7 @@
   height: 40px;
   border-radius: 50%;
   background: var(--color-bg-tint);
-  color: var(--color-primary);
+  color: var(--color-accent-dark);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -111,7 +222,77 @@
   }
 }
 
+/* Flexbox + a fixed tile width, not CSS Grid's `repeat(6, 1fr)` — the
+   category count comes from `GET /public/categories/list` and can be
+   (currently is, in the dev DB) fewer than 6, which with a 6-column grid
+   left 3 real tiles hugging the left edge and 3 blank grid tracks on the
+   right, next to Shop by Occasion/Price rows that always have exactly 6
+   items and so always look "full". A fixed-width flex-wrap row centers
+   whatever number of tiles actually exist instead of stretching them (a
+   naive `auto-fit`/`1fr` fix would have blown 3 tiles up to fill the
+   whole row instead) or leaving dead space (a naive `auto-fill` grid
+   still reserves the empty tracks' width). This is the one dynamic-count
+   row on the page — Shop by Occasion/Price are both fixed static lists of
+   exactly 6, so they don't have this failure mode and didn't need it. */
 .cat-grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 16px;
+
+  @media (max-width: 640px) {
+    gap: 10px;
+  }
+}
+
+.cat-tile {
+  display: flex;
+  flex: 0 0 170px;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+  font-size: 0.82rem;
+  color: var(--color-text);
+
+  &:hover .cat-tile__media {
+    box-shadow: var(--shadow-card);
+  }
+
+  @media (max-width: 640px) {
+    flex-basis: calc(33.333% - 7px);
+  }
+}
+
+.cat-tile__media {
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-white);
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  svg {
+    width: 42%;
+    height: 42%;
+  }
+}
+
+.cat-tile__arrow {
+  color: var(--color-primary);
+  font-weight: 700;
+}
+
+.occasion-grid {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 16px;
@@ -126,29 +307,33 @@
   }
 }
 
-.cat-tile {
+.occasion-tile {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 8px;
   text-align: center;
-  font-size: 0.82rem;
+  font-size: 0.78rem;
   color: var(--color-text);
 
-  &:hover .cat-tile__media {
+  &:hover .occasion-tile__media {
     box-shadow: var(--shadow-card);
   }
 }
 
-.cat-tile__media {
+/* A rotating photo (see home.component.ts's `tileImage()`) fills this
+   circle now — `overflow: hidden` clips it to the border-radius, and the
+   gradient background is just the loading-state color visible for an
+   instant before the `<img>` paints over it. */
+.occasion-tile__media {
+  display: block;
+  position: relative;
+  overflow: hidden;
   width: 100%;
   aspect-ratio: 1;
   border-radius: 50%;
-  overflow: hidden;
   background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  border: 2px solid var(--color-accent);
 
   img {
     width: 100%;
@@ -157,10 +342,79 @@
   }
 }
 
-.cat-tile__initial {
+.price-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 16px;
+
+  @media (max-width: 1023px) {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  @media (max-width: 640px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+}
+
+/* A rotating photo (`.price-tile__media`, see home.component.ts's
+   `tileImage()`) fills the tile now, with a bottom-weighted dark scrim
+   (this rule's own `::after`) so the white label text stays readable over
+   whatever the photo looks like — replaces the old flat maroon-gradient
+   fill entirely. `position: relative` + the scrim/media's `z-index` stack
+   keeps the label above both. */
+.price-tile {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 6px;
+  aspect-ratio: 1;
+  border-radius: var(--radius-md);
+  padding: 14px;
   color: var(--color-white);
-  font-family: var(--font-display);
-  font-size: 1.4rem;
+  background: var(--color-primary-dark);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    background: linear-gradient(180deg, rgba(67, 15, 35, 0.1) 0%, rgba(67, 15, 35, 0.8) 100%);
+  }
+
+  &:hover {
+    box-shadow: var(--shadow-card);
+    transform: translateY(-2px);
+  }
+}
+
+.price-tile__media {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.price-tile__amount,
+.price-tile__arrow {
+  position: relative;
+  z-index: 2;
+}
+
+.price-tile__amount {
+  font-size: 0.85rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.price-tile__arrow {
+  font-weight: 700;
+  color: var(--color-accent);
 }
 
 .skeleton-card {
@@ -177,6 +431,19 @@
   background: linear-gradient(90deg, var(--color-bg-tint) 25%, #f0e9e6 37%, var(--color-bg-tint) 63%);
   background-size: 400% 100%;
   animation: shimmer 1.4s ease infinite;
+
+  /* `.cat-grid` is a flex row (see its own comment) — flex items don't
+     stretch to fill a track the way grid items used to, so this needs the
+     same fixed basis `.cat-tile` uses or the loading skeletons would
+     collapse to zero width. */
+  .cat-grid & {
+    flex: 0 0 170px;
+    border-radius: var(--radius-md);
+
+    @media (max-width: 640px) {
+      flex-basis: calc(33.333% - 7px);
+    }
+  }
 }
 
 @keyframes shimmer {
@@ -197,20 +464,215 @@
   }
 }
 
-.stories {
-  &__card {
-    background: var(--color-bg-tint);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-    padding: 32px;
-    text-align: center;
-    max-width: 640px;
-    margin: 0 auto;
+/* ---- manufacturer spotlight --------------------------------------------- */
+.spotlight {
+  padding: 0;
+}
+
+.spotlight__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+
+  @media (max-width: 767px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.spotlight__media {
+  min-height: 280px;
+  border-radius: 0;
+}
+
+.spotlight__quote {
+  /* Sampled from `ui_design/Home Page.png`'s quote panel (~rgb(184,138,163))
+     — a dusty rose, not the near-white tint this used to be. */
+  background: #b58aa0;
+  padding: 40px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+
+  .section__title {
+    color: var(--color-white);
   }
 
-  p {
-    color: var(--color-text-muted);
-    max-width: 480px;
-    margin: 0 auto 18px;
+  @media (max-width: 767px) {
+    padding: 28px 24px;
   }
+
+  blockquote {
+    margin: 12px 0;
+    color: rgba(255, 255, 255, 0.92);
+    line-height: 1.7;
+    font-size: 0.95rem;
+  }
+}
+
+.spotlight__location {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 0.85rem;
+}
+
+.spotlight__author {
+  margin: 8px 0 0;
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--color-white);
+}
+
+/* ---- stat counters -------------------------------------------------------- */
+/* The maroon fill lives on `.stats-bar__grid` (the child), not on this
+   outer `.stats-bar` section — a `background` painted on a *padded* box
+   still fills the whole border-box, padding and all (padding never
+   creates a background gap, it only pushes content inward). So even with
+   correct padding this section's own background would have bled to the
+   full 1280px `.container` box, 24px wider on each side than every other
+   panel (price tiles, spotlight), whose color only ever sits on a child
+   that fills the already-inset *content* box. This section itself now
+   contributes no visible styling at all — just the invisible
+   `.section`/`.container` sizing — so its own block padding is zeroed
+   out (the design butts this band directly against the spotlight section
+   above it, with zero gap; `.stats-bar__grid`'s own padding below is what
+   actually gives the numbers their breathing room). */
+.stats-bar {
+  padding-block: 0;
+}
+
+.stats-bar__grid {
+  background: var(--color-primary-dark);
+  color: var(--color-white);
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  text-align: center;
+  padding: 32px 24px;
+
+  @media (max-width: 640px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 24px;
+  }
+}
+
+.stats-bar__value {
+  font-family: var(--font-display);
+  font-size: 1.8rem;
+  margin: 0 0 4px;
+}
+
+.stats-bar__label {
+  margin: 0;
+  font-size: 0.8rem;
+  opacity: 0.85;
+}
+
+/* ---- grow-your-business CTA ------------------------------------------------ */
+.grow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 40px;
+  align-items: center;
+
+  @media (max-width: 767px) {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+}
+
+.grow__media {
+  min-height: 260px;
+}
+
+.grow__sub {
+  color: var(--color-text-muted);
+  margin: 0 0 18px;
+}
+
+.grow__list {
+  list-style: none;
+  margin: 0 0 24px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+
+  li {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  strong {
+    display: block;
+    font-size: 0.92rem;
+  }
+}
+
+.grow__point-desc {
+  display: block;
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  margin-top: 2px;
+}
+
+.grow__check {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--color-bg-tint);
+  color: var(--color-success);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 2px;
+}
+
+/* ---- customer reviews ------------------------------------------------------ */
+.review-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 16px;
+
+  @media (max-width: 1023px) {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  @media (max-width: 640px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+}
+
+.review-card {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  text-align: center;
+}
+
+.review-card__media {
+  width: 52px;
+  height: 52px;
+  margin: 0 auto 10px;
+}
+
+.review-card__stars {
+  color: #e8a13d;
+  font-size: 0.85rem;
+  letter-spacing: 2px;
+  margin-bottom: 8px;
+}
+
+.review-card__quote {
+  margin: 0 0 10px;
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+  line-height: 1.5;
+}
+
+.review-card__name {
+  margin: 0;
+  font-weight: 600;
+  font-size: 0.85rem;
 }

@@ -1,0 +1,102 @@
+<div class="container listing">
+  <nav class="listing__crumbs" aria-label="Breadcrumb">
+    <a routerLink="/">Home</a> / <span>{{ heading() }}</span>
+  </nav>
+
+  <div class="listing__toolbar">
+    <div>
+      <h1 class="listing__title">{{ heading() }}</h1>
+      <p class="listing__subtitle">Handpicked sarees, timeless elegance</p>
+    </div>
+
+    <div class="listing__toolbar-actions">
+      <button type="button" class="listing__filter-toggle" (click)="toggleFilters()" [attr.aria-expanded]="filtersOpen()">
+        <svg viewBox="0 0 20 20" fill="none" width="16" height="16"><path d="M3 5h14M6 10h8M8.5 15h3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        Filters
+      </button>
+
+      <label class="listing__sort">
+        <span>Sort by</span>
+        <select [value]="sort()" (change)="setSort($any($event.target).value)">
+          <option value="newest">Newest</option>
+          <option value="oldest">Oldest</option>
+        </select>
+      </label>
+    </div>
+  </div>
+
+  <div class="listing__layout">
+    <aside class="listing__filters" [class.listing__filters--open]="filtersOpen()">
+      <div class="listing__filters-head">
+        <h2>Filters</h2>
+        <div class="listing__filters-head-actions">
+          @if (hasActiveFilters()) {
+            <button type="button" class="listing__clear" (click)="clearFilters()">Clear all</button>
+          }
+          <button type="button" class="listing__filters-close" (click)="closeFilters()" aria-label="Close filters">&times;</button>
+        </div>
+      </div>
+
+      <div class="listing__filter-group">
+        <h3>Price</h3>
+        <ul class="listing__presets">
+          @for (preset of pricePresets; track preset.label) {
+            <li>
+              <button type="button" class="listing__preset" [class.listing__preset--active]="isPricePresetActive(preset)" (click)="applyPricePreset(preset)">
+                {{ preset.label }}
+              </button>
+            </li>
+          }
+        </ul>
+
+        <div class="listing__price-inputs">
+          <label>
+            <span class="visually-hidden">Minimum price</span>
+            <input type="number" min="0" inputmode="numeric" placeholder="Min" [(ngModel)]="priceMinInput" name="priceMin" />
+          </label>
+          <span class="listing__price-sep">–</span>
+          <label>
+            <span class="visually-hidden">Maximum price</span>
+            <input type="number" min="0" inputmode="numeric" placeholder="Max" [(ngModel)]="priceMaxInput" name="priceMax" />
+          </label>
+          <button type="button" class="btn btn--primary listing__price-apply" (click)="applyCustomPrice()">Apply</button>
+        </div>
+        @if (priceError()) {
+          <p class="listing__price-error">{{ priceError() }}</p>
+        }
+      </div>
+    </aside>
+
+    @if (filtersOpen()) {
+      <button type="button" class="listing__scrim" (click)="closeFilters()" aria-label="Close filters"></button>
+    }
+
+    <div class="listing__results">
+      @if (loading()) {
+        <div class="grid">
+          @for (i of [1, 2, 3, 4, 5, 6, 7, 8]; track i) {
+            <div class="skeleton-card"></div>
+          }
+        </div>
+      } @else if (error()) {
+        <p class="state-message state-message--error">{{ error() }}</p>
+      } @else if (products().length === 0) {
+        <p class="state-message">No products match these filters yet — try adjusting or clearing them.</p>
+      } @else {
+        <div class="grid">
+          @for (product of products(); track product.uuid) {
+            <app-product-card [product]="product" />
+          }
+        </div>
+
+        @if (hasMore()) {
+          <div class="listing__load-more">
+            <button type="button" class="btn btn--outline" (click)="loadMore()" [disabled]="loadingMore()">
+              {{ loadingMore() ? 'Loading…' : 'Load more' }}
+            </button>
+          </div>
+        }
+      }
+    </div>
+  </div>
+</div>

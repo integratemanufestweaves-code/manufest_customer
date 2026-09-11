@@ -1,12 +1,16 @@
 /**
  * Local dev environment — points at manufest_be running via `npm run dev`
  * (default PORT=4000, see manufest_be/.env.example). Swap the host/port if
- * your local backend uses different values. This file isn't wired up via
- * an Angular `fileReplacements` block in angular.json (manufest_seller's
- * isn't either — see that repo's own environments/ folder) — swap the
- * import in main.ts's bootstrap, or just edit environment.ts directly for
- * local testing, until a real dev/prod file-replacement build config is
- * set up for this app.
+ * your local backend uses different values.
+ *
+ * Wired up via `angular.json`'s `build.development` `fileReplacements`
+ * (added 2026-09-10) — `ng serve` and `ng build --configuration
+ * development` both resolve `environments/environment` to this file.
+ * Before that fix, this file was dead: nothing replaced `environment.ts`
+ * in any build configuration, so every build (dev *and* production) used
+ * the same file — see `environment.ts`'s own header comment for what that
+ * broke. `manufest_seller` still has this gap open as of this writing;
+ * don't copy its "not wired up" pattern into new apps.
  */
 export const environment = {
   production: false,

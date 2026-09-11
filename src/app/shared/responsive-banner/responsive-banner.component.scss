@@ -1,0 +1,77 @@
+.responsive-banner {
+  position: relative;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.responsive-banner__track {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 7;
+  background: var(--color-bg-tint);
+}
+
+@media (max-width: 767px) {
+  .responsive-banner__track {
+    aspect-ratio: 4 / 3;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  .responsive-banner__track {
+    aspect-ratio: 16 / 8;
+  }
+}
+
+.responsive-banner__slide {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 0.6s ease;
+  pointer-events: none;
+}
+
+.responsive-banner__slide.is-active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.responsive-banner__link,
+.responsive-banner__picture {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.responsive-banner__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.responsive-banner__dots {
+  position: absolute;
+  bottom: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 8px;
+  z-index: 1;
+}
+
+.responsive-banner__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: none;
+  padding: 0;
+  background: rgba(255, 255, 255, 0.55);
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.responsive-banner__dot.is-active {
+  background: var(--color-white, #fff);
+  transform: scale(1.2);
+}

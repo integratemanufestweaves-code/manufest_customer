@@ -131,21 +131,164 @@
   white-space: nowrap;
 }
 
-.header__mobile-nav {
+/* Circular avatar treatment for the account icon — matches
+   manufest_seller's `.topbar__avatar` (see header.component.ts's header
+   comment on why this app deliberately ports that app's mobile-nav
+   patterns visually rather than re-deriving its own). */
+.header__avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--color-bg-tint);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+}
+
+.header__icon-btn--account:hover .header__avatar {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+/* ---- mobile/tablet off-canvas nav drawer --------------------------------
+   Same breakpoint (1023px) the hamburger itself appears at, and the same
+   fixed-drawer + backdrop mechanics as manufest_seller's
+   sidebar/seller-shell/topbar trio — a slide-in panel reads as navigation
+   in a way an inline-expanding list doesn't. */
+.header__scrim {
   display: none;
+}
+
+.header__drawer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: min(300px, 84vw);
+  max-width: 100%;
+  background: var(--color-white);
+  z-index: 60;
+  transform: translateX(-100%);
+  transition: transform 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
 }
 
 @media (max-width: 1023px) {
   .header__nav {
     display: none;
   }
-}
 
-@media (max-width: 767px) {
+  /* Whenever the inline nav above is hidden, the hamburger must take over
+     — it used to only appear below 767px while the nav already hid at
+     1023px, so tablets (768–1023px) had no way to reach Origin/Fabric/
+     Weave/Occasion at all. Same breakpoint for both, always. */
   .header__menu-toggle {
     display: flex;
   }
 
+  .header__drawer--open {
+    transform: translateX(0);
+    box-shadow: var(--shadow-card);
+  }
+}
+
+.header__drawer-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 16px 14px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.header__drawer-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: var(--color-primary);
+
+  img {
+    width: 28px;
+    height: 28px;
+    border-radius: 7px;
+    object-fit: contain;
+  }
+}
+
+.header__drawer-close {
+  border: none;
+  background: none;
+  font-size: 1.6rem;
+  line-height: 1;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  padding: 4px 6px;
+}
+
+.header__drawer-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px;
+}
+
+.header__drawer-foot {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px;
+  border-top: 1px solid var(--color-border);
+}
+
+.header__drawer-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 12px;
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+  font-size: 0.9rem;
+  font-weight: 500;
+
+  &:hover {
+    background: var(--color-bg-tint);
+  }
+}
+
+.header__drawer-link--active {
+  background: var(--color-primary);
+  color: var(--color-white);
+
+  .header__drawer-icon {
+    color: var(--color-white);
+  }
+
+  &:hover {
+    background: var(--color-primary-dark);
+  }
+}
+
+.header__drawer-icon {
+  display: inline-flex;
+  flex: 0 0 20px;
+  width: 20px;
+  height: 20px;
+  color: var(--color-primary);
+
+  svg {
+    width: 100%;
+    height: 100%;
+  }
+}
+
+@media (max-width: 767px) {
   .header__search {
     display: none;
   }
@@ -165,17 +308,17 @@
   .header__logo-word {
     display: none;
   }
+}
 
-  .header__mobile-nav {
-    display: flex;
-    flex-direction: column;
-    border-top: 1px solid var(--color-border);
-    padding: 8px 16px 14px;
-
-    a {
-      padding: 10px 0;
-      font-size: 0.95rem;
-      border-bottom: 1px solid var(--color-bg-tint);
-    }
+@media (max-width: 1023px) {
+  .header__scrim {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 55;
+    background: rgba(20, 10, 15, 0.4);
+    border: none;
+    padding: 0;
+    cursor: pointer;
   }
 }

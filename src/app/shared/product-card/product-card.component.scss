@@ -13,6 +13,29 @@
   }
 }
 
+.card__link {
+  display: flex;
+  flex-direction: column;
+  color: inherit;
+}
+
+.card__add {
+  display: block;
+  text-align: center;
+  margin: 0 12px 12px;
+  padding: 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-text);
+
+  &:hover {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+  }
+}
+
 .card__media {
   aspect-ratio: 3 / 4;
   background: var(--color-bg-tint);
@@ -36,7 +59,7 @@
 }
 
 .card__body {
-  padding: 10px 12px 14px;
+  padding: 10px 12px 8px;
   display: flex;
   flex-direction: column;
   gap: 2px;

@@ -43,16 +43,69 @@
         <span class="header__icon-label">Cart</span>
       </a>
       <a routerLink="/account" class="header__icon-btn header__icon-btn--account">
-        <svg viewBox="0 0 24 24" fill="none" width="20" height="20"><circle cx="12" cy="8" r="3.5" stroke="currentColor" stroke-width="1.5"/><path d="M4.5 20c1.4-3.6 4.4-5.5 7.5-5.5s6.1 1.9 7.5 5.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        <span class="header__avatar">
+          <svg viewBox="0 0 24 24" fill="none" width="18" height="18"><circle cx="12" cy="8" r="3.5" stroke="currentColor" stroke-width="1.5"/><path d="M4.5 20c1.4-3.6 4.4-5.5 7.5-5.5s6.1 1.9 7.5 5.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        </span>
+        <span class="header__icon-label">Profile</span>
       </a>
     </div>
   </div>
-
-  @if (mobileMenuOpen()) {
-    <nav class="header__mobile-nav" aria-label="Primary">
-      @for (link of navLinks; track link.path) {
-        <a [routerLink]="link.path" (click)="closeMobileMenu()">{{ link.label }}</a>
-      }
-    </nav>
-  }
 </header>
+
+<!-- Off-canvas mobile nav drawer — see this component's header comment for
+     why this mirrors manufest_seller's sidebar/backdrop pattern instead of
+     the inline-expanding list this used to be. Siblings of <header>, not
+     nested inside it, so their `position: fixed` isn't affected by
+     anything <header> does (it currently has none, but this keeps the
+     drawer's stacking independent of the sticky header on purpose). -->
+@if (mobileMenuOpen()) {
+  <button type="button" class="header__scrim" (click)="closeMobileMenu()" aria-label="Close menu"></button>
+}
+
+<aside class="header__drawer" [class.header__drawer--open]="mobileMenuOpen()">
+  <div class="header__drawer-head">
+    <a routerLink="/" class="header__drawer-brand" (click)="closeMobileMenu()">
+      <img [src]="logoMark" alt="" />
+      <span>Manufest</span>
+    </a>
+    <button type="button" class="header__drawer-close" (click)="closeMobileMenu()" aria-label="Close menu">&times;</button>
+  </div>
+
+  <nav class="header__drawer-nav" aria-label="Primary">
+    @for (link of navLinks; track link.path) {
+      <a [routerLink]="link.path" routerLinkActive="header__drawer-link--active" class="header__drawer-link" (click)="closeMobileMenu()">
+        <span class="header__drawer-icon">
+          @switch (link.icon) {
+            @case ('new-arrivals') {
+              <svg viewBox="0 0 24 24" fill="none"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>
+            }
+            @case ('origin') {
+              <svg viewBox="0 0 24 24" fill="none"><path d="M12 21s7-6.5 7-11.5A7 7 0 0 0 5 9.5C5 14.5 12 21 12 21Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><circle cx="12" cy="9.5" r="2.3" stroke="currentColor" stroke-width="1.5"/></svg>
+            }
+            @case ('fabric') {
+              <svg viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="14" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="3" y="14" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="14" y="14" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.5"/></svg>
+            }
+            @case ('weave') {
+              <svg viewBox="0 0 24 24" fill="none"><path d="M4 4v16M9 4v16M14 4v16M19 4v16" stroke="currentColor" stroke-width="1.3"/><path d="M4 9h16M4 14h16" stroke="currentColor" stroke-width="1.3"/></svg>
+            }
+            @case ('occasion') {
+              <svg viewBox="0 0 24 24" fill="none"><rect x="4" y="9" width="16" height="11" rx="1.5" stroke="currentColor" stroke-width="1.5"/><path d="M4 9h16M12 9v11" stroke="currentColor" stroke-width="1.5"/><path d="M12 9c-2-3-6-3-6-.5C6 9 8 9 12 9Zm0 0c2-3 6-3 6-.5C18 9 16 9 12 9Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+            }
+          }
+        </span>
+        <span>{{ link.label }}</span>
+      </a>
+    }
+  </nav>
+
+  <div class="header__drawer-foot">
+    <a routerLink="/wishlist" class="header__drawer-link" (click)="closeMobileMenu()">
+      <span class="header__drawer-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M12 20s-7-4.35-9.5-8.5C.6 8 2 4.5 5.5 4a5 5 0 0 1 6.5 2 5 5 0 0 1 6.5-2C22 4.5 23.4 8 21.5 11.5 19 15.65 12 20 12 20Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg></span>
+      <span>Wishlist</span>
+    </a>
+    <a routerLink="/account" class="header__drawer-link" (click)="closeMobileMenu()">
+      <span class="header__drawer-icon"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="3.5" stroke="currentColor" stroke-width="1.5"/><path d="M4.5 20c1.4-3.6 4.4-5.5 7.5-5.5s6.1 1.9 7.5 5.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span>
+      <span>My account</span>
+    </a>
+  </div>
+</aside>

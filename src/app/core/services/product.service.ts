@@ -10,6 +10,18 @@ export interface ProductPage {
   meta: CursorMeta;
 }
 
+export type ProductSort = 'newest' | 'oldest';
+
+export interface ListProductsOptions {
+  cursor?: string | null;
+  limit?: number;
+  categoryUuid?: string | null;
+  occasionUuid?: string | null;
+  priceMin?: number | null;
+  priceMax?: number | null;
+  sort?: ProductSort;
+}
+
 /**
  * Client for manufest_be's `GET /public/products/*` routes — see
  * manufest_be/.claude/knowledge/02-api-reference.md's `products` section.
@@ -27,10 +39,33 @@ export class ProductService {
 
   constructor(private readonly http: HttpClient) {}
 
-  listProducts(opts: { cursor?: string | null; limit?: number } = {}): Observable<ProductPage> {
+  /**
+   * `manufest_be` 2026-09-10: `GET /public/products/list` gained 5 optional,
+   * AND-combinable query params (`applyPublicListFilters()` /
+   * `publicListProducts` validation, see
+   * manufest_be/.claude/knowledge/02-api-reference.md's "Filterable public
+   * listing" entry) — `categoryUuid`, `occasionUuid`, `priceMin`/`priceMax`,
+   * and `sort` ('newest' default | 'oldest'). `occasionUuid` is accepted
+   * here for forward-compatibility even though nothing in this app can
+   * populate an occasion picker yet — there is no public endpoint that
+   * lists occasion values (`/seller/products/attributes-master` and
+   * `/admin/products/attributes-master` are both auth-gated), so no UI
+   * calls this with one today. `priceMin`/`priceMax` back the Home page's
+   * "Shop by Price" tiles and the listing page's price filter;
+   * `categoryUuid` backs "Shop by Category" and the listing page's
+   * category filter; `sort` backs the listing page's Sort-by control —
+   * `'newest'` is also literally what "New Arrivals" means server-side
+   * (see that same doc entry: it's a sort order, not a separate filter).
+   */
+  listProducts(opts: ListProductsOptions = {}): Observable<ProductPage> {
     let params: Record<string, string> = {};
     if (opts.limit) params['limit'] = String(opts.limit);
     if (opts.cursor) params['cursor'] = opts.cursor;
+    if (opts.categoryUuid) params['categoryUuid'] = opts.categoryUuid;
+    if (opts.occasionUuid) params['occasionUuid'] = opts.occasionUuid;
+    if (opts.priceMin != null) params['priceMin'] = String(opts.priceMin);
+    if (opts.priceMax != null) params['priceMax'] = String(opts.priceMax);
+    if (opts.sort) params['sort'] = opts.sort;
 
     return this.http.get<ApiSuccess<ProductSummary[]>>(`${this.base}/list`, { params }).pipe(
       map((res) => ({ items: res.data, meta: (res.meta as CursorMeta) ?? { limit: opts.limit ?? 20, nextCursor: null, hasMore: false } })),

@@ -7,6 +7,33 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <!-- Keep in sync with BRAND_ASSETS.favicon (core/constants/brand-assets.ts) — index.html loads before Angular bootstraps, so this path can't be bound to that constant and must be updated by hand if it ever changes. sizes="any" is the standard descriptor for a scalable SVG icon (it has no fixed raster size to declare). -->
   <link rel="icon" type="image/svg+xml" sizes="any" href="assets/logo/Manufest-Weaves-icon-nobg.svg">
+
+  <!--
+    Defense-in-depth headers (2026-09-10). This app is the one manufest_*
+    frontend a completely unauthenticated public visitor can load directly
+    — manufest_seller/manufest_admin only ever face logged-in staff/sellers
+    — so it carries a stricter baseline than either of those.
+
+    `img-src`/`connect-src` allow both the real API origin and
+    `localhost:4000` because this single static `index.html` is shared by
+    every build configuration (dev and prod alike — there's no
+    environment-specific templating of this file) — see environment.ts's
+    2026-09-10 header comment for the fileReplacements fix that *does*
+    correctly separate the two for the JS bundle's `apiBaseUrl`.
+    `style-src` needs `unsafe-inline` because Angular's default emulated
+    view encapsulation injects component styles as inline `<style>` tags
+    at runtime; there's no inline `<script>` anywhere in this app, so
+    `script-src 'self'` has no matching carve-out.
+
+    `frame-ancestors`/`report-uri` are deliberately omitted from the CSP
+    below — the spec doesn't honor them when CSP is delivered via
+    `<meta>`, only via a real `Content-Security-Policy` HTTP header, which
+    means clickjacking protection (frame-ancestors, or the older
+    X-Frame-Options) and CSP violation reporting must be configured at
+    the hosting/CDN layer, not here.
+  -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: http://localhost:4000; font-src 'self' data:; connect-src 'self' https://manufestweaves.in http://localhost:4000; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
 </head>
 <body>
   <app-root></app-root>

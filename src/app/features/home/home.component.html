@@ -1,10 +1,26 @@
 <section class="hero container">
-  <div class="hero__panel">
-    <p class="hero__eyebrow">Special offer</p>
-    <h1 class="hero__title">Threads of tradition,<br />handpicked for you</h1>
-    <p class="hero__sub">Direct from India's finest handloom manufacturers — no middlemen, fair prices.</p>
-    <a routerLink="/new-arrivals" class="btn btn--primary hero__cta">Shop now</a>
-  </div>
+  <app-responsive-banner placementKey="home_hero_banner" (assetsLoaded)="onHeroBannerLoaded($event)" />
+  @if (heroBannerHasAssets() === false) {
+    <!-- Static fallback — shown only once we know there's no admin-managed
+         banner live for 'home_hero_banner' yet (see
+         ResponsiveBannerComponent's header comment for why this waits for
+         assetsLoaded rather than checking immediately). Once an admin
+         activates a real banner (Site Assets → Add asset →
+         placement "home_hero_banner"), this block stops rendering and the
+         live banner takes over automatically. -->
+    <div class="hero__panel">
+      <div class="hero__text">
+        <p class="hero__eyebrow">Special offer</p>
+        <h1 class="hero__title">Christmas Sale</h1>
+        <p class="hero__tagline">Threads of tradition for a joyful season</p>
+        <p class="hero__discount">Up to 50% off</p>
+        <a routerLink="/new-arrivals" class="btn btn--primary hero__cta">Shop now</a>
+      </div>
+      <div class="hero__media ph-image ph-image--hero" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="32" height="32" fill="none"><rect x="3" y="4" width="18" height="16" rx="2" stroke="currentColor" stroke-width="1.3"/><path d="M3 16l5-5 4 4 3-3 6 6" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>
+      </div>
+    </div>
+  }
 </section>
 
 <section class="badges container">
@@ -27,7 +43,7 @@
       <h2 class="section__title">Featured products</h2>
       <p class="section__subtitle">New arrivals, handpicked</p>
     </div>
-    <a routerLink="/new-arrivals" class="section__link">View all &rarr;</a>
+    <a routerLink="/new-arrivals" [queryParams]="{ sort: 'newest' }" class="section__link">View all &rarr;</a>
   </div>
 
   @if (productsLoading()) {
@@ -49,53 +65,155 @@
   }
 </section>
 
-<section class="section section--tint">
-  <div class="container">
-    <div class="section__header">
-      <div>
-        <h2 class="section__title">Shop by category</h2>
-        <p class="section__subtitle">Handpicked sarees, timeless elegance</p>
-      </div>
-      <a routerLink="/new-arrivals" class="section__link">View all &rarr;</a>
+<section class="section container section--tint">
+  <div class="section__header">
+    <div>
+      <h2 class="section__title">Shop by category</h2>
+      <p class="section__subtitle">Handpicked sarees, timeless elegance</p>
     </div>
+    <a routerLink="/new-arrivals" class="section__link">View all &rarr;</a>
+  </div>
 
-    @if (categoriesLoading()) {
-      <div class="cat-grid">
-        @for (i of [1, 2, 3, 4, 5, 6]; track i) {
-          <div class="skeleton-tile"></div>
-        }
-      </div>
-    } @else if (categoriesError()) {
-      <p class="state-message state-message--error">{{ categoriesError() }}</p>
-    } @else if (categories().length === 0) {
-      <p class="state-message">No categories to show yet — check back soon.</p>
-    } @else {
-      <div class="cat-grid">
-        @for (cat of categories(); track cat.uuid) {
-          <a routerLink="/new-arrivals" class="cat-tile">
-            <div class="cat-tile__media">
-              @if (cat.imageUrl) {
-                <img [src]="cat.imageUrl" [alt]="cat.name" loading="lazy" />
-              } @else {
-                <span class="cat-tile__initial">{{ cat.name.charAt(0) }}</span>
-              }
-            </div>
-            <p>{{ cat.name }}</p>
-          </a>
-        }
+  @if (categoriesLoading()) {
+    <div class="cat-grid">
+      @for (i of [1, 2, 3, 4, 5, 6]; track i) {
+        <div class="skeleton-tile"></div>
+      }
+    </div>
+  } @else if (categoriesError()) {
+    <p class="state-message state-message--error">{{ categoriesError() }}</p>
+  } @else if (categories().length === 0) {
+    <p class="state-message">No categories to show yet — check back soon.</p>
+  } @else {
+    <div class="cat-grid">
+      @for (cat of categories(); track cat.uuid) {
+        <a [routerLink]="['/category', cat.uuid]" class="cat-tile">
+          <div class="cat-tile__media">
+            @if (cat.imageUrl && !brokenCategoryImages().has(cat.uuid)) {
+              <img [src]="cat.imageUrl" [alt]="cat.name" loading="lazy" (error)="onCategoryImageError(cat.uuid)" />
+            } @else {
+              <img [src]="tileImage(categoryImageBucket(cat.name))" [alt]="cat.name" loading="lazy" />
+            }
+          </div>
+          <p>{{ cat.name }} <span class="cat-tile__arrow" aria-hidden="true">&rarr;</span></p>
+        </a>
+      }
+    </div>
+  }
+</section>
+
+<section class="section container">
+  <div class="section__header">
+    <div>
+      <h2 class="section__title">Shop by occasion</h2>
+      <p class="section__subtitle">Handpicked sarees, timeless elegance</p>
+    </div>
+    <a routerLink="/new-arrivals" class="section__link">View all &rarr;</a>
+  </div>
+
+  <div class="occasion-grid">
+    @for (occ of occasions; track occ.label) {
+      <a routerLink="/new-arrivals" class="occasion-tile">
+        <span class="occasion-tile__media">
+          <img [src]="tileImage(occ.bucket)" [alt]="occ.label" loading="lazy" />
+        </span>
+        <p>{{ occ.label }} <span aria-hidden="true">&rarr;</span></p>
+      </a>
+    }
+  </div>
+</section>
+
+<section class="section container">
+  <div class="section__header">
+    <div>
+      <h2 class="section__title">Shop by price</h2>
+      <p class="section__subtitle">Handpicked sarees, timeless elegance</p>
+    </div>
+    <a routerLink="/new-arrivals" class="section__link">View all &rarr;</a>
+  </div>
+
+  <div class="price-grid">
+    @for (band of priceBands; track band.label) {
+      <a routerLink="/new-arrivals" [queryParams]="{ priceMin: band.min, priceMax: band.max }" class="price-tile">
+        <img class="price-tile__media" [src]="tileImage(band.bucket)" alt="" aria-hidden="true" loading="lazy" />
+        <span class="price-tile__amount">{{ band.label }}</span>
+        <span class="price-tile__arrow" aria-hidden="true">&rarr;</span>
+      </a>
+    }
+  </div>
+</section>
+
+<section class="section spotlight">
+  <div class="container spotlight__grid">
+    <!-- TODO(design swap): replace with a real manufacturer photo. -->
+    <div class="spotlight__media ph-image ph-image--spotlight" aria-hidden="true">
+      <svg viewBox="0 0 24 24" width="36" height="36" fill="none"><rect x="3" y="4" width="18" height="16" rx="2" stroke="currentColor" stroke-width="1.3"/><path d="M3 16l5-5 4 4 3-3 6 6" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>
+    </div>
+    <div class="spotlight__quote">
+      <h2 class="section__title">{{ manufacturerSpotlight.name }}</h2>
+      <p class="spotlight__location">{{ manufacturerSpotlight.location }}</p>
+      <blockquote>&ldquo;{{ manufacturerSpotlight.quote }}&rdquo;</blockquote>
+      <p class="spotlight__author">— {{ manufacturerSpotlight.author }}</p>
+    </div>
+  </div>
+</section>
+
+<section class="stats-bar section container">
+  <div class="stats-bar__grid">
+    @for (stat of stats; track stat.label) {
+      <div class="stats-bar__item">
+        <p class="stats-bar__value">{{ stat.value }}</p>
+        <p class="stats-bar__label">{{ stat.label }}</p>
       </div>
     }
   </div>
 </section>
 
-<section class="section container stories">
-  <div class="stories__card">
-    <h2 class="section__title">Manufacturer stories &amp; customer reviews</h2>
-    <p>
-      We're building out verified manufacturer spotlights and real customer reviews —
-      backed by data, not placeholder numbers. Until that's live, we'd rather show you
-      nothing than something made up.
-    </p>
-    <a routerLink="/manufacturers" class="btn btn--outline">Coming soon</a>
+<section class="section container grow">
+  <!-- TODO(design swap): replace with a real manufacturing/onboarding photo. -->
+  <div class="grow__media ph-image ph-image--grow" aria-hidden="true">
+    <svg viewBox="0 0 24 24" width="36" height="36" fill="none"><rect x="3" y="4" width="18" height="16" rx="2" stroke="currentColor" stroke-width="1.3"/><path d="M3 16l5-5 4 4 3-3 6 6" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>
+  </div>
+  <div class="grow__content">
+    <h2 class="section__title">Grow your business with Manufest</h2>
+    <p class="grow__sub">Join manufacturers across India selling directly to customers.</p>
+    <ul class="grow__list">
+      @for (point of growBusinessPoints; track point.title) {
+        <li>
+          <span class="grow__check" aria-hidden="true">
+            <svg viewBox="0 0 20 20" fill="none" width="14" height="14"><path d="M4 10.5l3.5 3.5L16 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </span>
+          <span>
+            <strong>{{ point.title }}</strong>
+            <span class="grow__point-desc">{{ point.desc }}</span>
+          </span>
+        </li>
+      }
+    </ul>
+    <a routerLink="/sell-on-manufest" class="btn btn--primary">Start selling</a>
+  </div>
+</section>
+
+<section class="section container">
+  <div class="section__header">
+    <div>
+      <h2 class="section__title">Trusted by thousands of customers</h2>
+      <p class="section__subtitle">From 15,000+ verified reviews</p>
+    </div>
+    <a routerLink="/new-arrivals" class="section__link">View all &rarr;</a>
+  </div>
+
+  <div class="review-grid">
+    @for (review of reviews; track review.name) {
+      <div class="review-card">
+        <!-- TODO(design swap): replace with a real reviewer photo. -->
+        <div class="review-card__media ph-image ph-image--review" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none"><circle cx="12" cy="8" r="3.4" stroke="currentColor" stroke-width="1.4"/><path d="M4.5 20c1.4-3.7 4.3-5.6 7.5-5.6s6.1 1.9 7.5 5.6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+        </div>
+        <div class="review-card__stars" aria-label="5 out of 5 stars">★★★★★</div>
+        <p class="review-card__quote">&ldquo;{{ review.quote }}&rdquo;</p>
+        <p class="review-card__name">{{ review.name }}</p>
+      </div>
+    }
   </div>
 </section>

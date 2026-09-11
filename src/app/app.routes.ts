@@ -3,17 +3,22 @@ import { Routes } from '@angular/router';
 /**
  * Route map for the customer-facing storefront.
  *
- * Only two routes are "real" (backed by a live manufest_be API call):
- * `''` (Home) and `product/:productUuid` (product detail). Every other
- * destination — anything needing customer auth, cart, wishlist,
- * notifications, or a full filtered product-browsing/search page — has no
- * corresponding manufest_be module yet (see manufest_be's own
- * `.claude/knowledge/01-overview.md` module list: no `orders`/`carts`/
- * `coupons`/etc. exist), so each just points at the shared
- * `ComingSoonComponent` with a route-specific title/description. This
- * mirrors manufest_seller's own `placeholder.component`/`data.pageTitle`
- * convention for exactly the same reason (see that repo's
- * `02-architecture-map.md`).
+ * Four routes are "real" (backed by a live manufest_be API call): `''`
+ * (Home), `product/:productUuid` (product detail), `new-arrivals` and
+ * `category/:categoryUuid` (both `ProductListingComponent`, added
+ * 2026-09-10 against `GET /public/products/list`'s new `categoryUuid`/
+ * `priceMin`/`priceMax`/`sort` filters). Every other destination —
+ * anything needing customer auth, cart/wishlist checkout flows, search, or
+ * browsing by an attribute with no public listing endpoint (origin/fabric/
+ * weave/occasion) — still points at the shared `ComingSoonComponent` with a
+ * route-specific title/description. This mirrors manufest_seller's own
+ * `placeholder.component`/`data.pageTitle` convention for exactly the same
+ * reason (see that repo's `02-architecture-map.md`).
+ *
+ * Note: `manufest_be` has since grown `cart`/`wishlist`/`customer`/
+ * `customer-accounts`/`auth`/`faq` modules that this app doesn't consume
+ * yet — wiring those up is a separate, larger pass (session/auth flow,
+ * cart state, etc.), not folded into this listing-API-driven change.
  *
  * Adding real functionality later is additive: swap one of these entries'
  * `loadComponent` for a real feature component without touching any other
@@ -29,6 +34,16 @@ export const routes: Routes = [
     path: 'product/:productUuid',
     loadComponent: () => import('./features/product-detail/product-detail.component').then((m) => m.ProductDetailComponent),
     title: 'Manufest — Product',
+  },
+  {
+    path: 'new-arrivals',
+    loadComponent: () => import('./features/product-listing/product-listing.component').then((m) => m.ProductListingComponent),
+    title: 'Manufest — New Arrivals',
+  },
+  {
+    path: 'category/:categoryUuid',
+    loadComponent: () => import('./features/product-listing/product-listing.component').then((m) => m.ProductListingComponent),
+    title: 'Manufest — Shop by Category',
   },
 
   // ---- account / auth ----
@@ -71,11 +86,10 @@ export const routes: Routes = [
   },
 
   // ---- browse (nav bar) ----
-  {
-    path: 'new-arrivals',
-    loadComponent: () => import('./shared/coming-soon/coming-soon.component').then((m) => m.ComingSoonComponent),
-    data: { pageTitle: 'New Arrivals', description: 'The full, filterable product catalog is coming soon.' },
-  },
+  // 'new-arrivals' and 'category/:categoryUuid' are registered above as real
+  // routes now that GET /public/products/list supports categoryUuid/
+  // priceMin/priceMax/sort. Origin/Fabric/Weave stay "coming soon" below —
+  // there's no public endpoint to browse by those attributes at all.
   {
     path: 'origin',
     loadComponent: () => import('./shared/coming-soon/coming-soon.component').then((m) => m.ComingSoonComponent),

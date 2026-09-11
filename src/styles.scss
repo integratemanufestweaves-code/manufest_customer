@@ -34,6 +34,16 @@
   --color-footer-bg: #3d1224;
   --color-price: #1f7a3d;
 
+  /* Warm gold accent — sampled from `ui_design/Home Page.png`'s CTA
+     buttons, badge icons and stat highlights (the hero photo's festive
+     dressing aside, this is the one recurring non-maroon brand color
+     across the mock). Not in the Figma `style-guide` frame's confirmed
+     token list, so eyeballed like the rest of this block — reuses the
+     same gold already used ad hoc in home.component.scss's placeholder
+     gradients rather than introducing a fresh, unvalidated hue. */
+  --color-accent: #c9a15a;
+  --color-accent-dark: #8a6a35;
+
   --font-display: Georgia, 'Times New Roman', serif;
   --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 
@@ -86,8 +96,15 @@ button {
   margin: 0 auto;
   padding: 0 24px;
 
+  /* Cascading side padding at narrower widths — matches manufest_seller's
+     `.shell__content` padding steps (28/18/14px) so small phones don't
+     get the same 16px gutter as a tablet. */
   @media (max-width: 767px) {
     padding: 0 16px;
+  }
+
+  @media (max-width: 480px) {
+    padding: 0 14px;
   }
 }
 
@@ -133,11 +150,21 @@ button {
   width: 100%;
 }
 
+/* `padding-block`, not the `padding` shorthand — several sections in
+   home.component.html carry both `section` and `container` on the same
+   element (e.g. `class="section container"`). Both classes are plain,
+   equal-specificity global selectors, so a `padding` shorthand here would
+   fully overwrite `.container`'s left/right padding (last declaration in
+   the cascade wins per longhand) rather than combining with it — that
+   silently zeroed out the 24px side gutter on those sections, making them
+   bleed to the raw 1280px container edge while sibling sections that
+   nest a separate `.container` div (spotlight, stats-bar) stayed properly
+   inset. `padding-block` only ever touches top/bottom, so it can't. */
 .section {
-  padding: 40px 0;
+  padding-block: 40px;
 
   @media (max-width: 767px) {
-    padding: 28px 0;
+    padding-block: 28px;
   }
 }
 

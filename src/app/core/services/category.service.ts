@@ -22,6 +22,16 @@ export class CategoryService {
     );
   }
 
+  /** `GET /public/categories/list_by_id/:categoryUuid` — used by the
+   * product-listing page to resolve a category's display name for its
+   * breadcrumb/heading when arriving via a `/category/:categoryUuid` link. */
+  getCategory(categoryUuid: string): Observable<Category> {
+    return this.http.get<ApiSuccess<CategoryApiRow>>(`${this.base}/list_by_id/${categoryUuid}`).pipe(
+      map((res) => toCategory(res.data)),
+      catchError((err) => this.rethrow(err)),
+    );
+  }
+
   private rethrow(err: unknown): Observable<never> {
     if (err instanceof HttpErrorResponse) {
       const body = err.error as ApiErrorBody | undefined;

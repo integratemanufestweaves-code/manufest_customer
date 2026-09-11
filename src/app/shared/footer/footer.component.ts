@@ -1,6 +1,8 @@
 import { Component } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
+import { BRAND_ASSETS } from '../../core/constants/brand-assets';
+
 interface FooterLink {
   label: string;
   path: string;
@@ -11,11 +13,26 @@ interface FooterColumn {
   links: FooterLink[];
 }
 
+interface SocialLink {
+  label: string;
+  path: string;
+  icon: 'instagram' | 'facebook' | 'youtube' | 'threads';
+}
+
 /**
- * Footer matches `design-reference/user/home/home-01-desktop.png`'s
- * bottom band (About us / Shop / Sell / Help columns + socials). Every
- * link routes to the shared "coming soon" page — none of these are backed
- * by a real API/page yet (see app.routes.ts).
+ * Footer matches `ui_design/Home Page.png`'s bottom band exactly, at the
+ * user's explicit request (2026-09-10) — a two-tone layout, not the single
+ * flat-maroon band this used to be:
+ * - `.footer__about` — cream (`--color-bg-tint`) panel: the real logo mark
+ *   (same asset the header uses) stacked above the "Manufest" wordmark and
+ *   a tagline, then icon-led contact rows.
+ * - `.footer__links` — a photo-backed panel (see `footer.component.scss`'s
+ *   `background-image` comment for exactly where to drop the real photo)
+ *   holding the Shop/Sell/Help columns, with social icons placed directly
+ *   under the Help column's links — not a separate full-width bottom bar,
+ *   which the design doesn't have at all. Every link routes to the shared
+ *   "coming soon" page — none of these are backed by a real API/page yet
+ *   (see app.routes.ts).
  */
 @Component({
   selector: 'app-footer',
@@ -25,6 +42,8 @@ interface FooterColumn {
   styleUrl: './footer.component.scss',
 })
 export class FooterComponent {
+  readonly logoMark = BRAND_ASSETS.logoMark;
+
   readonly columns: FooterColumn[] = [
     {
       title: 'Shop',
@@ -53,9 +72,10 @@ export class FooterComponent {
     },
   ];
 
-  readonly socials: FooterLink[] = [
-    { label: 'Instagram', path: '/social' },
-    { label: 'Facebook', path: '/social' },
-    { label: 'YouTube', path: '/social' },
+  readonly socials: SocialLink[] = [
+    { label: 'Instagram', path: '/social', icon: 'instagram' },
+    { label: 'Facebook', path: '/social', icon: 'facebook' },
+    { label: 'YouTube', path: '/social', icon: 'youtube' },
+    { label: 'Threads', path: '/social', icon: 'threads' },
   ];
 }

@@ -1,0 +1,46 @@
+@if (assets().length > 0) {
+  <div class="responsive-banner">
+    <div class="responsive-banner__track">
+      @for (asset of assets(); track asset.uuid; let i = $index) {
+        <div class="responsive-banner__slide" [class.is-active]="i === activeIndex()" [attr.aria-hidden]="i === activeIndex() ? null : 'true'">
+          @if (asset.linkUrl) {
+            <a [href]="asset.linkUrl" class="responsive-banner__link">
+              <ng-container [ngTemplateOutlet]="pic" [ngTemplateOutletContext]="{ asset: asset }"></ng-container>
+            </a>
+          } @else {
+            <ng-container [ngTemplateOutlet]="pic" [ngTemplateOutletContext]="{ asset: asset }"></ng-container>
+          }
+        </div>
+      }
+    </div>
+
+    @if (assets().length > 1) {
+      <div class="responsive-banner__dots">
+        @for (asset of assets(); track asset.uuid; let i = $index) {
+          <button
+            type="button"
+            class="responsive-banner__dot"
+            [class.is-active]="i === activeIndex()"
+            (click)="selectIndex(i)"
+            [attr.aria-label]="'Show banner ' + (i + 1)"
+          ></button>
+        }
+      </div>
+    }
+  </div>
+}
+
+<ng-template #pic let-asset="asset">
+  <picture class="responsive-banner__picture">
+    @if (srcFor(asset, 'mobile'); as src) {
+      <source media="(max-width: 767px)" [srcset]="src" />
+    }
+    @if (srcFor(asset, 'tablet'); as src) {
+      <source media="(max-width: 1023px)" [srcset]="src" />
+    }
+    @if (srcFor(asset, 'laptop'); as src) {
+      <source media="(max-width: 1439px)" [srcset]="src" />
+    }
+    <img [src]="srcFor(asset, 'monitor') || srcFor(asset, 'default')" [alt]="altFor(asset)" class="responsive-banner__img" loading="eager" />
+  </picture>
+</ng-template>

@@ -1,46 +1,124 @@
+/* Constrained to the same 1280px/24px (16px/14px at narrower widths) box
+   every other section on the page uses (`.container` in styles.scss),
+   at the user's explicit request (2026-09-11) — this used to bleed its
+   two panels edge-to-edge across the full viewport, which read as
+   misaligned against the inset content above it once that content's own
+   left/right gutter got fixed (see home.component.scss's header
+   comments on that). */
 .footer {
-  background: var(--color-footer-bg);
-  color: rgba(255, 255, 255, 0.85);
+  display: flex;
   margin-top: 48px;
-}
-
-.footer__inner {
-  display: grid;
-  grid-template-columns: minmax(0, 1.3fr) minmax(0, 2fr);
-  gap: 32px;
-  padding: 40px 24px;
+  max-width: 1280px;
+  margin-inline: auto;
+  padding-inline: 24px;
 
   @media (max-width: 767px) {
-    grid-template-columns: 1fr;
+    flex-direction: column;
+    padding-inline: 16px;
+  }
+
+  @media (max-width: 480px) {
+    padding-inline: 14px;
+  }
+}
+
+/* ---- "About us" panel — cream, matches the design's left panel exactly,
+   not the uniform flat-maroon band this footer used to be. ---- */
+.footer__about {
+  flex: 0 0 300px;
+  background: var(--color-bg-tint);
+  color: var(--color-text);
+
+  @media (max-width: 1023px) {
+    flex-basis: 240px;
+  }
+
+  @media (max-width: 767px) {
+    flex-basis: auto;
+  }
+}
+
+.footer__about-inner {
+  padding: 40px 32px;
+
+  @media (max-width: 767px) {
     padding: 32px 16px;
   }
 }
 
-.footer__logo {
-  font-family: var(--font-display);
-  font-size: 1.3rem;
-  color: var(--color-white);
-  margin-bottom: 10px;
+.footer__logo-mark {
+  width: 56px;
+  height: 56px;
+  object-fit: contain;
+  margin-bottom: 8px;
 }
 
-.footer__about p {
-  font-size: 0.85rem;
-  line-height: 1.5;
-  margin: 0 0 8px;
-  max-width: 260px;
+.footer__logo-word {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.3rem;
+  color: var(--color-primary);
+  margin: 0;
+}
+
+.footer__tagline {
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+  margin: 2px 0 20px;
 }
 
 .footer__contact {
-  opacity: 0.8;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+
+  p {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--color-text);
+  }
+
+  svg {
+    flex-shrink: 0;
+    color: var(--color-primary);
+  }
 }
 
-.footer__columns {
+/* ---- "Shop / Sell / Help" panel — photo-backed, per the design. ----
+   TODO(design swap): drop the real photo at
+   `public/assets/footer/footer-background.jpg` (any name works — just
+   update the `url(...)` below to match) and this layer picks it up
+   automatically; until then the `url()` 404s silently and the gradient
+   underneath it keeps rendering the panel's tone. */
+.footer__links {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+  color: rgba(255, 255, 255, 0.92);
+  background-image: linear-gradient(rgba(67, 15, 35, 0.86), rgba(67, 15, 35, 0.86)), url('/assets/footer/footer-background.jpg');
+  background-size: cover;
+  background-position: center;
+  background-color: var(--color-primary-dark);
+}
+
+.footer__links-inner {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 24px;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 40px 32px;
 
-  @media (max-width: 560px) {
+  @media (max-width: 767px) {
     grid-template-columns: 1fr 1fr;
+    padding: 32px 16px;
+  }
+
+  @media (max-width: 480px) {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -71,30 +149,24 @@
   }
 }
 
-.footer__bottom {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px 24px 24px;
-  font-size: 0.75rem;
-  opacity: 0.75;
-  border-top: 1px solid rgba(255, 255, 255, 0.12);
-  flex-wrap: wrap;
-  gap: 12px;
-}
-
 .footer__socials {
   display: flex;
   gap: 8px;
+  margin-top: 20px;
+}
 
-  a {
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    border: 1px solid rgba(255, 255, 255, 0.35);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.75rem;
+.footer__social-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--color-white);
+  color: var(--color-primary-dark);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+
+  &:hover {
+    color: var(--color-primary);
   }
 }
