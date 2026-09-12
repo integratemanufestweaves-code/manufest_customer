@@ -1,0 +1,50 @@
+<section class="container faq-page">
+  <nav class="faq-page__crumbs" aria-label="Breadcrumb">
+    <a routerLink="/">Home</a> / <span>FAQ's</span>
+  </nav>
+
+  <div class="faq-page__head">
+    <div>
+      <h1 class="faq-page__title">Frequently Asked Questions</h1>
+      <p class="section__subtitle">Have questions? We're here to help</p>
+    </div>
+    <label class="faq-page__search">
+      <input type="search" [(ngModel)]="searchTerm" (ngModelChange)="onSearchInput()" placeholder="Search" />
+      <svg viewBox="0 0 20 20" fill="none" width="16" height="16"><path d="M9 17a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm9 1-4.35-4.35" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+    </label>
+  </div>
+
+  <div class="faq-page__layout">
+    <aside class="faq-sidebar">
+      <p class="faq-sidebar__label">Top Queries</p>
+      <button type="button" class="faq-sidebar__item" [class.faq-sidebar__item--active]="activeCategoryUuid() === null" (click)="selectCategory(null)">All questions</button>
+      @if (!categoriesLoading()) {
+        @for (cat of categories(); track cat.uuid) {
+          <button type="button" class="faq-sidebar__item" [class.faq-sidebar__item--active]="activeCategoryUuid() === cat.uuid" (click)="selectCategory(cat.uuid)">{{ cat.name }}</button>
+        }
+      }
+    </aside>
+
+    <div class="faq-list">
+      @if (error()) {
+        <p class="state-message state-message--error">{{ error() }}</p>
+      } @else if (itemsLoading()) {
+        <p class="state-message">Loading…</p>
+      } @else if (items().length === 0) {
+        <p class="state-message">No questions match yet — try a different search or category.</p>
+      } @else {
+        @for (item of items(); track item.uuid) {
+          <div class="faq-item" [class.faq-item--open]="openItemUuid() === item.uuid">
+            <button type="button" class="faq-item__question" (click)="toggleItem(item.uuid)">
+              <span>{{ item.question }}</span>
+              <span class="faq-item__chevron" aria-hidden="true">&darr;</span>
+            </button>
+            @if (openItemUuid() === item.uuid) {
+              <p class="faq-item__answer">{{ item.answer }}</p>
+            }
+          </div>
+        }
+      }
+    </div>
+  </div>
+</section>

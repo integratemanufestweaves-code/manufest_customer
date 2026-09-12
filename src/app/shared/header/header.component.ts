@@ -1,7 +1,10 @@
-import { Component, signal } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 
 import { BRAND_ASSETS } from '../../core/constants/brand-assets';
+import { AuthService } from '../../core/services/auth.service';
+import { CartService } from '../../core/services/cart.service';
+import { WishlistService } from '../../core/services/wishlist.service';
 
 interface NavLink {
   label: string;
@@ -54,7 +57,14 @@ interface NavLink {
   styleUrl: './header.component.scss',
 })
 export class HeaderComponent {
+  private readonly auth = inject(AuthService);
+  private readonly cartService = inject(CartService);
+  private readonly wishlistService = inject(WishlistService);
+
   readonly logoMark = BRAND_ASSETS.logoMark;
+  readonly currentUser = this.auth.currentUser;
+  readonly cartItemCount = this.cartService.itemCount;
+  readonly wishlistItemCount = this.wishlistService.itemCount;
 
   readonly navLinks: NavLink[] = [
     { label: 'New Arrivals', path: '/new-arrivals', icon: 'new-arrivals' },

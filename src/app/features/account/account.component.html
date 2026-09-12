@@ -1,0 +1,173 @@
+<section class="container account-page">
+  <nav class="account-page__crumbs" aria-label="Breadcrumb">
+    <a routerLink="/">Home</a> / <span>Account</span>
+  </nav>
+
+  <div class="account-page__layout">
+    <aside class="account-nav">
+      @if (profile(); as p) {
+        <div class="account-nav__who">
+          <span class="account-nav__avatar">
+            <svg viewBox="0 0 24 24" fill="none" width="20" height="20"><circle cx="12" cy="8" r="3.5" stroke="currentColor" stroke-width="1.5"/><path d="M4.5 20c1.4-3.6 4.4-5.5 7.5-5.5s6.1 1.9 7.5 5.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+          </span>
+          <div>
+            <p class="account-nav__name">{{ p.fullName || p.firstName || p.email || p.mobileNumber }}</p>
+            <p class="account-nav__email">{{ p.email || p.mobileNumber }}</p>
+          </div>
+        </div>
+      }
+
+      <nav class="account-nav__links">
+        <a routerLink="/wishlist" class="account-nav__link">Wishlist @if (wishlistItemCount() > 0) { <span class="account-nav__badge">{{ wishlistItemCount() }}</span> }</a>
+        <a routerLink="/cart" class="account-nav__link">Cart @if (cartItemCount() > 0) { <span class="account-nav__badge">{{ cartItemCount() }}</span> }</a>
+        <button type="button" class="account-nav__link" [class.account-nav__link--active]="tab() === 'profile'" (click)="setTab('profile')">Account</button>
+        <button type="button" class="account-nav__link" [class.account-nav__link--active]="tab() === 'addresses'" (click)="setTab('addresses')">Manage addresses</button>
+        <button type="button" class="account-nav__link account-nav__signout" (click)="logout()">Sign out</button>
+      </nav>
+    </aside>
+
+    <div class="account-content">
+      <div class="account-tabs" role="tablist">
+        <button type="button" role="tab" [class.account-tabs__tab--active]="tab() === 'profile'" (click)="setTab('profile')">Profile</button>
+        <button type="button" role="tab" [class.account-tabs__tab--active]="tab() === 'addresses'" (click)="setTab('addresses')">Manage Address</button>
+      </div>
+
+      @if (tab() === 'profile') {
+        <form class="account-form" (ngSubmit)="saveProfile()">
+          <label class="account-form__photo">
+            @if (profile()?.email) {}
+            <input type="file" accept="image/*" (change)="onPhotoSelected($event)" [disabled]="photoUploading()" />
+            <span>{{ photoUploading() ? 'Uploading…' : '+ Add profile picture' }}</span>
+          </label>
+          @if (photoWarning()) {
+            <p class="account-form__hint">{{ photoWarning() }}</p>
+          }
+
+          @if (profileError()) {
+            <p class="auth__error">{{ profileError() }}</p>
+          }
+          @if (profileSaved()) {
+            <p class="account-form__success">Profile updated.</p>
+          }
+
+          <div class="account-form__row">
+            <label class="auth__field">
+              <span>First name</span>
+              <input type="text" name="firstName" [(ngModel)]="firstName" required />
+            </label>
+            <label class="auth__field">
+              <span>Last name</span>
+              <input type="text" name="lastName" [(ngModel)]="lastName" required />
+            </label>
+          </div>
+          <div class="account-form__row">
+            <label class="auth__field">
+              <span>Date of birth</span>
+              <input type="date" name="dob" [(ngModel)]="dob" />
+            </label>
+            <label class="auth__field">
+              <span>Phone</span>
+              <input type="tel" name="phone" [(ngModel)]="phone" />
+            </label>
+          </div>
+
+          <button type="submit" class="btn btn--primary" [disabled]="profileSaving()">{{ profileSaving() ? 'Saving…' : 'Save changes' }}</button>
+        </form>
+      } @else {
+        @if (addressesError()) {
+          <p class="state-message state-message--error">{{ addressesError() }}</p>
+        }
+
+        @if (editingAddress() === null) {
+          <button type="button" class="btn btn--outline" (click)="startAddAddress()">+ Add new address</button>
+
+          @if (addressesLoading()) {
+            <p class="state-message">Loading addresses…</p>
+          } @else if (addresses().length === 0) {
+            <p class="state-message">No saved addresses yet.</p>
+          } @else {
+            <div class="address-list">
+              @for (address of addresses(); track address.uuid) {
+                <div class="address-card">
+                  @if (address.isDefault) {
+                    <span class="address-card__default">Default</span>
+                  }
+                  @if (address.label) {
+                    <p class="address-card__label">{{ address.label }}</p>
+                  }
+                  <p class="address-card__name">{{ address.recipientName }}</p>
+                  <p class="address-card__lines">
+                    {{ address.line1 }}@if (address.line2) {, {{ address.line2 }}}<br />
+                    {{ address.city }}@if (address.state) {, {{ address.state }}} {{ address.postalCode }}
+                  </p>
+                  <p class="address-card__phone">{{ address.phone }}</p>
+                  <div class="address-card__actions">
+                    <button type="button" (click)="startEditAddress(address)">Edit</button>
+                    <button type="button" (click)="deleteAddress(address)">Delete</button>
+                  </div>
+                </div>
+              }
+            </div>
+          }
+        } @else {
+          <form class="account-form" (ngSubmit)="saveAddress()">
+            @if (addressFormError()) {
+              <p class="auth__error">{{ addressFormError() }}</p>
+            }
+            <div class="account-form__row">
+              <label class="auth__field">
+                <span>Label <span class="auth__optional">(optional)</span></span>
+                <input type="text" name="label" [(ngModel)]="addressForm.label" placeholder="Home, Work..." />
+              </label>
+              <label class="auth__field">
+                <span>Recipient name</span>
+                <input type="text" name="recipientName" [(ngModel)]="addressForm.recipientName" required />
+              </label>
+            </div>
+            <div class="account-form__row">
+              <label class="auth__field">
+                <span>Phone</span>
+                <input type="tel" name="addrPhone" [(ngModel)]="addressForm.phone" required />
+              </label>
+              <label class="auth__field">
+                <span>Country code</span>
+                <input type="text" name="countryCode" [(ngModel)]="addressForm.countryCode" maxlength="2" placeholder="IN" required />
+              </label>
+            </div>
+            <label class="auth__field">
+              <span>Address line 1</span>
+              <input type="text" name="line1" [(ngModel)]="addressForm.line1" required />
+            </label>
+            <label class="auth__field">
+              <span>Address line 2 <span class="auth__optional">(optional)</span></span>
+              <input type="text" name="line2" [(ngModel)]="addressForm.line2" />
+            </label>
+            <div class="account-form__row">
+              <label class="auth__field">
+                <span>City</span>
+                <input type="text" name="city" [(ngModel)]="addressForm.city" required />
+              </label>
+              <label class="auth__field">
+                <span>State <span class="auth__optional">(optional)</span></span>
+                <input type="text" name="state" [(ngModel)]="addressForm.state" />
+              </label>
+            </div>
+            <label class="auth__field">
+              <span>Postal code</span>
+              <input type="text" name="postalCode" [(ngModel)]="addressForm.postalCode" required />
+            </label>
+            <label class="account-form__checkbox">
+              <input type="checkbox" name="isDefault" [(ngModel)]="addressForm.isDefault" />
+              <span>Set as default address</span>
+            </label>
+
+            <div class="account-form__actions">
+              <button type="submit" class="btn btn--primary" [disabled]="addressSaving()">{{ addressSaving() ? 'Saving…' : 'Save address' }}</button>
+              <button type="button" class="btn btn--outline" (click)="cancelAddressForm()">Cancel</button>
+            </div>
+          </form>
+        }
+      }
+    </div>
+  </div>
+</section>

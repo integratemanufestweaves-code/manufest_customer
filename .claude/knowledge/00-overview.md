@@ -30,33 +30,53 @@ manufest_* apps, so this is copied-and-adapted, not imported — worth
 checking that sibling app's `layout/` folder before building a new
 responsive UI pattern here, since a validated one may already exist there.
 
-## What's real vs. "coming soon" (updated 2026-09-10)
-**Four** routes call a live `manufest_be` API:
+## What's real vs. "coming soon" (updated 2026-09-12)
+**Ten** routes call a live `manufest_be` API:
 - `''` (Home) — `GET /public/products/list` (Featured Products) +
   `GET /public/categories/list` (Shop by Category).
 - `product/:productUuid` (Product Detail) — `GET
-  /public/products/detail/:productUuid`.
+  /public/products/detail/:productUuid`, plus real "Add to cart"/wishlist-
+  heart actions (2026-09-12, see below).
 - `new-arrivals` and `category/:categoryUuid` (both
   `ProductListingComponent`, added 2026-09-10) — `GET
   /public/products/list` using the `categoryUuid`/`priceMin`/`priceMax`/
   `sort` filters `manufest_be` added the same day. See
   [02-product-listing.md](02-product-listing.md).
+- `login`/`register` (2026-09-12) — `AuthService`, against `auth.api.js`'s
+  `/api/v1/auth/customer/*`. Two parallel methods, both wired: email+
+  password and mobile+OTP. No Passkey/WebAuthn (design shows it; no such
+  concept exists anywhere in `manufest_be`).
+- `cart` (2026-09-12) — `CartService`, against `/api/v1/customer/cart/*`.
+  Variant-level, stock-checked, **not a real reservation** (see
+  `cart.api.js`'s own header comment). "Proceed to checkout" is
+  intentionally disabled — no orders/payments module exists at all yet.
+- `wishlist` (2026-09-12) — `WishlistService`, against
+  `/api/v1/customer/wishlist/*`. Product-level; "Move to cart" resolves a
+  variant via `getProductDetail()` first, or sends the shopper to the
+  product page if there's more than one to choose from.
+- `account` (2026-09-12) — `CustomerService`, against `/api/v1/customer/
+  profile`/`/profile/photo`/`/addresses*`. Only the Profile and Manage
+  Address tabs from the design are built — "Manage Payment details" (no
+  saved-card storage anywhere in the schema) and "Purchase and Reviews"
+  (no reviews module at all) are left out rather than built against
+  nothing. All three of `account`/`cart`/`wishlist` are gated by
+  `customerAuthGuard` (redirects to `/login?redirectTo=`).
+- `faq` (2026-09-12) — `FaqService`, against `/api/v1/public/faq/*`.
 
-Every other route (`login`, `register`, `account`, `cart`, `wishlist`,
-`notifications`, `search`, `origin`, `fabric`, `weave`, `occasion`, footer
-links, wildcard `**`) still renders the shared
+Every other route (`notifications`, `search`, `origin`, `fabric`, `weave`,
+`occasion`, footer links, wildcard `**`) still renders the shared
 `shared/coming-soon/coming-soon.component` — see `app.routes.ts`'s own
-header comment for why (no corresponding manufest_be module wired into
-this app yet for any of them). Adding real functionality later is
-additive — swap one route's `loadComponent`, nothing else changes.
+header comment for exactly why each one is still blocked (some have no
+backend endpoint at all; `fabric`/`occasion` have a matching attribute but
+no public filter param or uuid-resolution path yet). Adding real
+functionality later is additive — swap one route's `loadComponent`,
+nothing else changes.
 
-**Note:** `manufest_be` has since grown `cart`/`wishlist`/`customer`/
-`customer-accounts`/`auth`/`faq` modules (confirmed present under
-`manufest_be/src/modules/` as of 2026-09-10) that this app doesn't consume
-yet. Wiring those up — session/auth flow, cart state, checkout — is a
-separate, larger pass than the listing-API-driven change this entry
-documents; flagged here so the next pass doesn't have to rediscover that
-those modules already exist.
+See `CUSTOMER_APP_TODO.md` at the repo root for the full audit (Figma
+design cross-referenced against every `manufest_be` module) this 2026-09-12
+pass was built from, including what's still missing on the backend side
+(checkout/orders/payments — the biggest gap — plus reviews/ratings,
+customer notifications, and product search).
 
 See [01-home-page.md](01-home-page.md) for the Home page's section-by-section
 breakdown (what's live, what's static, and — importantly — what from the

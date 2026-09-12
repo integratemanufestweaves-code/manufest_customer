@@ -183,12 +183,23 @@
 .pd__actions {
   display: flex;
   gap: 10px;
-  margin-bottom: 28px;
+  margin-bottom: 8px;
 
   .btn--outline {
     flex-shrink: 0;
     padding: 10px 14px;
   }
+}
+
+.pd__wishlist-btn--active {
+  border-color: var(--color-danger);
+  color: var(--color-danger);
+}
+
+.pd__add-error {
+  margin: 0 0 20px;
+  font-size: 0.82rem;
+  color: var(--color-danger);
 }
 
 .pd__desc h2,

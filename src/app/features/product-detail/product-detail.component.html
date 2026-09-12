@@ -75,11 +75,27 @@
           }
 
           <div class="pd__actions">
-            <a routerLink="/cart" class="btn btn--primary btn--full">Add to cart</a>
-            <a routerLink="/wishlist" class="btn btn--outline" aria-label="Add to wishlist">
-              <svg viewBox="0 0 24 24" fill="none" width="18" height="18"><path d="M12 20s-7-4.35-9.5-8.5C.6 8 2 4.5 5.5 4a5 5 0 0 1 6.5 2 5 5 0 0 1 6.5-2C22 4.5 23.4 8 21.5 11.5 19 15.65 12 20 12 20Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
-            </a>
+            <button
+              type="button"
+              class="btn btn--primary btn--full"
+              (click)="addToCart()"
+              [disabled]="addingToCart() || !selectedVariant() || !selectedVariant()?.inventory?.isInStock"
+            >
+              {{ addingToCart() ? 'Adding…' : addedToCart() ? 'Added ✓' : 'Add to cart' }}
+            </button>
+            <button
+              type="button"
+              class="btn btn--outline pd__wishlist-btn"
+              [class.pd__wishlist-btn--active]="isWishlisted"
+              (click)="toggleWishlist()"
+              [attr.aria-label]="isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'"
+            >
+              <svg viewBox="0 0 24 24" [attr.fill]="isWishlisted ? 'currentColor' : 'none'" width="18" height="18"><path d="M12 20s-7-4.35-9.5-8.5C.6 8 2 4.5 5.5 4a5 5 0 0 1 6.5 2 5 5 0 0 1 6.5-2C22 4.5 23.4 8 21.5 11.5 19 15.65 12 20 12 20Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+            </button>
           </div>
+          @if (addToCartError()) {
+            <p class="pd__add-error">{{ addToCartError() }}</p>
+          }
 
           @if (p.productDesc) {
             <div class="pd__desc">

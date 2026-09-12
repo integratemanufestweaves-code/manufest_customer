@@ -1,24 +1,25 @@
 import { Routes } from '@angular/router';
+import { customerAuthGuard } from './core/guards/customer-auth.guard';
 
 /**
  * Route map for the customer-facing storefront.
  *
- * Four routes are "real" (backed by a live manufest_be API call): `''`
- * (Home), `product/:productUuid` (product detail), `new-arrivals` and
- * `category/:categoryUuid` (both `ProductListingComponent`, added
- * 2026-09-10 against `GET /public/products/list`'s new `categoryUuid`/
- * `priceMin`/`priceMax`/`sort` filters). Every other destination —
- * anything needing customer auth, cart/wishlist checkout flows, search, or
- * browsing by an attribute with no public listing endpoint (origin/fabric/
- * weave/occasion) — still points at the shared `ComingSoonComponent` with a
- * route-specific title/description. This mirrors manufest_seller's own
- * `placeholder.component`/`data.pageTitle` convention for exactly the same
- * reason (see that repo's `02-architecture-map.md`).
+ * Real routes (backed by a live manufest_be API call), as of the 2026-09-12
+ * auth/cart/wishlist/account/FAQ pass — see `CUSTOMER_APP_TODO.md` at the
+ * repo root for the full audit this was built from: `''` (Home),
+ * `product/:productUuid`, `new-arrivals`/`category/:categoryUuid`
+ * (`ProductListingComponent`), `login`/`register`/`account` (`auth`/`users`
+ * modules), `cart`/`wishlist` (`cart`/`wishlist` modules), `faq` (`faq`
+ * module). `account`/`cart`/`wishlist` are gated by `customerAuthGuard`
+ * since every route they call server-side requires `authenticateCustomer`.
  *
- * Note: `manufest_be` has since grown `cart`/`wishlist`/`customer`/
- * `customer-accounts`/`auth`/`faq` modules that this app doesn't consume
- * yet — wiring those up is a separate, larger pass (session/auth flow,
- * cart state, etc.), not folded into this listing-API-driven change.
+ * Still "coming soon" (`ComingSoonComponent`) — genuinely blocked, not just
+ * unbuilt, per that same audit: `notifications`/`search` (no backend
+ * endpoint at all), `origin`/`weave` (no matching attribute type exists in
+ * `product_attributes_master`), `fabric`/`occasion` (attribute exists but
+ * isn't exposed as a public list filter yet, or has no way to resolve a
+ * uuid from this app), and everything under "footer" below (no backing
+ * module, or out of this app's scope entirely).
  *
  * Adding real functionality later is additive: swap one of these entries'
  * `loadComponent` for a real feature component without touching any other
@@ -47,32 +48,41 @@ export const routes: Routes = [
   },
 
   // ---- account / auth ----
+  // Backed by manufest_be's `auth` module (`/api/v1/auth/customer`) — see
+  // CUSTOMER_APP_TODO.md's §1. `login`/`register` are public; `account` is
+  // gated by `customerAuthGuard` (same as `cart`/`wishlist` below).
   {
     path: 'login',
-    loadComponent: () => import('./shared/coming-soon/coming-soon.component').then((m) => m.ComingSoonComponent),
-    data: { pageTitle: 'Sign in', description: 'Customer login and registration are coming soon.' },
+    loadComponent: () => import('./features/auth/login/login.component').then((m) => m.LoginComponent),
+    title: 'Manufest — Sign in',
   },
   {
     path: 'register',
-    loadComponent: () => import('./shared/coming-soon/coming-soon.component').then((m) => m.ComingSoonComponent),
-    data: { pageTitle: 'Create account', description: 'Customer registration is coming soon.' },
+    loadComponent: () => import('./features/auth/register/register.component').then((m) => m.RegisterComponent),
+    title: 'Manufest — Create account',
   },
   {
     path: 'account',
-    loadComponent: () => import('./shared/coming-soon/coming-soon.component').then((m) => m.ComingSoonComponent),
-    data: { pageTitle: 'My account', description: 'Your account, orders, and addresses will live here soon.' },
+    loadComponent: () => import('./features/account/account.component').then((m) => m.AccountComponent),
+    title: 'Manufest — My account',
+    canActivate: [customerAuthGuard],
   },
 
   // ---- shopping ----
+  // Backed by manufest_be's `cart`/`wishlist` modules — see
+  // CUSTOMER_APP_TODO.md's §2/§3. Both require `authenticateCustomer` on
+  // every route server-side, so both are gated here too.
   {
     path: 'cart',
-    loadComponent: () => import('./shared/coming-soon/coming-soon.component').then((m) => m.ComingSoonComponent),
-    data: { pageTitle: 'Cart', description: "Your cart is coming soon — we're building checkout next." },
+    loadComponent: () => import('./features/cart/cart.component').then((m) => m.CartComponent),
+    title: 'Manufest — Cart',
+    canActivate: [customerAuthGuard],
   },
   {
     path: 'wishlist',
-    loadComponent: () => import('./shared/coming-soon/coming-soon.component').then((m) => m.ComingSoonComponent),
-    data: { pageTitle: 'Wishlist', description: 'Saving items to a wishlist is coming soon.' },
+    loadComponent: () => import('./features/wishlist/wishlist.component').then((m) => m.WishlistComponent),
+    title: 'Manufest — Wishlist',
+    canActivate: [customerAuthGuard],
   },
   {
     path: 'notifications',
@@ -132,8 +142,8 @@ export const routes: Routes = [
   },
   {
     path: 'faq',
-    loadComponent: () => import('./shared/coming-soon/coming-soon.component').then((m) => m.ComingSoonComponent),
-    data: { pageTitle: "FAQ's", description: 'Frequently asked questions are coming soon.' },
+    loadComponent: () => import('./features/faq/faq.component').then((m) => m.FaqComponent),
+    title: "Manufest — FAQ's",
   },
   {
     path: 'help-center',

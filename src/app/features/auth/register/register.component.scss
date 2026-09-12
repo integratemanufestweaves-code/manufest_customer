@@ -1,0 +1,7 @@
+@use '../auth-shared';
+
+.auth__optional {
+  font-weight: 400;
+  color: var(--color-text-faint);
+  font-size: 0.78rem;
+}

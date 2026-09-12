@@ -1,0 +1,179 @@
+// Shared by login.component.scss and register.component.scss (`@use` below)
+// — both screens are the same card-on-tint layout with a method-tab
+// switcher, so this avoids maintaining two near-identical copies.
+
+.auth {
+  display: flex;
+  justify-content: center;
+  padding: 48px 24px 80px;
+
+  @media (max-width: 640px) {
+    padding: 28px 16px 56px;
+  }
+}
+
+.auth__panel {
+  width: 100%;
+  max-width: 440px;
+  background: var(--color-white);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 40px 36px;
+
+  @media (max-width: 480px) {
+    padding: 28px 20px;
+    border: none;
+  }
+}
+
+.auth__head {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.auth__eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--color-accent-dark);
+  margin: 0 0 6px;
+}
+
+.auth__title {
+  margin: 0 0 6px;
+  font-size: 1.7rem;
+}
+
+.auth__sub {
+  margin: 0 0 4px;
+  color: var(--color-text-muted);
+  font-size: 0.88rem;
+}
+
+.auth__tabs {
+  display: flex;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 3px;
+  margin-bottom: 20px;
+  background: var(--color-bg-tint);
+}
+
+.auth__tabs button {
+  flex: 1;
+  border: none;
+  background: transparent;
+  padding: 9px 8px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  border-radius: calc(var(--radius-sm) - 2px);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+
+  &.auth__tab--active {
+    background: var(--color-white);
+    color: var(--color-primary);
+    box-shadow: var(--shadow-card);
+  }
+}
+
+.auth__error {
+  background: #fdecea;
+  color: var(--color-danger);
+  border: 1px solid rgba(217, 45, 32, 0.25);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  font-size: 0.85rem;
+  margin: 0 0 16px;
+}
+
+.auth__form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.auth__field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--color-text);
+
+  input,
+  select {
+    font-weight: 400;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    padding: 11px 12px;
+    font-size: 0.92rem;
+    color: var(--color-text);
+    background: var(--color-white);
+
+    &:focus {
+      outline: none;
+      border-color: var(--color-primary);
+    }
+  }
+}
+
+.auth__field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+
+  @media (max-width: 400px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.auth__hint {
+  margin: -8px 0 0;
+  font-size: 0.76rem;
+  color: var(--color-text-faint);
+}
+
+.auth__link-btn {
+  align-self: flex-start;
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--color-primary);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.auth__notice {
+  text-align: center;
+  padding: 12px 0;
+  color: var(--color-text);
+  font-size: 0.9rem;
+
+  p {
+    margin: 0 0 12px;
+  }
+}
+
+.auth__switch {
+  text-align: center;
+  margin: 24px 0 0;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+
+  a {
+    color: var(--color-primary);
+    font-weight: 600;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+}

@@ -1,0 +1,83 @@
+<section class="container auth">
+  <div class="auth__panel">
+    <div class="auth__head">
+      <p class="auth__eyebrow">Welcome back</p>
+      <h1 class="auth__title">Sign in</h1>
+      <p class="auth__sub">Sign in to manage your cart, wishlist, and orders.</p>
+    </div>
+
+    <div class="auth__tabs" role="tablist">
+      <button type="button" role="tab" [class.auth__tab--active]="method() === 'email'" (click)="setMethod('email')">Email &amp; password</button>
+      <button type="button" role="tab" [class.auth__tab--active]="method() === 'mobile'" (click)="setMethod('mobile')">Mobile OTP</button>
+    </div>
+
+    @if (error()) {
+      <p class="auth__error">{{ error() }}</p>
+    }
+
+    @if (method() === 'email') {
+      @if (!showForgotPassword()) {
+        <form class="auth__form" (ngSubmit)="submitEmailLogin()">
+          <label class="auth__field">
+            <span>Email address</span>
+            <input type="email" name="email" [(ngModel)]="email" autocomplete="email" required placeholder="you@example.com" />
+          </label>
+          <label class="auth__field">
+            <span>Password</span>
+            <input type="password" name="password" [(ngModel)]="password" autocomplete="current-password" required placeholder="••••••••" />
+          </label>
+          <button type="button" class="auth__link-btn" (click)="showForgotPassword.set(true)">Forgot your password?</button>
+          <button type="submit" class="btn btn--primary btn--full" [disabled]="submitting()">
+            {{ submitting() ? 'Signing in…' : 'Sign in' }}
+          </button>
+        </form>
+      } @else if (!forgotDone()) {
+        <form class="auth__form" (ngSubmit)="submitForgotPassword()">
+          <p class="auth__sub">Enter your account email and we'll send a reset link.</p>
+          <label class="auth__field">
+            <span>Email address</span>
+            <input type="email" name="forgotEmail" [ngModel]="forgotEmail()" (ngModelChange)="forgotEmail.set($event)" required placeholder="you@example.com" />
+          </label>
+          <button type="submit" class="btn btn--primary btn--full" [disabled]="forgotSubmitting()">
+            {{ forgotSubmitting() ? 'Sending…' : 'Send reset link' }}
+          </button>
+          <button type="button" class="auth__link-btn" (click)="showForgotPassword.set(false)">Back to sign in</button>
+        </form>
+      } @else {
+        <div class="auth__notice">
+          <p>If an account exists for that email, a reset link is on its way.</p>
+          <button type="button" class="auth__link-btn" (click)="showForgotPassword.set(false)">Back to sign in</button>
+        </div>
+      }
+    } @else {
+      @if (mobileStep() === 'enter-number') {
+        <form class="auth__form" (ngSubmit)="requestMobileOtp()">
+          <label class="auth__field">
+            <span>Mobile number</span>
+            <input type="tel" name="mobileNumber" [(ngModel)]="mobileNumber" inputmode="numeric" maxlength="10" required placeholder="10-digit mobile number" />
+          </label>
+          <button type="submit" class="btn btn--primary btn--full" [disabled]="submitting()">
+            {{ submitting() ? 'Sending code…' : 'Send OTP' }}
+          </button>
+        </form>
+      } @else {
+        <form class="auth__form" (ngSubmit)="verifyMobileOtp()">
+          <p class="auth__sub">
+            Code sent to {{ maskedMobile() || 'your mobile number' }}.
+            @if (otpExpiresIn()) { Valid for {{ otpExpiresIn() }} seconds. }
+          </p>
+          <label class="auth__field">
+            <span>Enter code</span>
+            <input type="text" name="otpCode" [(ngModel)]="otpCode" inputmode="numeric" maxlength="10" required placeholder="6-digit code" />
+          </label>
+          <button type="submit" class="btn btn--primary btn--full" [disabled]="submitting()">
+            {{ submitting() ? 'Verifying…' : 'Verify & sign in' }}
+          </button>
+          <button type="button" class="auth__link-btn" (click)="backToMobileNumber()">Use a different number</button>
+        </form>
+      }
+    }
+
+    <p class="auth__switch">New to Manufest? <a routerLink="/register">Create an account</a></p>
+  </div>
+</section>
