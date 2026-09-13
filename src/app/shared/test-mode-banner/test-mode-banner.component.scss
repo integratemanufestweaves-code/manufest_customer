@@ -1,0 +1,21 @@
+// Deliberately not sticky/fixed — sits above <app-header> in normal flow,
+// same pattern as header.component's own `.announcement` bar, so it can't
+// conflict with the header's `position: sticky; top: 0`.
+.test-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 7px 12px;
+  background: #fff4e0;
+  color: #7a4d00;
+  border-bottom: 1px solid #f0c987;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-align: center;
+  line-height: 1.35;
+}
+
+.test-banner__icon {
+  flex-shrink: 0;
+}

@@ -14,7 +14,12 @@
  */
 export const environment = {
   production: false,
-  apiBaseUrl: 'http://localhost:4000/api/v1',
+  // apiBaseUrl: 'http://localhost:4000/api/v1',
+  apiBaseUrl: 'https://manufestweaves.in/api/v1',
   csrfCookieName: 'XSRF-TOKEN',
   csrfHeaderName: 'X-XSRF-TOKEN',
+  // Shows the "test environment / dummy products" notice (see
+  // shared/test-mode-banner). Flip to false once this is the real,
+  // official launch — that's the only change needed to remove it.
+  showTestBanner: true,
 };
