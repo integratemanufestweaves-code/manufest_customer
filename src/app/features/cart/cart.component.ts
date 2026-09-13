@@ -52,12 +52,37 @@ export class CartComponent implements OnInit {
    * header comment for why exclusions (not inclusions) are tracked. */
   private readonly deselectedUuids = signal<ReadonlySet<string>>(new Set());
 
-  readonly selectedItems = computed(() => this.cart().items.filter((item) => !this.deselectedUuids().has(item.uuid)));
+  /** An item this app can't check out as-is: either completely out of
+   * stock, or the quantity in the cart exceeds what's actually available
+   * right now (someone else bought the rest, or the seller lowered stock,
+   * since this was added). Both cases fail the same server-side
+   * `INSUFFICIENT_STOCK` check at checkout — surfacing it here means the
+   * customer finds out on the cart page, not after filling in an address
+   * and clicking "Place order". */
+  hasStockIssue(item: CartItem): boolean {
+    return item.quantity > item.quantityAvailable;
+  }
+
+  isOutOfStock(item: CartItem): boolean {
+    return item.quantityAvailable <= 0;
+  }
+
+  readonly selectedItems = computed(() =>
+    this.cart()
+      .items.filter((item) => !this.deselectedUuids().has(item.uuid))
+      // Belt-and-suspenders — `toggleItem`/`isSelected` already refuse to
+      // (re-)select a stock-issue item, but this keeps `selectedItems`
+      // correct even if an item's stock drops to 0 *after* it was already
+      // selected (e.g. a background `refresh()` picks up someone else
+      // buying the last unit while this page is still open).
+      .filter((item) => !this.hasStockIssue(item)),
+  );
   readonly selectedCount = computed(() => this.selectedItems().length);
+  readonly stockIssueCount = computed(() => this.cart().items.filter((item) => this.hasStockIssue(item)).length);
   readonly selectedSubtotal = computed(() => this.selectedItems().reduce((sum, item) => sum + (item.lineTotal || 0), 0));
   readonly allSelected = computed(() => {
     const items = this.cart().items;
-    return items.length > 0 && items.every((item) => !this.deselectedUuids().has(item.uuid));
+    return items.length > 0 && items.every((item) => this.hasStockIssue(item) || !this.deselectedUuids().has(item.uuid));
   });
 
   ngOnInit(): void {
@@ -88,10 +113,11 @@ export class CartComponent implements OnInit {
   }
 
   isSelected(item: CartItem): boolean {
-    return !this.deselectedUuids().has(item.uuid);
+    return !this.hasStockIssue(item) && !this.deselectedUuids().has(item.uuid);
   }
 
   toggleItem(item: CartItem): void {
+    if (this.hasStockIssue(item)) return;
     this.deselectedUuids.update((set) => {
       const next = new Set(set);
       if (next.has(item.uuid)) {

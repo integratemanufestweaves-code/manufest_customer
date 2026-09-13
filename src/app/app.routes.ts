@@ -32,22 +32,22 @@ export const routes: Routes = [
   {
     path: '',
     loadComponent: () => import('./features/home/home.component').then((m) => m.HomeComponent),
-    title: 'Manufest — Direct from manufacturer',
+    title: 'Manufest Weaves — Direct from manufacturer',
   },
   {
     path: 'product/:productUuid',
     loadComponent: () => import('./features/product-detail/product-detail.component').then((m) => m.ProductDetailComponent),
-    title: 'Manufest — Product',
+    title: 'Manufest Weaves — Product',
   },
   {
     path: 'new-arrivals',
     loadComponent: () => import('./features/product-listing/product-listing.component').then((m) => m.ProductListingComponent),
-    title: 'Manufest — New Arrivals',
+    title: 'Manufest Weaves — New Arrivals',
   },
   {
     path: 'category/:categoryUuid',
     loadComponent: () => import('./features/product-listing/product-listing.component').then((m) => m.ProductListingComponent),
-    title: 'Manufest — Shop by Category',
+    title: 'Manufest Weaves — Shop by Category',
   },
 
   // ---- account / auth ----
@@ -57,17 +57,17 @@ export const routes: Routes = [
   {
     path: 'login',
     loadComponent: () => import('./features/auth/login/login.component').then((m) => m.LoginComponent),
-    title: 'Manufest — Sign in',
+    title: 'Manufest Weaves — Sign in',
   },
   {
     path: 'register',
     loadComponent: () => import('./features/auth/register/register.component').then((m) => m.RegisterComponent),
-    title: 'Manufest — Create account',
+    title: 'Manufest Weaves — Create account',
   },
   {
     path: 'account',
     loadComponent: () => import('./features/account/account.component').then((m) => m.AccountComponent),
-    title: 'Manufest — My account',
+    title: 'Manufest Weaves — My account',
     canActivate: [customerAuthGuard],
   },
 
@@ -78,13 +78,13 @@ export const routes: Routes = [
   {
     path: 'cart',
     loadComponent: () => import('./features/cart/cart.component').then((m) => m.CartComponent),
-    title: 'Manufest — Cart',
+    title: 'Manufest Weaves — Cart',
     canActivate: [customerAuthGuard],
   },
   {
     path: 'wishlist',
     loadComponent: () => import('./features/wishlist/wishlist.component').then((m) => m.WishlistComponent),
-    title: 'Manufest — Wishlist',
+    title: 'Manufest Weaves — Wishlist',
     canActivate: [customerAuthGuard],
   },
 
@@ -97,19 +97,19 @@ export const routes: Routes = [
   {
     path: 'checkout',
     loadComponent: () => import('./features/checkout/checkout.component').then((m) => m.CheckoutComponent),
-    title: 'Manufest — Checkout',
+    title: 'Manufest Weaves — Checkout',
     canActivate: [customerAuthGuard],
   },
   {
     path: 'orders',
     loadComponent: () => import('./features/orders/orders.component').then((m) => m.OrdersComponent),
-    title: 'Manufest — Your orders',
+    title: 'Manufest Weaves — Your orders',
     canActivate: [customerAuthGuard],
   },
   {
     path: 'orders/:orderUuid',
     loadComponent: () => import('./features/order-detail/order-detail.component').then((m) => m.OrderDetailComponent),
-    title: 'Manufest — Order detail',
+    title: 'Manufest Weaves — Order detail',
     canActivate: [customerAuthGuard],
   },
 
@@ -155,7 +155,7 @@ export const routes: Routes = [
     path: 'sell-on-manufest',
     loadComponent: () => import('./shared/coming-soon/coming-soon.component').then((m) => m.ComingSoonComponent),
     data: {
-      pageTitle: 'Sell on Manufest',
+      pageTitle: 'Sell on Manufest Weaves',
       description: 'Manufacturer sign-up lives in a separate app (manufest_seller) — a link here is coming soon.',
     },
   },
@@ -172,7 +172,7 @@ export const routes: Routes = [
   {
     path: 'faq',
     loadComponent: () => import('./features/faq/faq.component').then((m) => m.FaqComponent),
-    title: "Manufest — FAQ's",
+    title: "Manufest Weaves — FAQ's",
   },
   {
     path: 'help-center',

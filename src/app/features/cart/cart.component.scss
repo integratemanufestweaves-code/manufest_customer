@@ -68,6 +68,11 @@
     opacity: 0.6;
   }
 
+  &--unavailable {
+    background: var(--color-bg-tint);
+    border-color: var(--color-danger);
+  }
+
   @media (max-width: 560px) {
     grid-template-columns: auto 32px minmax(0, 1fr);
 
@@ -256,5 +261,9 @@
   font-size: 0.78rem;
   color: var(--color-text-faint);
   text-align: center;
+
+  &--warning {
+    color: var(--color-danger);
+  }
 }
 

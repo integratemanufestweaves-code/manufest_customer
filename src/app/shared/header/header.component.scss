@@ -108,6 +108,13 @@
   align-items: center;
   gap: 18px;
   flex-shrink: 0;
+  /* On desktop `.header__search`'s `flex: 1` already pushes this to the
+     far right; on mobile that search bar is `display: none` (see below),
+     so nothing fills the gap between it and the logo and this cluster
+     collapses to sit right next to the logo instead of anchored to the
+     row's end. `margin-left: auto` is redundant-but-harmless on desktop
+     and is what actually right-aligns it once the search bar is gone. */
+  margin-left: auto;
 }
 
 .header__icon-btn {

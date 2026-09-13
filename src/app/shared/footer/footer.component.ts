@@ -57,7 +57,7 @@ export class FooterComponent {
     {
       title: 'Sell',
       links: [
-        { label: 'Sell on Manufest', path: '/sell-on-manufest' },
+        { label: 'Sell on Manufest Weaves', path: '/sell-on-manufest' },
         { label: 'Our Manufacturers', path: '/manufacturers' },
         { label: 'Affiliates & Creators', path: '/affiliates' },
       ],

@@ -4,23 +4,22 @@
   overflow: hidden;
 }
 
+/* Matches the current home_hero_banner/home_secondary_banner creative's
+   actual export size (1984×528 ≈ 3.7576:1) at every breakpoint — today's
+   admin upload only has a 'default' image (no separate mobile/tablet/
+   laptop crops), so `srcFor()` serves that same file everywhere, and a
+   container ratio that matches it exactly means `object-fit: contain`
+   below never needs to letterbox at all (no more empty top/bottom bars
+   on desktop *or* mobile). If a future banner is uploaded with a
+   noticeably different shape (or real per-breakpoint crops), this needs
+   updating to match — ideally this would read the image's own natural
+   size at runtime instead of a hardcoded ratio, but that's more than
+   today's fix needs. */
 .responsive-banner__track {
   position: relative;
   width: 100%;
-  aspect-ratio: 16 / 7;
+  aspect-ratio: 1984 / 528;
   background: var(--color-bg-tint);
-}
-
-@media (max-width: 767px) {
-  .responsive-banner__track {
-    aspect-ratio: 4 / 3;
-  }
-}
-
-@media (min-width: 768px) and (max-width: 1023px) {
-  .responsive-banner__track {
-    aspect-ratio: 16 / 8;
-  }
 }
 
 .responsive-banner__slide {
@@ -46,7 +45,12 @@
 .responsive-banner__img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  /* `contain`, not `cover` — this is admin-uploaded creative (any aspect
+     ratio), often with a logo/CTA near the edges; cropping to fill the box
+     can cut that content off entirely rather than just trimming empty
+     background. Showing the whole image "zoomed out" with letterboxing
+     (against the track's own background above) is the safer default. */
+  object-fit: contain;
   display: block;
 }
 

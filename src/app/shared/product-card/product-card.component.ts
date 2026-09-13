@@ -106,6 +106,15 @@ export class ProductCardComponent {
       next: (detail) => {
         const variants = detail.variants.filter((v) => v.isActive);
         if (variants.length === 1) {
+          // Same `INSUFFICIENT_STOCK` case cart/checkout guard against —
+          // checked here too so a stale "1 left" product card doesn't
+          // round-trip to the server just to be told no, when the detail
+          // response already just said so.
+          if (!variants[0].inventory?.isInStock) {
+            this.addToCartError.set('Out of stock.');
+            this.addingToCart.set(false);
+            return;
+          }
           this.cartService.addItem({ variantUuid: variants[0].uuid }).subscribe({
             next: () => this.addingToCart.set(false),
             error: (err) => {

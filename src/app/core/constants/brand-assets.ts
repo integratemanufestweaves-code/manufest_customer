@@ -14,8 +14,14 @@
 export const BRAND_ASSETS = {
   /** Boxed logo mark, no wordmark baked in — use anywhere the brand name is
    * already rendered as its own text label nearby (the storefront header
-   * pairs this with its own "Manufest" text next to it). */
-  logoMark: 'assets/logo/Logo-light-without-title.png',
+   * pairs this with its own "Manufest Weaves" text next to it). Reuses the
+   * same transparent-background asset as `favicon` below — the old
+   * `Logo-light-without-title.png` had an opaque white square baked in
+   * behind the mark (confirmed by inspecting its pixels: every corner was
+   * solid white, not alpha 0), which showed as a visible white box on any
+   * non-white background. This SVG's embedded artwork is genuinely
+   * transparent at every edge. */
+  logoMark: 'assets/logo/Manufest-Weaves-icon-nobg.svg',
   /** Transparent-background icon mark used for the browser-tab favicon
    * (`index.html`'s `<link rel="icon">`). Not usable via an Angular binding
    * — index.html loads before Angular bootstraps — so this is a

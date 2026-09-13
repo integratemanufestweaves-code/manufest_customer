@@ -90,7 +90,7 @@
         <a [routerLink]="['/category', cat.uuid]" class="cat-tile">
           <div class="cat-tile__media">
             @if (cat.imageUrl && !brokenCategoryImages().has(cat.uuid)) {
-              <img [src]="cat.imageUrl" [alt]="cat.name" loading="lazy" (error)="onCategoryImageError(cat.uuid)" />
+              <img [src]="categoryImageSrc(cat.imageUrl)" [alt]="cat.name" loading="lazy" (error)="onCategoryImageError(cat.uuid)" />
             } @else {
               <img [src]="tileImage(categoryImageBucket(cat.name))" [alt]="cat.name" loading="lazy" />
             }
@@ -145,10 +145,13 @@
 
 <section class="section spotlight">
   <div class="container spotlight__grid">
-    <!-- TODO(design swap): replace with a real manufacturer photo. -->
-    <div class="spotlight__media ph-image ph-image--spotlight" aria-hidden="true">
-      <svg viewBox="0 0 24 24" width="36" height="36" fill="none"><rect x="3" y="4" width="18" height="16" rx="2" stroke="currentColor" stroke-width="1.3"/><path d="M3 16l5-5 4 4 3-3 6 6" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>
-    </div>
+    @if (spotlightImageSrc) {
+      <img class="spotlight__media" [src]="spotlightImageSrc" [alt]="manufacturerSpotlight.name" loading="lazy" />
+    } @else {
+      <div class="spotlight__media ph-image ph-image--spotlight" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="36" height="36" fill="none"><rect x="3" y="4" width="18" height="16" rx="2" stroke="currentColor" stroke-width="1.3"/><path d="M3 16l5-5 4 4 3-3 6 6" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>
+      </div>
+    }
     <div class="spotlight__quote">
       <h2 class="section__title">{{ manufacturerSpotlight.name }}</h2>
       <p class="spotlight__location">{{ manufacturerSpotlight.location }}</p>
@@ -170,12 +173,15 @@
 </section>
 
 <section class="section container grow">
-  <!-- TODO(design swap): replace with a real manufacturing/onboarding photo. -->
-  <div class="grow__media ph-image ph-image--grow" aria-hidden="true">
-    <svg viewBox="0 0 24 24" width="36" height="36" fill="none"><rect x="3" y="4" width="18" height="16" rx="2" stroke="currentColor" stroke-width="1.3"/><path d="M3 16l5-5 4 4 3-3 6 6" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>
-  </div>
+  @if (growImageSrc) {
+    <img class="grow__media" [src]="growImageSrc" alt="Manufest Weaves manufacturing partners" loading="lazy" />
+  } @else {
+    <div class="grow__media ph-image ph-image--grow" aria-hidden="true">
+      <svg viewBox="0 0 24 24" width="36" height="36" fill="none"><rect x="3" y="4" width="18" height="16" rx="2" stroke="currentColor" stroke-width="1.3"/><path d="M3 16l5-5 4 4 3-3 6 6" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>
+    </div>
+  }
   <div class="grow__content">
-    <h2 class="section__title">Grow your business with Manufest</h2>
+    <h2 class="section__title">Grow your business with Manufest Weaves</h2>
     <p class="grow__sub">Join manufacturers across India selling directly to customers.</p>
     <ul class="grow__list">
       @for (point of growBusinessPoints; track point.title) {

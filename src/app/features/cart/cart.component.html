@@ -25,8 +25,15 @@
         </label>
 
         @for (item of cart().items; track item.uuid) {
-          <div class="cart-item" [class.cart-item--pending]="pendingItem() === item.uuid">
-            <input type="checkbox" class="cart-item__select" [checked]="isSelected(item)" (change)="toggleItem(item)" [attr.aria-label]="'Select ' + item.product.productName" />
+          <div class="cart-item" [class.cart-item--pending]="pendingItem() === item.uuid" [class.cart-item--unavailable]="hasStockIssue(item)">
+            <input
+              type="checkbox"
+              class="cart-item__select"
+              [checked]="isSelected(item)"
+              [disabled]="hasStockIssue(item)"
+              (change)="toggleItem(item)"
+              [attr.aria-label]="'Select ' + item.product.productName"
+            />
             <a [routerLink]="['/product', item.product.uuid]" class="cart-item__media">
               @if (thumbnailSrc(item); as src) {
                 <img [src]="src" [alt]="item.product.productName" loading="lazy" (error)="onThumbnailError(item)" />
@@ -52,7 +59,9 @@
                 }
               </div>
 
-              @if (item.quantity > item.quantityAvailable) {
+              @if (isOutOfStock(item)) {
+                <p class="cart-item__stock-warning cart-item__stock-warning--out">Out of stock — won't be included in checkout</p>
+              } @else if (hasStockIssue(item)) {
                 <p class="cart-item__stock-warning">Only {{ item.quantityAvailable }} left — reduce quantity to continue</p>
               }
             </div>
@@ -87,6 +96,11 @@
         </button>
         @if (selectedCount() === 0) {
           <p class="cart-summary__hint">Select at least one item to continue.</p>
+        }
+        @if (stockIssueCount() > 0) {
+          <p class="cart-summary__hint cart-summary__hint--warning">
+            {{ stockIssueCount() }} item{{ stockIssueCount() > 1 ? 's' : '' }} unavailable at the requested quantity — excluded from checkout.
+          </p>
         }
       </aside>
     </div>

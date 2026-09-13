@@ -150,7 +150,7 @@
 
         <div class="checkout-summary__items">
           @for (item of checkoutItems(); track item.uuid) {
-            <div class="checkout-summary__item">
+            <div class="checkout-summary__item" [class.checkout-summary__item--unavailable]="hasStockIssue(item)">
               <span class="checkout-summary__media">
                 @if (thumbnailSrc(item); as src) {
                   <img [src]="src" [alt]="item.product.productName" loading="lazy" (error)="onThumbnailError(item)" />
@@ -164,6 +164,11 @@
                   <span class="checkout-summary__item-variant">{{ item.variant.variantName }} &times; {{ item.quantity }}</span>
                 } @else {
                   <span class="checkout-summary__item-variant">Qty {{ item.quantity }}</span>
+                }
+                @if (isOutOfStock(item)) {
+                  <span class="checkout-summary__item-stock">Out of stock</span>
+                } @else if (hasStockIssue(item)) {
+                  <span class="checkout-summary__item-stock">Only {{ item.quantityAvailable }} available</span>
                 }
               </span>
               <span class="checkout-summary__item-price">{{ item.lineTotal != null ? formatPrice(item.lineTotal) : '—' }}</span>
@@ -184,6 +189,11 @@
           <span>{{ formatPrice(checkoutSubtotal()) }}</span>
         </div>
 
+        @if (hasAnyStockIssue()) {
+          <p class="state-message state-message--error">
+            One or more items above are out of stock or below the quantity you selected. Go back to your cart to remove or adjust them before placing this order.
+          </p>
+        }
         @if (placeOrderError()) {
           <p class="state-message state-message--error">{{ placeOrderError() }}</p>
         }
@@ -191,7 +201,7 @@
         <button
           type="button"
           class="btn btn--primary btn--full"
-          [disabled]="placingOrder() || !selectedAddressUuid"
+          [disabled]="placingOrder() || !selectedAddressUuid || hasAnyStockIssue()"
           (click)="placeOrder()"
         >
           {{ placingOrder() ? 'Placing order…' : 'Place order' }}

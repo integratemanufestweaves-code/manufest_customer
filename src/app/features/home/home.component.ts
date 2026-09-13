@@ -135,12 +135,25 @@ export class HomeComponent implements OnInit {
     { label: 'Party Wear', bucket: 'occasion-party-wear' },
   ];
 
+  /** Static decorative photos for the manufacturer-spotlight/grow-business
+   * sections below — reuse real, already-uploaded product-media S3 objects
+   * (same private bucket every product photo lives in) rather than an
+   * external stock photo, routed through the same `/media?url=` proxy
+   * `categoryImageSrc()`/product thumbnails use, since the bucket has no
+   * public-read policy and a raw `<img src>` to it 403s. */
+  readonly spotlightImageSrc = this.productService.mediaSrc(
+    'https://manufest-media-storage.s3.ap-south-1.amazonaws.com/product-media/images/site-content/spotlight/annapoorna-handloom-works.png',
+  );
+  readonly growImageSrc = this.productService.mediaSrc(
+    'https://manufest-media-storage.s3.ap-south-1.amazonaws.com/product-media/images/site-content/grow-business/sell-on-manufest-collage.png',
+  );
+
   /** Static placeholder — see this class's header comment. */
   readonly manufacturerSpotlight = {
     name: 'Annapoorna Handloom Works',
     location: 'Kanchipuram',
     quote:
-      "We have been weaving sarees for generations, carrying forward techniques passed down through our family. Every saree made in our unit is crafted with care, attention to detail, and respect for tradition. Partnering with Manufest allows us to bring our sarees directly to customers, ensuring authenticity, fair pricing, and uncompromised quality.",
+      "We have been weaving sarees for generations, carrying forward techniques passed down through our family. Every saree made in our unit is crafted with care, attention to detail, and respect for tradition. Partnering with Manufest Weaves allows us to bring our sarees directly to customers, ensuring authenticity, fair pricing, and uncompromised quality.",
     author: 'Sai Kumar, Manager',
   };
 
@@ -226,6 +239,19 @@ export class HomeComponent implements OnInit {
 
   onCategoryImageError(categoryUuid: string): void {
     this.brokenCategoryImages.update((set) => new Set(set).add(categoryUuid));
+  }
+
+  /** `categories.image_url` is a raw (possibly private-bucket) media URL,
+   * same shape as a product's `thumbnail.url` — route it through the same
+   * `/public/products/media?url=` proxy `ProductService.mediaSrc()` already
+   * wraps product thumbnails in, rather than binding it to `<img src>`
+   * directly. Binding it directly worked only by accident for any category
+   * photo that happened to sit in a public bucket/CDN; the real product-media
+   * bucket is private (see productMediaStorage.adapter.js's header comment),
+   * so an unproxied `<img src>` 403s and falls through to onCategoryImageError
+   * regardless of whether the stored URL is otherwise valid. */
+  categoryImageSrc(imageUrl: string | null): string | null {
+    return this.productService.mediaSrc(imageUrl);
   }
 
   /**

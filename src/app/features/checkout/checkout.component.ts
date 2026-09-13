@@ -66,6 +66,23 @@ export class CheckoutComponent implements OnInit {
   readonly checkoutItemCount = computed(() => this.checkoutItems().length);
   readonly checkoutSubtotal = computed(() => this.checkoutItems().reduce((sum, item) => sum + (item.lineTotal || 0), 0));
 
+  /** Same check the server makes on `POST /customer/orders/checkout`
+   * (`INSUFFICIENT_STOCK`) — checked here too so "Place order" refuses to
+   * even try instead of the customer filling in an address, clicking it,
+   * and only then learning from a raw API error that something in their
+   * selection sold out. Cart page already keeps a stock-issue item out of
+   * `cartItemUuids` in the first place, but this page can still be reached
+   * with one selected (a direct `/checkout` link with no prior selection,
+   * or stock dropping to 0 for an item picked *before* this page loaded),
+   * so it's checked again here rather than assumed. */
+  hasStockIssue(item: CartItem): boolean {
+    return item.quantity > item.quantityAvailable;
+  }
+  isOutOfStock(item: CartItem): boolean {
+    return item.quantityAvailable <= 0;
+  }
+  readonly hasAnyStockIssue = computed(() => this.checkoutItems().some((item) => this.hasStockIssue(item)));
+
   readonly addresses = signal<Address[]>([]);
   readonly addressesLoading = signal(true);
   selectedAddressUuid: string | null = null;

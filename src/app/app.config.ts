@@ -1,5 +1,5 @@
 import { APP_INITIALIZER, ApplicationConfig, inject, provideZoneChangeDetection } from '@angular/core';
-import { provideRouter } from '@angular/router';
+import { provideRouter, withInMemoryScrolling } from '@angular/router';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 
@@ -40,7 +40,17 @@ function initAuthSession() {
 export const appConfig: ApplicationConfig = {
   providers: [
     provideZoneChangeDetection({ eventCoalescing: true }),
-    provideRouter(routes),
+    // Without this, Angular's Router leaves `window.scroll` untouched on
+    // navigation — it doesn't jump to the top of the new page by default,
+    // only browser back/forward gets any scroll handling at all. Scrolled
+    // partway down a long page (e.g. "Shop by category"), then clicking a
+    // product/category link, the next page loads at that *same* scroll
+    // offset instead of from the top — on a shorter page that offset can
+    // already be past the content and into the footer, which is exactly
+    // what looked like "clicking anything jumps to the footer." `top`
+    // resets to (0,0) on every new navigation; `anchorScrolling` still lets
+    // an in-page `#fragment` link scroll to that element instead.
+    provideRouter(routes, withInMemoryScrolling({ scrollPositionRestoration: 'top', anchorScrolling: 'enabled' })),
     provideHttpClient(withInterceptors([credentialsInterceptor])),
     { provide: APP_INITIALIZER, useFactory: initAuthSession, multi: true },
   ],
