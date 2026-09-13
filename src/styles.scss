@@ -128,6 +128,22 @@ button {
     border-color: var(--color-primary);
     color: var(--color-primary);
   }
+
+  /* Every other `:disabled` control in this app (the cart quantity
+     stepper, wishlist/cart per-row actions) dims itself — `.btn` never
+     did, so a disabled `.btn--primary` (e.g. checkout's "Place order"
+     with no address selected yet) rendered pixel-identical to an active
+     one: full color, pointer cursor, and — since `:hover` isn't gated by
+     `disabled` in CSS — the hover color-swap below still fired too.
+     Clicking it did nothing with zero visual explanation why,
+     indistinguishable from a broken button. `pointer-events: none` is
+     what actually stops `:hover` from matching at all (not just the
+     click); `cursor: not-allowed` is the fallback for it. */
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
 }
 
 .btn--primary {

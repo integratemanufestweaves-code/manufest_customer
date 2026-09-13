@@ -23,10 +23,33 @@ Each item below is tagged:
 in `core/services/`, `customerAuthGuard` in `core/guards/`, and the
 `features/auth/`, `features/cart/`, `features/wishlist/`, `features/account/`,
 `features/faq/` components. Product card + product detail now do real
-add-to-cart/wishlist-toggle instead of routing to "coming soon". Everything
-else below (§4c/§4d, §5 attribute filters, §6 search, §7 checkout, §8 order
-history, §10 Origin/Weave, §11) is still open, most of it genuinely blocked
-on backend work rather than unbuilt frontend.
+add-to-cart/wishlist-toggle instead of routing to "coming soon".
+
+**2026-09-13 update:** `manufest_be` shipped a real `orders` module
+(`src/modules/orders/orders.api.js`) — §7 (Checkout) and §8 (Order History)
+below are **no longer blocked** and are now built: see `OrderService` in
+`core/services/`, and `features/checkout/`, `features/orders/`,
+`features/order-detail/`. Cart's "Proceed to checkout" now routes to a real
+`/checkout` flow (address + COD/manual payment → `POST
+/customer/orders/checkout`); `/orders` lists order history with a status
+filter; `/orders/:orderUuid` shows full detail with cancel and
+per-item return/replacement-request actions. Payment is COD or `manual`
+(admin-confirmed) only — no gateway exists yet, see orders.api.js's own
+header comment. Also fixed this pass: wishlist/cart previously showed no
+product images at all (`loadWishlistView()`/`loadCartView()` never selected
+a thumbnail) — both now return one, resolved the same way
+`ProductCardComponent` resolves its own. Profile photo upload and
+first/last name were effectively broken — `toPublicCustomer()` never
+included `profile_image`/`dob` in any response, so an uploaded photo had
+nothing to render and the name fields never showed anything until the
+customer had already filled this exact form once themselves (registration
+only ever wrote `full_name`). Both fixed; see `AuthService`/
+`AccountComponent`.
+
+Still open, still genuinely blocked on backend work: §4c (Manage Payment
+details — no saved-payment-method table), §4d/reviews (no reviews module),
+§5 attribute filters beyond `occasionUuid`, §6 search, §10 Origin/Weave,
+§11 (email delivery, coupons, notifications, messaging).
 
 ---
 

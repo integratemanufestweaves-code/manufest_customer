@@ -1,17 +1,28 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Router, RouterLink } from '@angular/router';
 
 import { CartService } from '../../core/services/cart.service';
+import { ProductService } from '../../core/services/product.service';
 import { CartItem } from '../../core/models/cart.models';
 
 /**
  * `GET/PUT/DELETE /customer/cart*` (`cart.api.js`) — see that file's own
  * header comment: variant-level, stock-checked on every mutation, and
  * **not a real reservation** (nothing holds these units for this customer).
- * No checkout exists yet in manufest_be at all (`orders`/`order_items`/
- * `payments` are either schema-only or missing entirely — see
- * `CUSTOMER_APP_TODO.md`'s §7) — "Proceed to checkout" is intentionally
- * disabled rather than wired to a guessed endpoint.
+ * `loadCartView()` now also returns each line's variant-level `thumbnail`
+ * (2026-09-13) — resolved through `ProductService.mediaSrc()`, same pattern
+ * as `ProductCardComponent`/`WishlistComponent`. Checkout is now backed by
+ * the `orders` module (`orders.api.js`) — "Proceed to checkout" routes to
+ * `/checkout`, see `CheckoutComponent`.
+ *
+ * `POST /checkout` accepts an optional `cartItemUuids` subset (2026-09-13)
+ * instead of always converting the whole cart — this page tracks which
+ * lines are checked via `deselectedUuids` (everything defaults to
+ * selected, since that's the common case; tracking exclusions rather than
+ * inclusions means a newly-added cart line is selected automatically
+ * without this component needing to notice it arrived) and hands the
+ * selected subset to `CartService.setCheckoutSelection()` before routing
+ * to `/checkout`.
  */
 @Component({
   selector: 'app-cart',
@@ -22,6 +33,8 @@ import { CartItem } from '../../core/models/cart.models';
 })
 export class CartComponent implements OnInit {
   private readonly cartService = inject(CartService);
+  private readonly productService = inject(ProductService);
+  private readonly router = inject(Router);
 
   readonly cart = this.cartService.cart;
   readonly loading = signal(true);
@@ -29,6 +42,23 @@ export class CartComponent implements OnInit {
   /** Per-item uuid, disables that row's controls while a mutation is in
    * flight — prevents a double-click firing two overlapping PUTs. */
   readonly pendingItem = signal<string | null>(null);
+
+  /** Cart item uuids whose resolved thumbnail 404d — see
+   * ProductCardComponent's `thumbnailBroken` for why this falls back to the
+   * color swatch instead of a broken-image glyph. */
+  private readonly brokenThumbnails = signal<ReadonlySet<string>>(new Set());
+
+  /** Cart item uuids the customer has unchecked — see this component's
+   * header comment for why exclusions (not inclusions) are tracked. */
+  private readonly deselectedUuids = signal<ReadonlySet<string>>(new Set());
+
+  readonly selectedItems = computed(() => this.cart().items.filter((item) => !this.deselectedUuids().has(item.uuid)));
+  readonly selectedCount = computed(() => this.selectedItems().length);
+  readonly selectedSubtotal = computed(() => this.selectedItems().reduce((sum, item) => sum + (item.lineTotal || 0), 0));
+  readonly allSelected = computed(() => {
+    const items = this.cart().items;
+    return items.length > 0 && items.every((item) => !this.deselectedUuids().has(item.uuid));
+  });
 
   ngOnInit(): void {
     this.cartService.refresh();
@@ -46,6 +76,41 @@ export class CartComponent implements OnInit {
 
   formatPrice(n: number): string {
     return `₹${Math.round(n).toLocaleString('en-IN')}`;
+  }
+
+  thumbnailSrc(item: CartItem): string | null {
+    if (this.brokenThumbnails().has(item.uuid)) return null;
+    return this.productService.mediaSrc(item.variant.thumbnail?.url);
+  }
+
+  onThumbnailError(item: CartItem): void {
+    this.brokenThumbnails.update((set) => new Set(set).add(item.uuid));
+  }
+
+  isSelected(item: CartItem): boolean {
+    return !this.deselectedUuids().has(item.uuid);
+  }
+
+  toggleItem(item: CartItem): void {
+    this.deselectedUuids.update((set) => {
+      const next = new Set(set);
+      if (next.has(item.uuid)) {
+        next.delete(item.uuid);
+      } else {
+        next.add(item.uuid);
+      }
+      return next;
+    });
+  }
+
+  toggleAll(): void {
+    this.deselectedUuids.set(this.allSelected() ? new Set(this.cart().items.map((item) => item.uuid)) : new Set());
+  }
+
+  goToCheckout(): void {
+    if (this.selectedCount() === 0) return;
+    this.cartService.setCheckoutSelection(this.selectedItems().map((item) => item.uuid));
+    this.router.navigate(['/checkout']);
   }
 
   updateQuantity(item: CartItem, quantity: number): void {

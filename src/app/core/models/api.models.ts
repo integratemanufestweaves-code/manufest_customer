@@ -37,3 +37,12 @@ export interface CursorMeta {
   nextCursor: string | null;
   hasMore: boolean;
 }
+
+/** `buildOffsetMeta()` (manufest_be/src/common/pagination.js) — used by
+ * page-numbered listing routes, e.g. `GET /customer/orders/list`. */
+export interface OffsetMeta {
+  page: number;
+  limit: number;
+  totalCount: number;
+  totalPages: number;
+}

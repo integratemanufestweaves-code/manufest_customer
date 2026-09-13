@@ -24,6 +24,25 @@ export class CartService {
   readonly cart = this.cartSignal.asReadonly();
   readonly itemCount = computed(() => this.cartSignal().itemCount);
 
+  /** Which `cart_items.uuid`s the cart page's checkbox selection had
+   * checked when "Proceed to checkout" was clicked — read by
+   * `CheckoutComponent` so a partial selection carries across the
+   * `/cart` → `/checkout` navigation without round-tripping through the
+   * server. `null` means "no selection made this session" (e.g. a direct
+   * link to `/checkout`), which `CheckoutComponent` treats as "the whole
+   * cart", matching `POST /checkout`'s own default when `cartItemUuids` is
+   * omitted. */
+  private readonly checkoutSelectionSignal = signal<string[] | null>(null);
+  readonly checkoutSelection = this.checkoutSelectionSignal.asReadonly();
+
+  setCheckoutSelection(cartItemUuids: string[]): void {
+    this.checkoutSelectionSignal.set(cartItemUuids);
+  }
+
+  clearCheckoutSelection(): void {
+    this.checkoutSelectionSignal.set(null);
+  }
+
   /** Call once after login (and at app bootstrap, if already authenticated)
    * — silently resets to empty on failure (e.g. not logged in yet) rather
    * than surfacing an error nobody's looking at. */
@@ -42,6 +61,7 @@ export class CartService {
    * keep showing a signed-out visitor someone else's items. */
   clearLocalState(): void {
     this.cartSignal.set(EMPTY_CART);
+    this.checkoutSelectionSignal.set(null);
   }
 
   addItem(payload: AddCartItemRequest): Observable<CartView> {

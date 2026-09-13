@@ -86,6 +86,13 @@
   align-items: center;
   justify-content: center;
   color: var(--color-text-faint);
+  overflow: hidden;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
 }
 
 .wishlist-card__name {

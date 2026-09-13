@@ -5,7 +5,7 @@
  * variant-level, unlike cart) — "move to cart" is a client-side action that
  * still needs a variant picked, see that file's own header comment.
  */
-import { ProductPriceRange } from './product.models';
+import { ProductPriceRange, ProductThumbnail } from './product.models';
 
 export interface WishlistItem {
   uuid: string;
@@ -14,6 +14,10 @@ export interface WishlistItem {
     productName: string;
     sku: string;
     pricing: ProductPriceRange;
+    /** Product-level, like `ProductSummary.thumbnail` — the seller-picked
+     * primary image across any of this product's variants. `null` if none
+     * uploaded yet. Resolve through `ProductService.mediaSrc()` before use. */
+    thumbnail: ProductThumbnail;
   };
 }
 

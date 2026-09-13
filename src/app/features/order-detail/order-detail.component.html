@@ -1,0 +1,148 @@
+<section class="container order-detail-page">
+  <nav class="order-detail-page__crumbs" aria-label="Breadcrumb">
+    <a routerLink="/">Home</a> / <a routerLink="/orders">Orders</a> / <span>{{ order()?.orderNumber || 'Order' }}</span>
+  </nav>
+
+  @if (error()) {
+    <p class="state-message state-message--error">{{ error() }}</p>
+  }
+
+  @if (loading()) {
+    <p class="state-message">Loading order…</p>
+  } @else {
+  @if (order(); as orderDetail) {
+    <div class="order-detail-head">
+      <div>
+        <h1 class="order-detail-page__title">{{ orderDetail.orderNumber }}</h1>
+        <p class="order-detail-page__date">Placed {{ formatDate(orderDetail.orderDateTime) }}</p>
+      </div>
+      <span class="order-detail-status" [class]="'order-detail-status--' + orderDetail.orderStatus">{{ statusLabel(orderDetail.orderStatus) }}</span>
+    </div>
+
+    @if (orderDetail.cancelReason) {
+      <p class="order-detail-page__cancel-reason">Cancelled {{ formatDate(orderDetail.cancelledAt) }} — reason given: "{{ orderDetail.cancelReason }}"</p>
+    }
+
+    @if (isCancellable) {
+      @if (!showCancelForm()) {
+        <button type="button" class="btn btn--outline" (click)="startCancelOrder()">Cancel order</button>
+      } @else {
+        <div class="cancel-confirm">
+          <p class="cancel-confirm__title">Are you sure you want to cancel this order?</p>
+          @if (cancelError()) {
+            <p class="state-message state-message--error">{{ cancelError() }}</p>
+          }
+          <textarea
+            rows="2"
+            placeholder="Reason for cancelling (required)"
+            [(ngModel)]="cancelReason"
+            name="cancelReason"
+          ></textarea>
+          <div class="cancel-confirm__actions">
+            <button type="button" class="btn btn--primary" [disabled]="cancelling()" (click)="confirmCancelOrder()">
+              {{ cancelling() ? 'Cancelling…' : 'Confirm cancellation' }}
+            </button>
+            <button type="button" class="btn btn--outline" [disabled]="cancelling()" (click)="closeCancelForm()">Never mind</button>
+          </div>
+        </div>
+      }
+    }
+
+    <div class="order-detail-layout">
+      <div class="order-detail-main">
+        @for (group of orderDetail.sellerGroups; track group.uuid) {
+          <section class="seller-group">
+            <div class="seller-group__head">
+              <p class="seller-group__seller">Sold by {{ group.seller.name }}</p>
+              <span class="order-detail-status order-detail-status--sm" [class]="'order-detail-status--' + group.subOrderStatus">{{ statusLabel(group.subOrderStatus) }}</span>
+            </div>
+
+            @for (item of group.items; track item.uuid) {
+              <div class="order-item">
+                <span class="order-item__media">
+                  @if (thumbnailSrc(item); as src) {
+                    <img [src]="src" [alt]="item.product.productName" loading="lazy" (error)="onThumbnailError(item)" />
+                  } @else {
+                    <span class="order-item__swatch" [style.background]="item.variant.colorHex || 'var(--color-bg-tint)'" aria-hidden="true"></span>
+                  }
+                </span>
+
+                <div class="order-item__info">
+                  <p class="order-item__name">{{ item.product.productName }}</p>
+                  @if (item.variant.variantName || item.variant.size) {
+                    <p class="order-item__variant">
+                      @if (item.variant.variantName) { {{ item.variant.variantName }} }
+                      @if (item.variant.size) { &middot; {{ item.variant.size }} }
+                    </p>
+                  }
+                  <p class="order-item__status">{{ statusLabel(item.itemStatus) }}</p>
+
+                  @if (item.itemStatus === 'delivered') {
+                    <div class="order-item__actions">
+                      <button type="button" (click)="openActionForm(item, 'return')">Return</button>
+                      <button type="button" (click)="openActionForm(item, 'replacement')">Replacement</button>
+                    </div>
+                  }
+
+                  @if (actionForm()?.orderItemUuid === item.uuid) {
+                    <div class="order-item__action-form">
+                      <textarea rows="2" placeholder="Reason (required)" [(ngModel)]="actionReason" [name]="'reason-' + item.uuid"></textarea>
+                      @if (actionError()) {
+                        <p class="state-message state-message--error">{{ actionError() }}</p>
+                      }
+                      <div class="order-item__action-form-buttons">
+                        <button type="button" class="btn btn--primary" [disabled]="actionSubmitting()" (click)="submitActionForm()">
+                          {{ actionSubmitting() ? 'Submitting…' : 'Submit' }}
+                        </button>
+                        <button type="button" class="btn btn--outline" (click)="closeActionForm()">Cancel</button>
+                      </div>
+                    </div>
+                  }
+                </div>
+
+                <p class="order-item__price">{{ formatPrice(item.totalPrice) }}</p>
+              </div>
+            }
+          </section>
+        }
+      </div>
+
+      <aside class="order-detail-side">
+        <section class="order-detail-card">
+          <h2>Delivery address</h2>
+          <p class="order-detail-card__name">{{ orderDetail.shippingAddress.recipientName }}</p>
+          <p>
+            {{ orderDetail.shippingAddress.line1 }}@if (orderDetail.shippingAddress.line2) {, {{ orderDetail.shippingAddress.line2 }}}<br />
+            {{ orderDetail.shippingAddress.city }}@if (orderDetail.shippingAddress.state) {, {{ orderDetail.shippingAddress.state }}} {{ orderDetail.shippingAddress.postalCode }}
+          </p>
+          <p>{{ orderDetail.shippingAddress.phone }}</p>
+        </section>
+
+        <section class="order-detail-card">
+          <h2>Payment</h2>
+          @if (orderDetail.payment; as payment) {
+            <p>{{ payment.method === 'cod' ? 'Cash on delivery' : 'Bank transfer' }}</p>
+            <p class="order-detail-card__muted">Status: {{ statusLabel(payment.status) }}</p>
+          }
+        </section>
+
+        <section class="order-detail-card">
+          <h2>Order summary</h2>
+          <div class="order-detail-card__row">
+            <span>Subtotal</span>
+            <span>{{ formatPrice(orderDetail.subTotal) }}</span>
+          </div>
+          <div class="order-detail-card__row">
+            <span>Delivery</span>
+            <span>{{ orderDetail.deliveryFee > 0 ? formatPrice(orderDetail.deliveryFee) : 'Free' }}</span>
+          </div>
+          <div class="order-detail-card__row order-detail-card__row--total">
+            <span>Total</span>
+            <span>{{ formatPrice(orderDetail.totalAmount) }}</span>
+          </div>
+        </section>
+      </aside>
+    </div>
+  }
+  }
+</section>

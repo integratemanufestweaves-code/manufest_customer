@@ -1,0 +1,59 @@
+<section class="container orders-page">
+  <nav class="orders-page__crumbs" aria-label="Breadcrumb">
+    <a routerLink="/">Home</a> / <a routerLink="/account">Account</a> / <span>Orders</span>
+  </nav>
+
+  <div class="section__header">
+    <div>
+      <h1 class="orders-page__title">Your orders</h1>
+    </div>
+    <select class="orders-page__filter" [(ngModel)]="statusFilter" (ngModelChange)="onFilterChange()">
+      @for (option of statusOptions; track option.value) {
+        <option [value]="option.value">{{ option.label }}</option>
+      }
+    </select>
+  </div>
+
+  @if (error()) {
+    <p class="state-message state-message--error">{{ error() }}</p>
+  }
+
+  @if (loading()) {
+    <p class="state-message">Loading your orders…</p>
+  } @else if (orders().length === 0) {
+    <div class="orders-page__empty">
+      <p>No orders {{ statusFilter ? 'in this status' : 'yet' }}.</p>
+      <a routerLink="/new-arrivals" class="btn btn--primary">Start shopping</a>
+    </div>
+  } @else {
+    <div class="order-list">
+      @for (order of orders(); track order.uuid) {
+        <a [routerLink]="['/orders', order.uuid]" class="order-card">
+          <div class="order-card__head">
+            <div>
+              <p class="order-card__number">{{ order.orderNumber }}</p>
+              <p class="order-card__date">Placed {{ formatDate(order.orderDateTime) }}</p>
+            </div>
+            <span class="order-card__status" [class]="'order-card__status--' + order.orderStatus">{{ statusLabel(order.orderStatus) }}</span>
+          </div>
+          <div class="order-card__foot">
+            <span>Total: {{ formatPrice(order.totalAmount) }}</span>
+            @if (order.markOrderAsGift) {
+              <span class="order-card__gift">Gift</span>
+            }
+          </div>
+        </a>
+      }
+    </div>
+
+    @if (meta(); as m) {
+      @if (m.totalPages > 1) {
+        <div class="orders-pagination">
+          <button type="button" (click)="goToPage(m.page - 1)" [disabled]="m.page <= 1">Previous</button>
+          <span>Page {{ m.page }} of {{ m.totalPages }}</span>
+          <button type="button" (click)="goToPage(m.page + 1)" [disabled]="m.page >= m.totalPages">Next</button>
+        </div>
+      }
+    }
+  }
+</section>

@@ -10,11 +10,11 @@ import { WishlistItem } from '../../core/models/wishlist.models';
  * `GET/POST/DELETE /customer/wishlist*` (`wishlist.api.js`) — product-level,
  * not variant-level (see that file's header comment), so "Move to cart"
  * has to resolve a variant client-side before it can call
- * `POST /customer/cart/items`. `loadWishlistView()` returns no thumbnail/
- * media at all (only `{uuid, productName, sku, pricing}`) — the grid below
- * shows a placeholder swatch rather than fetching product detail per card
- * just for an image, same "only render what's real" discipline
- * `ProductCardComponent`'s header comment documents for the public list.
+ * `POST /customer/cart/items`. `loadWishlistView()` now also returns a
+ * product-level `thumbnail` (2026-09-13) — resolved through
+ * `ProductService.mediaSrc()` the same way `ProductCardComponent` resolves
+ * its own, with the same per-item "fell back to the placeholder because the
+ * underlying object 404d" broken-image handling.
  */
 @Component({
   selector: 'app-wishlist',
@@ -34,6 +34,11 @@ export class WishlistComponent implements OnInit {
   readonly error = signal<string | null>(null);
   readonly pendingItem = signal<string | null>(null);
 
+  /** Wishlist item uuids whose resolved thumbnail 404d — see
+   * ProductCardComponent's `thumbnailBroken` for why this falls back to the
+   * placeholder icon instead of a broken-image glyph. */
+  private readonly brokenThumbnails = signal<ReadonlySet<string>>(new Set());
+
   ngOnInit(): void {
     this.wishlistService.refresh();
     this.loading.set(false);
@@ -41,6 +46,15 @@ export class WishlistComponent implements OnInit {
 
   formatPrice(n: number): string {
     return `₹${Math.round(n).toLocaleString('en-IN')}`;
+  }
+
+  thumbnailSrc(item: WishlistItem): string | null {
+    if (this.brokenThumbnails().has(item.uuid)) return null;
+    return this.productService.mediaSrc(item.product.thumbnail?.url);
+  }
+
+  onThumbnailError(item: WishlistItem): void {
+    this.brokenThumbnails.update((set) => new Set(set).add(item.uuid));
   }
 
   priceLabel(item: WishlistItem): string | null {

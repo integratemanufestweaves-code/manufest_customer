@@ -63,9 +63,27 @@ export class AccountComponent implements OnInit {
   ngOnInit(): void {
     const p = this.profile();
     if (p) {
-      this.firstName = p.firstName || '';
-      this.lastName = p.lastName || '';
+      // `first_name`/`last_name` are only ever set via this form's own
+      // PATCH /profile — registration (email or mobile) only ever writes
+      // `full_name` (see auth.api.js's /register, /register/mobile). So a
+      // customer who registered but never touched this form sees a blank
+      // form on every visit despite already having a name on file. Fall
+      // back to splitting `fullName` so the fields start populated instead
+      // of empty — still editable, and saving writes firstName/lastName
+      // back explicitly either way.
+      if (p.firstName || p.lastName) {
+        this.firstName = p.firstName || '';
+        this.lastName = p.lastName || '';
+      } else if (p.fullName) {
+        const [first, ...rest] = p.fullName.trim().split(/\s+/);
+        this.firstName = first || '';
+        this.lastName = rest.join(' ');
+      }
       this.phone = p.phone || '';
+      // `dob` comes back from mysql2 as a full ISO datetime (pool.js has
+      // `dateStrings: false`), e.g. "2026-01-01T00:00:00.000Z" — an
+      // `<input type="date">` only accepts the bare `YYYY-MM-DD` portion.
+      this.dob = p.dob ? p.dob.slice(0, 10) : '';
     }
     this.loadAddresses();
   }

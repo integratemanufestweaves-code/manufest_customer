@@ -1,0 +1,331 @@
+// `.auth__field`/`.auth__error` etc. for the inline "add address" form —
+// same reuse account.component.scss already does for its own address form,
+// see that file's header comment.
+@use '../auth/auth-shared';
+
+.checkout-page {
+  padding: 24px 0 64px;
+}
+
+.checkout-page__crumbs {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  margin-bottom: 12px;
+
+  a:hover {
+    color: var(--color-primary);
+  }
+}
+
+.checkout-page__title {
+  font-size: 1.6rem;
+  margin: 0 0 24px;
+}
+
+.checkout-page__empty {
+  text-align: center;
+  padding: 64px 0;
+  color: var(--color-text-muted);
+
+  p {
+    margin: 0 0 16px;
+  }
+}
+
+.checkout-page__layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 28px;
+  align-items: start;
+
+  @media (max-width: 900px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.checkout-page__form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.checkout-section {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 20px;
+
+  h2 {
+    margin: 0 0 14px;
+    font-size: 1.02rem;
+  }
+}
+
+.checkout-section__empty {
+  font-size: 0.88rem;
+  color: var(--color-text-muted);
+  margin: 0 0 12px;
+}
+
+.checkout-section__add-address {
+  display: block;
+  background: none;
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  color: var(--color-primary);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  width: 100%;
+  text-align: center;
+
+  &:hover {
+    border-color: var(--color-primary);
+    background: var(--color-bg-tint);
+  }
+}
+
+.address-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.address-form__row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+
+  @media (max-width: 480px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.address-form__checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  color: var(--color-text);
+}
+
+.address-form__actions {
+  display: flex;
+  gap: 12px;
+}
+
+.address-options {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.address-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+
+  &--selected {
+    border-color: var(--color-primary);
+    background: var(--color-bg-tint);
+  }
+
+  input {
+    margin-top: 3px;
+  }
+}
+
+.address-option__body {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+.address-option__default {
+  align-self: flex-start;
+  background: var(--color-primary);
+  color: var(--color-white);
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 999px;
+  margin-bottom: 4px;
+}
+
+.address-option__label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-accent-dark);
+  font-weight: 600;
+}
+
+.address-option__name {
+  font-weight: 600;
+  color: var(--color-text);
+  font-size: 0.9rem;
+  margin-top: 2px;
+}
+
+.address-option__lines,
+.address-option__phone {
+  line-height: 1.5;
+}
+
+.payment-options {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.payment-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+
+  &--selected {
+    border-color: var(--color-primary);
+    background: var(--color-bg-tint);
+  }
+
+  input {
+    margin-top: 3px;
+  }
+
+  span {
+    display: flex;
+    flex-direction: column;
+  }
+
+  strong {
+    font-size: 0.9rem;
+  }
+
+  small {
+    color: var(--color-text-muted);
+    font-size: 0.78rem;
+    margin-top: 2px;
+  }
+}
+
+.checkout-gift {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  color: var(--color-text);
+}
+
+.checkout-summary {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 20px;
+  position: sticky;
+  top: calc(var(--header-height) + 16px);
+
+  h2 {
+    margin: 0 0 16px;
+    font-size: 1.05rem;
+  }
+}
+
+.checkout-summary__items {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--color-border);
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.checkout-summary__item {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.checkout-summary__media {
+  display: block;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+}
+
+.checkout-summary__swatch {
+  display: block;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+}
+
+.checkout-summary__item-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.checkout-summary__item-name {
+  font-size: 0.83rem;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.checkout-summary__item-variant {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.checkout-summary__item-price {
+  font-size: 0.83rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.checkout-summary__row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.88rem;
+  color: var(--color-text-muted);
+  margin-bottom: 10px;
+
+  &--total {
+    color: var(--color-text);
+    font-weight: 700;
+    font-size: 1rem;
+    border-top: 1px solid var(--color-border);
+    padding-top: 12px;
+    margin-top: 4px;
+    margin-bottom: 16px;
+  }
+}
+
+.checkout-summary__note {
+  margin: 10px 0 0;
+  font-size: 0.75rem;
+  color: var(--color-text-faint);
+  text-align: center;
+}

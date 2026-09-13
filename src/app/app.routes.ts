@@ -4,14 +4,17 @@ import { customerAuthGuard } from './core/guards/customer-auth.guard';
 /**
  * Route map for the customer-facing storefront.
  *
- * Real routes (backed by a live manufest_be API call), as of the 2026-09-12
- * auth/cart/wishlist/account/FAQ pass — see `CUSTOMER_APP_TODO.md` at the
- * repo root for the full audit this was built from: `''` (Home),
- * `product/:productUuid`, `new-arrivals`/`category/:categoryUuid`
- * (`ProductListingComponent`), `login`/`register`/`account` (`auth`/`users`
- * modules), `cart`/`wishlist` (`cart`/`wishlist` modules), `faq` (`faq`
- * module). `account`/`cart`/`wishlist` are gated by `customerAuthGuard`
- * since every route they call server-side requires `authenticateCustomer`.
+ * Real routes (backed by a live manufest_be API call), as of the 2026-09-13
+ * checkout/orders pass (on top of the 2026-09-12 auth/cart/wishlist/
+ * account/FAQ pass) — see `CUSTOMER_APP_TODO.md` at the repo root for the
+ * original audit this was built from: `''` (Home), `product/:productUuid`,
+ * `new-arrivals`/`category/:categoryUuid` (`ProductListingComponent`),
+ * `login`/`register`/`account` (`auth`/`users` modules), `cart`/`wishlist`
+ * (`cart`/`wishlist` modules), `checkout`/`orders`/`orders/:orderUuid`
+ * (`orders` module — §7/§8 in that doc are no longer blocked), `faq` (`faq`
+ * module). All of `account`/`cart`/`wishlist`/`checkout`/`orders*` are
+ * gated by `customerAuthGuard` since every route they call server-side
+ * requires `authenticateCustomer`.
  *
  * Still "coming soon" (`ComingSoonComponent`) — genuinely blocked, not just
  * unbuilt, per that same audit: `notifications`/`search` (no backend
@@ -84,6 +87,32 @@ export const routes: Routes = [
     title: 'Manufest — Wishlist',
     canActivate: [customerAuthGuard],
   },
+
+  // ---- checkout / orders ----
+  // Backed by manufest_be's `orders` module (`src/modules/orders/orders.api.js`,
+  // added 2026-09-13, post-dating CUSTOMER_APP_TODO.md's §7/§8 "entirely
+  // blocked" audit) — checkout consumes the server-side cart, order history
+  // reads `GET /customer/orders/list`. Both require `authenticateCustomer`
+  // server-side.
+  {
+    path: 'checkout',
+    loadComponent: () => import('./features/checkout/checkout.component').then((m) => m.CheckoutComponent),
+    title: 'Manufest — Checkout',
+    canActivate: [customerAuthGuard],
+  },
+  {
+    path: 'orders',
+    loadComponent: () => import('./features/orders/orders.component').then((m) => m.OrdersComponent),
+    title: 'Manufest — Your orders',
+    canActivate: [customerAuthGuard],
+  },
+  {
+    path: 'orders/:orderUuid',
+    loadComponent: () => import('./features/order-detail/order-detail.component').then((m) => m.OrderDetailComponent),
+    title: 'Manufest — Order detail',
+    canActivate: [customerAuthGuard],
+  },
+
   {
     path: 'notifications',
     loadComponent: () => import('./shared/coming-soon/coming-soon.component').then((m) => m.ComingSoonComponent),

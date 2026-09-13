@@ -25,6 +25,15 @@ export interface CustomerProfile {
   phone: string | null;
   mobileNumber: string | null;
   status: string;
+  /** Raw, private storage URL from `users.api.js`'s `PATCH /profile/photo`
+   * (a generic `storageAdapter`, not the products-media bucket) — unlike
+   * product media this is directly loadable as an `<img>` src, no
+   * `ProductService.mediaSrc()` proxy needed (see that route's own header
+   * comment on why this bucket is public-read). `null` until a photo's
+   * been uploaded. */
+  profileImage: string | null;
+  /** ISO date string (`YYYY-MM-DD`), `null` until set via `PATCH /profile`. */
+  dob: string | null;
 }
 
 export interface RegisterRequest {

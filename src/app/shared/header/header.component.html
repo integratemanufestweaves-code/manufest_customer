@@ -51,7 +51,11 @@
       @if (currentUser(); as user) {
         <a routerLink="/account" class="header__icon-btn header__icon-btn--account">
           <span class="header__avatar">
-            <svg viewBox="0 0 24 24" fill="none" width="18" height="18"><circle cx="12" cy="8" r="3.5" stroke="currentColor" stroke-width="1.5"/><path d="M4.5 20c1.4-3.6 4.4-5.5 7.5-5.5s6.1 1.9 7.5 5.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+            @if (user.profileImage) {
+              <img [src]="user.profileImage" alt="" />
+            } @else {
+              <svg viewBox="0 0 24 24" fill="none" width="18" height="18"><circle cx="12" cy="8" r="3.5" stroke="currentColor" stroke-width="1.5"/><path d="M4.5 20c1.4-3.6 4.4-5.5 7.5-5.5s6.1 1.9 7.5 5.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+            }
           </span>
           <span class="header__icon-label">{{ user.firstName || user.fullName || 'Account' }}</span>
         </a>
@@ -114,6 +118,12 @@
   </nav>
 
   <div class="header__drawer-foot">
+    @if (currentUser()) {
+      <a routerLink="/orders" class="header__drawer-link" (click)="closeMobileMenu()">
+        <span class="header__drawer-icon"><svg viewBox="0 0 24 24" fill="none"><rect x="4" y="7" width="16" height="13" rx="1.5" stroke="currentColor" stroke-width="1.5"/><path d="M8 7V5.5A2.5 2.5 0 0 1 10.5 3h3A2.5 2.5 0 0 1 16 5.5V7" stroke="currentColor" stroke-width="1.5"/></svg></span>
+        <span>Orders</span>
+      </a>
+    }
     <a routerLink="/wishlist" class="header__drawer-link" (click)="closeMobileMenu()">
       <span class="header__drawer-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M12 20s-7-4.35-9.5-8.5C.6 8 2 4.5 5.5 4a5 5 0 0 1 6.5 2 5 5 0 0 1 6.5-2C22 4.5 23.4 8 21.5 11.5 19 15.65 12 20 12 20Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg></span>
       <span>Wishlist</span>

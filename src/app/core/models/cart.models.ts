@@ -6,6 +6,7 @@
  * schema's actual pricing/stock granularity, see that file's own header
  * comment.
  */
+import { ProductThumbnail } from './product.models';
 
 export interface CartItem {
   uuid: string;
@@ -19,7 +20,10 @@ export interface CartItem {
   /** `currentPrice * quantity`, or `null` if `currentPrice` is `null`. */
   lineTotal: number | null;
   quantityAvailable: number;
-  variant: { uuid: string; variantName: string | null; colorHex: string | null };
+  /** `thumbnail` is this specific variant's own primary image (not the
+   * product's — a cart line is a picked color/size), `null` if that variant
+   * has none uploaded yet. Resolve through `ProductService.mediaSrc()`. */
+  variant: { uuid: string; variantName: string | null; colorHex: string | null; thumbnail: ProductThumbnail };
   product: { uuid: string; productName: string };
 }
 

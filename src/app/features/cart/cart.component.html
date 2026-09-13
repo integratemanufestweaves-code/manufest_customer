@@ -19,9 +19,21 @@
   } @else {
     <div class="cart-page__layout">
       <div class="cart-page__items">
+        <label class="cart-page__select-all">
+          <input type="checkbox" [checked]="allSelected()" (change)="toggleAll()" />
+          <span>Select all ({{ cart().items.length }})</span>
+        </label>
+
         @for (item of cart().items; track item.uuid) {
           <div class="cart-item" [class.cart-item--pending]="pendingItem() === item.uuid">
-            <span class="cart-item__swatch" [style.background]="item.variant.colorHex || 'var(--color-bg-tint)'" aria-hidden="true"></span>
+            <input type="checkbox" class="cart-item__select" [checked]="isSelected(item)" (change)="toggleItem(item)" [attr.aria-label]="'Select ' + item.product.productName" />
+            <a [routerLink]="['/product', item.product.uuid]" class="cart-item__media">
+              @if (thumbnailSrc(item); as src) {
+                <img [src]="src" [alt]="item.product.productName" loading="lazy" (error)="onThumbnailError(item)" />
+              } @else {
+                <span class="cart-item__swatch" [style.background]="item.variant.colorHex || 'var(--color-bg-tint)'" aria-hidden="true"></span>
+              }
+            </a>
 
             <div class="cart-item__info">
               <p class="cart-item__name">{{ item.product.productName }}</p>
@@ -63,15 +75,19 @@
       <aside class="cart-summary">
         <h2>Order summary</h2>
         <div class="cart-summary__row">
-          <span>Items ({{ cart().itemCount }})</span>
-          <span>{{ formatPrice(cart().total) }}</span>
+          <span>Selected ({{ selectedCount() }} of {{ cart().itemCount }})</span>
+          <span>{{ formatPrice(selectedSubtotal()) }}</span>
         </div>
         <div class="cart-summary__row cart-summary__row--total">
           <span>Total</span>
-          <span>{{ formatPrice(cart().total) }}</span>
+          <span>{{ formatPrice(selectedSubtotal()) }}</span>
         </div>
-        <button type="button" class="btn btn--primary btn--full" disabled title="Checkout isn't available yet">Proceed to checkout</button>
-        <p class="cart-summary__note">Checkout is coming soon — we're building it next.</p>
+        <button type="button" class="btn btn--primary btn--full" [disabled]="selectedCount() === 0" (click)="goToCheckout()">
+          Proceed to checkout
+        </button>
+        @if (selectedCount() === 0) {
+          <p class="cart-summary__hint">Select at least one item to continue.</p>
+        }
       </aside>
     </div>
   }
