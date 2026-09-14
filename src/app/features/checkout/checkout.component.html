@@ -206,6 +206,15 @@
         >
           {{ placingOrder() ? 'Placing order…' : 'Place order' }}
         </button>
+        @if (!selectedAddressUuid && !hasAnyStockIssue()) {
+          <!-- The button above is disabled in this state, which means a
+               click never reaches placeOrder() — so its own "Choose a
+               delivery address first" check never runs and nothing tells
+               the customer why the button won't respond. This is the
+               always-visible version of that same reason, shown whether
+               or not they've tried clicking. -->
+          <p class="checkout-summary__note checkout-summary__note--warning">Select a delivery address above to continue.</p>
+        }
         <p class="checkout-summary__note">Please record a video while opening the parcel — it speeds up any return/replacement request.</p>
       </aside>
     </div>

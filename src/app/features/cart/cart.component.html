@@ -67,11 +67,15 @@
             </div>
 
             <div class="cart-item__actions">
-              <div class="cart-item__stepper">
-                <button type="button" (click)="updateQuantity(item, item.quantity - 1)" [disabled]="pendingItem() === item.uuid || item.quantity <= 1" aria-label="Decrease quantity">&minus;</button>
-                <span>{{ item.quantity }}</span>
-                <button type="button" (click)="updateQuantity(item, item.quantity + 1)" [disabled]="pendingItem() === item.uuid || item.quantity >= item.quantityAvailable" aria-label="Increase quantity">+</button>
-              </div>
+              @if (isOutOfStock(item)) {
+                <span class="cart-item__oos-badge">Out of stock</span>
+              } @else {
+                <div class="cart-item__stepper">
+                  <button type="button" (click)="updateQuantity(item, item.quantity - 1)" [disabled]="pendingItem() === item.uuid || item.quantity <= 1" aria-label="Decrease quantity">&minus;</button>
+                  <span>{{ item.quantity }}</span>
+                  <button type="button" (click)="updateQuantity(item, item.quantity + 1)" [disabled]="pendingItem() === item.uuid || item.quantity >= item.quantityAvailable" aria-label="Increase quantity">+</button>
+                </div>
+              }
               <p class="cart-item__line-total">{{ item.lineTotal != null ? formatPrice(item.lineTotal) : '—' }}</p>
               <button type="button" class="cart-item__remove" (click)="removeItem(item)" [disabled]="pendingItem() === item.uuid">Remove</button>
             </div>

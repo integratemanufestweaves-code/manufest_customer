@@ -105,6 +105,14 @@
               {
                 "glob": "**/*",
                 "input": "public"
+              },
+              {
+                "glob": "index.html",
+                "input": "src"
+              },
+              {
+                "glob": "app.config.ts",
+                "input": "src/app"
               }
             ],
             "styles": [

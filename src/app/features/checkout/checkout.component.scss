@@ -338,4 +338,9 @@
   font-size: 0.75rem;
   color: var(--color-text-faint);
   text-align: center;
+
+  &--warning {
+    color: var(--color-danger);
+    font-weight: 600;
+  }
 }
