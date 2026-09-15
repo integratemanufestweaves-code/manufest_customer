@@ -43,10 +43,13 @@
   -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://checkout.razorpay.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: http://localhost:4000; font-src 'self' data:; frame-src https://api.razorpay.com https://checkout.razorpay.com; connect-src 'self' https://manufestweaves.in http://localhost:4000 https://api.razorpay.com https://lumberjack.razorpay.com; object-src 'none'; base-uri 'self'; form-action 'self'">
   <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
-  <!-- Loaded eagerly (not lazy-injected) so it's ready the instant checkout
-       needs it — Razorpay's own recommended integration pattern. Only
-       invoked on demand (RazorpayCheckoutService), never auto-opens. -->
-  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+  <!-- checkout.js is NOT loaded here (2026-09-15) — it used to be, eagerly,
+       but Checkout.js pulls in its own large graph of per-payment-method
+       chunks (UPI, cards, wallets, Apple/Google Pay...) the instant it
+       initializes, which was firing on every single page (account, product
+       listing, etc.), not just checkout. RazorpayCheckoutService now injects
+       it lazily, only when `open()` is actually called. script-src above
+       still allows checkout.razorpay.com so that dynamic injection passes CSP. -->
 </head>
 <body>
   <app-root></app-root>
