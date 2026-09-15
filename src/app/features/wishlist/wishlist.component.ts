@@ -39,6 +39,14 @@ export class WishlistComponent implements OnInit {
    * placeholder icon instead of a broken-image glyph. */
   private readonly brokenThumbnails = signal<ReadonlySet<string>>(new Set());
 
+  /** Wishlist item uuids a "Notify me" click has already succeeded for, this
+   * page load — swaps that item's button to a disabled "We'll notify you"
+   * state so a customer can't fire the same request repeatedly. Keyed by
+   * wishlist item uuid (this component's own unit) rather than product
+   * uuid purely for consistency with `pendingItem`/`brokenThumbnails`
+   * above; the request itself is product-scoped server-side. */
+  readonly notifiedItems = signal<ReadonlySet<string>>(new Set());
+
   ngOnInit(): void {
     this.wishlistService.refresh();
     this.loading.set(false);
@@ -61,6 +69,22 @@ export class WishlistComponent implements OnInit {
     const { from, to } = item.product.pricing;
     if (from == null) return null;
     return from === to ? this.formatPrice(from) : `${this.formatPrice(from)} – ${this.formatPrice(to as number)}`;
+  }
+
+  notifyMe(item: WishlistItem): void {
+    if (this.notifiedItems().has(item.uuid)) return;
+    this.pendingItem.set(item.uuid);
+    this.error.set(null);
+    this.wishlistService.notifyMe(item.product.uuid).subscribe({
+      next: () => {
+        this.notifiedItems.update((set) => new Set(set).add(item.uuid));
+        this.pendingItem.set(null);
+      },
+      error: (err) => {
+        this.error.set(err?.message || 'Could not set up that notification.');
+        this.pendingItem.set(null);
+      },
+    });
   }
 
   remove(item: WishlistItem): void {

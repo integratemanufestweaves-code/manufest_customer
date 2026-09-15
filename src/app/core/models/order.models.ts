@@ -6,14 +6,13 @@
  * summary (this module post-dates `CUSTOMER_APP_TODO.md`'s "checkout is
  * entirely blocked" §7 audit).
  *
- * Scope note straight from that file's own header comment: no payment
- * gateway/courier API exists anywhere in this codebase yet — checkout is
- * COD or 'manual' (offline/bank-transfer, admin-confirmed later) only, and
- * shipping/tracking is manual courier entry. `orders.validation.js`'s
- * `checkout` schema is the source of truth for `CheckoutRequest`.
+ * `cod`/`manual` are unchanged; `razorpay` (added 2026-09-14) is the online
+ * gateway path — courier/shipping is still manual tracking entry.
+ * `orders.validation.js`'s `checkout` schema is the source of truth for
+ * `CheckoutRequest`.
  */
 
-export type PaymentMethod = 'cod' | 'manual';
+export type PaymentMethod = 'cod' | 'manual' | 'razorpay';
 
 export interface CheckoutRequest {
   addressUuid: string;
@@ -23,6 +22,29 @@ export interface CheckoutRequest {
    * the customer check out selected items instead of the whole cart.
    * Omit entirely to check out everything currently in the cart. */
   cartItemUuids?: string[];
+}
+
+/** Present on `OrderDetail` only while there's actually something to pay
+ * for a `razorpay`-method order (`payment.status === 'pending'`) — used to
+ * open Razorpay Checkout, both right after `checkout()` and again later
+ * from the order-detail page if the customer closed the popup without
+ * paying the first time (the backend hands back the SAME `orderId` each
+ * time; Razorpay accepts multiple payment attempts per order). `keyId` is
+ * Razorpay's publishable key id — safe to expose, not a secret. */
+export interface RazorpayOrderInfo {
+  orderId: string;
+  /** Paise, matching what Razorpay's own `Checkout` options expect directly. */
+  amount: number;
+  currency: string;
+  keyId: string;
+}
+
+/** What `RazorpayCheckoutService`'s `handler` callback hands back after a
+ * payment attempt — forwarded as-is to `PaymentService.verifyRazorpayPayment`. */
+export interface VerifyRazorpayPaymentRequest {
+  razorpayOrderId: string;
+  razorpayPaymentId: string;
+  razorpaySignature: string;
 }
 
 export interface OrderSummary {
@@ -122,10 +144,17 @@ export interface OrderPayment {
   method: PaymentMethod;
   status: string;
   amount: number;
+  /** Set only once a `razorpay` payment attempt actually failed (signature
+   * mismatch, gateway declined, or the order was abandoned) — `null`
+   * otherwise, including for a still-`pending` payment. */
+  failureReason: string | null;
 }
 
 export interface OrderDetail extends OrderSummary {
   shippingAddress: OrderShippingAddress;
   payment: OrderPayment | null;
+  /** See `RazorpayOrderInfo`'s own doc comment — `null` unless this order
+   * is an unpaid `razorpay` order right now. */
+  razorpayOrder: RazorpayOrderInfo | null;
   sellerGroups: OrderSellerGroup[];
 }

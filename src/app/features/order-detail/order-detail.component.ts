@@ -3,6 +3,8 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 
 import { OrderService } from '../../core/services/order.service';
+import { PaymentService } from '../../core/services/payment.service';
+import { RazorpayCheckoutService } from '../../core/services/razorpay-checkout.service';
 import { ProductService } from '../../core/services/product.service';
 import { OrderDetail, OrderItem } from '../../core/models/order.models';
 
@@ -37,6 +39,8 @@ import { OrderDetail, OrderItem } from '../../core/models/order.models';
 export class OrderDetailComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly orderService = inject(OrderService);
+  private readonly paymentService = inject(PaymentService);
+  private readonly razorpayCheckout = inject(RazorpayCheckoutService);
   private readonly productService = inject(ProductService);
 
   readonly order = signal<OrderDetail | null>(null);
@@ -60,6 +64,13 @@ export class OrderDetailComponent implements OnInit {
   readonly actionError = signal<string | null>(null);
 
   private readonly brokenThumbnails = signal<ReadonlySet<string>>(new Set());
+
+  /** In-flight state for "Complete payment" (see `order.razorpayOrder`'s
+   * own doc comment) — re-opens Checkout.js against the SAME gateway order
+   * created at checkout time, for a customer who closed the popup earlier
+   * without paying. */
+  readonly completingPayment = signal(false);
+  readonly completePaymentError = signal<string | null>(null);
 
   ngOnInit(): void {
     const orderUuid = this.route.snapshot.paramMap.get('orderUuid');
@@ -143,6 +154,37 @@ export class OrderDetailComponent implements OnInit {
         this.cancelling.set(false);
       },
     });
+  }
+
+  completePayment(): void {
+    const order = this.order();
+    if (!order?.razorpayOrder) return;
+
+    this.completePaymentError.set(null);
+    this.completingPayment.set(true);
+
+    this.razorpayCheckout
+      .open(order.razorpayOrder, { name: order.shippingAddress.recipientName, contact: order.shippingAddress.phone })
+      .then((result) => {
+        if (result.outcome === 'dismissed') {
+          this.completingPayment.set(false);
+          return;
+        }
+        this.paymentService.verifyRazorpayPayment(order.uuid, result.payload).subscribe({
+          next: (updated) => {
+            this.order.set(updated);
+            this.completingPayment.set(false);
+          },
+          error: (err) => {
+            this.completePaymentError.set(err?.message || 'Could not confirm this payment. Please try again.');
+            this.completingPayment.set(false);
+            // The verify call may have already marked the attempt failed
+            // server-side (e.g. bad signature) — reload so the payment
+            // status shown here reflects that instead of going stale.
+            this.load(order.uuid);
+          },
+        });
+      });
   }
 
   openActionForm(item: OrderItem, kind: 'return' | 'replacement'): void {

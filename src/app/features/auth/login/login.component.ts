@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink, ActivatedRoute } from '@angular/router';
 
@@ -29,7 +29,7 @@ type MobileStep = 'enter-number' | 'enter-code';
   templateUrl: './login.component.html',
   styleUrl: './login.component.scss',
 })
-export class LoginComponent {
+export class LoginComponent implements OnInit {
   private readonly auth = inject(AuthService);
   private readonly cart = inject(CartService);
   private readonly wishlist = inject(WishlistService);
@@ -39,6 +39,16 @@ export class LoginComponent {
   readonly method = signal<LoginMethod>('email');
   readonly submitting = signal(false);
   readonly error = signal<string | null>(null);
+
+  ngOnInit(): void {
+    // Set by `auth-refresh.interceptor.ts` when a session dies for real
+    // (refresh token itself missing/expired/revoked) and it force-navigates
+    // here — without this, a customer mid-checkout who got silently bounced
+    // sees a bare, unexplained login form and no idea why they're here.
+    if (this.route.snapshot.queryParamMap.get('sessionExpired') === '1') {
+      this.error.set('Your session has expired. Please log in again to continue.');
+    }
+  }
 
   // -- email + password --
   email = '';

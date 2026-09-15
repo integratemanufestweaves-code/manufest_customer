@@ -122,6 +122,13 @@
         <section class="checkout-section">
           <h2>Payment method</h2>
           <div class="payment-options">
+            <label class="payment-option" [class.payment-option--selected]="paymentMethod === 'razorpay'">
+              <input type="radio" name="paymentMethod" value="razorpay" [(ngModel)]="paymentMethod" />
+              <span>
+                <strong>Pay online</strong>
+                <small>Cards, UPI, NetBanking, or wallets — via Razorpay.</small>
+              </span>
+            </label>
             <label class="payment-option" [class.payment-option--selected]="paymentMethod === 'cod'">
               <input type="radio" name="paymentMethod" value="cod" [(ngModel)]="paymentMethod" />
               <span>
@@ -201,10 +208,10 @@
         <button
           type="button"
           class="btn btn--primary btn--full"
-          [disabled]="placingOrder() || !selectedAddressUuid || hasAnyStockIssue()"
+          [disabled]="placingOrder() || processingPayment() || !selectedAddressUuid || hasAnyStockIssue()"
           (click)="placeOrder()"
         >
-          {{ placingOrder() ? 'Placing order…' : 'Place order' }}
+          {{ processingPayment() ? 'Processing payment…' : placingOrder() ? 'Placing order…' : 'Place order' }}
         </button>
         @if (!selectedAddressUuid && !hasAnyStockIssue()) {
           <!-- The button above is disabled in this state, which means a

@@ -31,9 +31,22 @@
     means clickjacking protection (frame-ancestors, or the older
     X-Frame-Options) and CSP violation reporting must be configured at
     the hosting/CDN layer, not here.
+
+    Razorpay Checkout additions (2026-09-14): `script-src` allows
+    `checkout.razorpay.com` for the Checkout.js bundle loaded below;
+    `frame-src` (a new directive — everything else here still falls back
+    to `default-src 'self'`) allows the payment iframe Checkout.js opens
+    against `api.razorpay.com`/`checkout.razorpay.com`; `connect-src`
+    allows `api.razorpay.com` (payment status polling) and
+    `lumberjack.razorpay.com` (Razorpay's own client-side analytics beacon
+    — harmless if blocked, allowed here so it doesn't spam the console).
   -->
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: http://localhost:4000; font-src 'self' data:; connect-src 'self' https://manufestweaves.in http://localhost:4000; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://checkout.razorpay.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: http://localhost:4000; font-src 'self' data:; frame-src https://api.razorpay.com https://checkout.razorpay.com; connect-src 'self' https://manufestweaves.in http://localhost:4000 https://api.razorpay.com https://lumberjack.razorpay.com; object-src 'none'; base-uri 'self'; form-action 'self'">
   <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
+  <!-- Loaded eagerly (not lazy-injected) so it's ready the instant checkout
+       needs it — Razorpay's own recommended integration pattern. Only
+       invoked on demand (RazorpayCheckoutService), never auto-opens. -->
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 </head>
 <body>
   <app-root></app-root>

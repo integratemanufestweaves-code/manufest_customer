@@ -17,8 +17,10 @@ import { customerAuthGuard } from './core/guards/customer-auth.guard';
  * requires `authenticateCustomer`.
  *
  * Still "coming soon" (`ComingSoonComponent`) — genuinely blocked, not just
- * unbuilt, per that same audit: `notifications`/`search` (no backend
- * endpoint at all), `origin`/`weave` (no matching attribute type exists in
+ * unbuilt, per that same audit: `search` (no backend endpoint at all —
+ * `notifications` graduated out of this bucket 2026-09-14, backed by the
+ * new `customer-notifications` module and the wishlist page's "Notify me"
+ * back-in-stock flow), `origin`/`weave` (no matching attribute type exists in
  * `product_attributes_master`), `fabric`/`occasion` (attribute exists but
  * isn't exposed as a public list filter yet, or has no way to resolve a
  * uuid from this app), and everything under "footer" below (no backing
@@ -115,8 +117,9 @@ export const routes: Routes = [
 
   {
     path: 'notifications',
-    loadComponent: () => import('./shared/coming-soon/coming-soon.component').then((m) => m.ComingSoonComponent),
-    data: { pageTitle: 'Notifications', description: 'Your notifications will show up here soon.' },
+    loadComponent: () => import('./features/notifications/notifications.component').then((m) => m.NotificationsComponent),
+    title: 'Manufest Weaves — Notifications',
+    canActivate: [customerAuthGuard],
   },
   {
     path: 'search',

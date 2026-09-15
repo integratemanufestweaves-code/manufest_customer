@@ -286,7 +286,12 @@
   img {
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    // `contain`, not `cover` — a source photo bigger or a different aspect
+    // ratio than this square tile used to get cropped/zoomed by `cover`
+    // (the actual saree could end up mostly out of frame). `contain` always
+    // shows the whole image, letterboxed by the gradient background above
+    // instead of cutting it off.
+    object-fit: contain;
   }
 
   svg {
@@ -346,7 +351,10 @@
   img {
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    // Same reasoning as .cat-tile__media above — `contain` so a large/
+    // differently-shaped source photo is never cropped past recognition
+    // inside this circle, just letterboxed by the gradient behind it.
+    object-fit: contain;
   }
 }
 

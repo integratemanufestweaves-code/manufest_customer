@@ -121,8 +121,22 @@
         <section class="order-detail-card">
           <h2>Payment</h2>
           @if (orderDetail.payment; as payment) {
-            <p>{{ payment.method === 'cod' ? 'Cash on delivery' : 'Bank transfer' }}</p>
+            <p>
+              {{ payment.method === 'cod' ? 'Cash on delivery' : payment.method === 'razorpay' ? 'Paid online (Razorpay)' : 'Bank transfer' }}
+            </p>
             <p class="order-detail-card__muted">Status: {{ statusLabel(payment.status) }}</p>
+            @if (payment.failureReason) {
+              <p class="state-message state-message--error">{{ payment.failureReason }}</p>
+            }
+          }
+
+          @if (orderDetail.razorpayOrder) {
+            @if (completePaymentError()) {
+              <p class="state-message state-message--error">{{ completePaymentError() }}</p>
+            }
+            <button type="button" class="btn btn--primary" [disabled]="completingPayment()" (click)="completePayment()">
+              {{ completingPayment() ? 'Processing…' : 'Complete payment' }}
+            </button>
           }
         </section>
 

@@ -9,6 +9,10 @@ import { ProductPriceRange, ProductThumbnail } from './product.models';
 
 export interface WishlistItem {
   uuid: string;
+  /** True only if the product has at least one active variant with
+   * `is_in_stock = 1` right now — re-computed fresh on every `GET
+   * /wishlist`, not snapshotted from whenever this was wishlisted. */
+  inStock: boolean;
   product: {
     uuid: string;
     productName: string;

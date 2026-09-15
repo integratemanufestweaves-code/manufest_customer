@@ -55,6 +55,12 @@
   &--pending {
     opacity: 0.6;
   }
+
+  &--unavailable {
+    .wishlist-card__media {
+      opacity: 0.55;
+    }
+  }
 }
 
 .wishlist-card__remove {
@@ -79,6 +85,7 @@
 }
 
 .wishlist-card__media {
+  position: relative;
   aspect-ratio: 3 / 4;
   border-radius: var(--radius-sm);
   background: var(--color-bg-tint);
@@ -93,6 +100,19 @@
     height: 100%;
     object-fit: cover;
   }
+}
+
+.wishlist-card__oos-badge {
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--color-white);
+  background: rgba(20, 10, 15, 0.78);
+  padding: 4px 9px;
+  border-radius: 999px;
+  letter-spacing: 0.02em;
 }
 
 .wishlist-card__name {

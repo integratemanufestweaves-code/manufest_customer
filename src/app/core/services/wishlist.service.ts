@@ -68,4 +68,16 @@ export class WishlistService {
     const existing = this.itemsSignal().find((i) => i.product.uuid === productUuid);
     return existing ? this.remove(existing.uuid) : this.add(productUuid);
   }
+
+  /** `POST /customer/wishlist/notify-me` — registers a back-in-stock
+   * request for an out-of-stock product (see wishlist.api.js's own header
+   * comment on that route: product-level, not variant-level). Doesn't
+   * touch `itemsSignal` — this isn't a wishlist mutation, it's a separate
+   * subscription the wishlist page happens to be the one place offering. */
+  notifyMe(productUuid: string): Observable<void> {
+    return this.http.post<void>(`${this.base}/notify-me`, { productUuid }).pipe(
+      map(() => undefined),
+      catchError((err) => rethrowApiError(err)),
+    );
+  }
 }

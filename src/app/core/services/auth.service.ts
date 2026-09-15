@@ -130,6 +130,20 @@ export class AuthService {
     );
   }
 
+  /** `POST /auth/customer/refresh` — rotates the access-token cookie (and
+   * the CSRF cookie alongside it) using the long-lived refresh-token
+   * cookie, without a full re-login. Consumed by `auth-refresh.interceptor.ts`
+   * on a 401 `UNAUTHENTICATED` response; not something a component calls
+   * directly. Doesn't touch `currentUserSignal` — a successful refresh
+   * doesn't change who's logged in, only how much longer their session
+   * cookie is valid for. */
+  refresh(): Observable<{ status: string }> {
+    return this.http.post<ApiSuccess<{ status: string }>>(`${this.base}/refresh`, {}).pipe(
+      map((res) => res.data),
+      catchError((err) => rethrowApiError(err)),
+    );
+  }
+
   me(): Observable<CustomerProfile> {
     return this.http.get<ApiSuccess<CustomerProfile>>(`${this.base}/me`).pipe(
       tap((res) => this.currentUserSignal.set(res.data)),

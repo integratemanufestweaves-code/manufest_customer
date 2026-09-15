@@ -1,0 +1,46 @@
+<section class="container notifications-page">
+  <nav class="notifications-page__crumbs" aria-label="Breadcrumb">
+    <a routerLink="/">Home</a> / <span>Notifications</span>
+  </nav>
+
+  <div class="section__header">
+    <div>
+      <h1 class="notifications-page__title">Notifications</h1>
+    </div>
+    @if (items().length > 0) {
+      <button type="button" class="btn btn--outline" (click)="markAllRead()" [disabled]="markingAllRead()">
+        {{ markingAllRead() ? 'Marking…' : 'Mark all as read' }}
+      </button>
+    }
+  </div>
+
+  @if (error()) {
+    <p class="state-message state-message--error">{{ error() }}</p>
+  }
+
+  @if (loading()) {
+    <p class="state-message">Loading your notifications…</p>
+  } @else if (items().length === 0) {
+    <div class="notifications-page__empty">
+      <p>Nothing here yet.</p>
+      <p class="notifications-page__empty-hint">Ask us to notify you when an out-of-stock item comes back, from its wishlist card — this is where that alert shows up.</p>
+    </div>
+  } @else {
+    <div class="notification-list">
+      @for (notification of items(); track notification.uuid) {
+        <button type="button" class="notification-card" [class.notification-card--unread]="!notification.isRead" (click)="open(notification)">
+          @if (!notification.isRead) {
+            <span class="notification-card__dot" aria-hidden="true"></span>
+          }
+          <span class="notification-card__body">
+            <span class="notification-card__title">{{ notification.title }}</span>
+            @if (notification.message) {
+              <span class="notification-card__message">{{ notification.message }}</span>
+            }
+            <span class="notification-card__date">{{ formatDate(notification.createdAt) }}</span>
+          </span>
+        </button>
+      }
+    </div>
+  }
+</section>

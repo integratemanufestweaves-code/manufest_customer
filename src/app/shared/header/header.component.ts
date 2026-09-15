@@ -5,6 +5,7 @@ import { BRAND_ASSETS } from '../../core/constants/brand-assets';
 import { AuthService } from '../../core/services/auth.service';
 import { CartService } from '../../core/services/cart.service';
 import { WishlistService } from '../../core/services/wishlist.service';
+import { NotificationService } from '../../core/services/notification.service';
 
 interface NavLink {
   label: string;
@@ -60,11 +61,13 @@ export class HeaderComponent {
   private readonly auth = inject(AuthService);
   private readonly cartService = inject(CartService);
   private readonly wishlistService = inject(WishlistService);
+  private readonly notificationService = inject(NotificationService);
 
   readonly logoMark = BRAND_ASSETS.logoMark;
   readonly currentUser = this.auth.currentUser;
   readonly cartItemCount = this.cartService.itemCount;
   readonly wishlistItemCount = this.wishlistService.itemCount;
+  readonly notificationUnreadCount = this.notificationService.unreadCount;
 
   readonly navLinks: NavLink[] = [
     { label: 'New Arrivals', path: '/new-arrivals', icon: 'new-arrivals' },

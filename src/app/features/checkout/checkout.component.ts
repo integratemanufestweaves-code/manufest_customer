@@ -5,9 +5,11 @@ import { Router, RouterLink } from '@angular/router';
 import { CartService } from '../../core/services/cart.service';
 import { CustomerService } from '../../core/services/customer.service';
 import { OrderService } from '../../core/services/order.service';
+import { PaymentService } from '../../core/services/payment.service';
+import { RazorpayCheckoutService } from '../../core/services/razorpay-checkout.service';
 import { ProductService } from '../../core/services/product.service';
 import { Address, AddressRequest } from '../../core/models/customer.models';
-import { PaymentMethod } from '../../core/models/order.models';
+import { OrderDetail, PaymentMethod } from '../../core/models/order.models';
 import { CartItem } from '../../core/models/cart.models';
 
 /**
@@ -47,6 +49,8 @@ export class CheckoutComponent implements OnInit {
   private readonly cartService = inject(CartService);
   private readonly customerService = inject(CustomerService);
   private readonly orderService = inject(OrderService);
+  private readonly paymentService = inject(PaymentService);
+  private readonly razorpayCheckout = inject(RazorpayCheckoutService);
   private readonly productService = inject(ProductService);
   private readonly router = inject(Router);
 
@@ -178,6 +182,12 @@ export class CheckoutComponent implements OnInit {
     this.brokenThumbnails.update((set) => new Set(set).add(item.uuid));
   }
 
+  /** True once the order exists (checkout() already succeeded) and
+   * Razorpay Checkout is open/being verified — kept distinct from
+   * `placingOrder` so the button label can say "Processing payment…"
+   * instead of "Placing order…" during this phase. */
+  readonly processingPayment = signal(false);
+
   placeOrder(): void {
     if (!this.selectedAddressUuid) {
       this.placeOrderError.set('Choose a delivery address first.');
@@ -194,19 +204,74 @@ export class CheckoutComponent implements OnInit {
         ...(this.selectedUuids ? { cartItemUuids: this.selectedUuids } : {}),
       })
       .subscribe({
-        next: (order) => {
-          this.placingOrder.set(false);
-          // Only the checked-out lines were removed server-side — a partial
-          // selection can leave items behind, so refresh from the server
-          // instead of assuming the cart is now empty.
-          this.cartService.clearCheckoutSelection();
-          this.cartService.refresh();
-          this.router.navigate(['/orders', order.uuid]);
-        },
+        next: (order) => this.handleOrderCreated(order),
         error: (err) => {
-          this.placeOrderError.set(err?.message || 'Could not place your order.');
+          // This shouldn't normally fire — `hasAnyStockIssue()` already
+          // blocks the button — but it's still reachable if stock changes
+          // in the moment between this page loading and the click (someone
+          // else buys the last unit). `INSUFFICIENT_STOCK` gets a message
+          // in this page's own voice rather than the raw API text (which
+          // reads as backend-speak, e.g. "Only 0 unit(s) available for
+          // this variant right now" — accurate, but not how the rest of
+          // this page talks); refreshing the cart also means the stale
+          // `quantityAvailable` this page loaded with self-corrects, so a
+          // retry after going back to the cart reflects the real stock.
+          if (err?.code === 'INSUFFICIENT_STOCK') {
+            this.placeOrderError.set('Insufficient stock — one of the items in this order sold out just now. Go back to your cart to review it.');
+            this.cartService.refresh();
+          } else {
+            this.placeOrderError.set(err?.message || 'Could not place your order.');
+          }
           this.placingOrder.set(false);
         },
       });
+  }
+
+  /** The order row exists either way by this point (and its cart lines are
+   * already gone server-side) — a razorpay order just isn't PAID yet, so
+   * this branches into opening Checkout.js rather than navigating away
+   * immediately. */
+  private handleOrderCreated(order: OrderDetail): void {
+    if (order.razorpayOrder) {
+      this.completeRazorpayPayment(order);
+      return;
+    }
+    this.finishCheckout(order);
+  }
+
+  private finishCheckout(order: OrderDetail): void {
+    this.placingOrder.set(false);
+    this.processingPayment.set(false);
+    // Only the checked-out lines were removed server-side — a partial
+    // selection can leave items behind, so refresh from the server instead
+    // of assuming the cart is now empty.
+    this.cartService.clearCheckoutSelection();
+    this.cartService.refresh();
+    this.router.navigate(['/orders', order.uuid]);
+  }
+
+  private completeRazorpayPayment(order: OrderDetail): void {
+    this.placingOrder.set(false);
+    this.processingPayment.set(true);
+    const address = this.addresses().find((a) => a.uuid === this.selectedAddressUuid);
+
+    this.razorpayCheckout.open(order.razorpayOrder!, { name: address?.recipientName, contact: address?.phone }).then((result) => {
+      if (result.outcome === 'dismissed') {
+        // Nothing failed — the order is just still unpaid. The order-detail
+        // page offers a "Complete payment" button against this same
+        // gateway order for exactly this case.
+        this.finishCheckout(order);
+        return;
+      }
+
+      this.paymentService.verifyRazorpayPayment(order.uuid, result.payload).subscribe({
+        next: (updated) => this.finishCheckout(updated),
+        // A failed verification (bad signature, gateway declined, not yet
+        // captured) still leaves a real, retryable order behind — surface
+        // that from order-detail rather than stranding the customer on
+        // this page with no order to show for it.
+        error: () => this.finishCheckout(order),
+      });
+    });
   }
 }
