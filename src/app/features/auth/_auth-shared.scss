@@ -149,6 +149,16 @@
   &:hover {
     text-decoration: underline;
   }
+
+  &--disabled,
+  &:disabled {
+    color: var(--color-text-faint);
+    cursor: default;
+
+    &:hover {
+      text-decoration: none;
+    }
+  }
 }
 
 .auth__notice {

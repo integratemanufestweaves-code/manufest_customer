@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, OnDestroy, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 
@@ -18,7 +18,7 @@ type MobileStep = 'enter-details' | 'enter-code';
   templateUrl: './register.component.html',
   styleUrl: './register.component.scss',
 })
-export class RegisterComponent {
+export class RegisterComponent implements OnDestroy {
   private readonly auth = inject(AuthService);
   private readonly cart = inject(CartService);
   private readonly wishlist = inject(WishlistService);
@@ -54,10 +54,39 @@ export class RegisterComponent {
   private customerUuid: string | null = null;
   readonly maskedMobile = signal<string | null>(null);
   readonly otpExpiresIn = signal<number | null>(null);
+  /** Seconds left before "Resend OTP" becomes clickable again. */
+  readonly resendCountdown = signal(0);
+  readonly resending = signal(false);
+  private static readonly RESEND_DELAY_SECONDS = 20;
+  private otpTimerHandle: ReturnType<typeof setInterval> | null = null;
+
+  ngOnDestroy(): void {
+    this.clearOtpTimer();
+  }
 
   setMethod(method: RegisterMethod): void {
     this.method.set(method);
     this.error.set(null);
+  }
+
+  private clearOtpTimer(): void {
+    if (this.otpTimerHandle !== null) {
+      clearInterval(this.otpTimerHandle);
+      this.otpTimerHandle = null;
+    }
+  }
+
+  private startOtpTimer(expiresInSeconds: number | null): void {
+    this.clearOtpTimer();
+    this.otpExpiresIn.set(expiresInSeconds);
+    this.resendCountdown.set(RegisterComponent.RESEND_DELAY_SECONDS);
+    this.otpTimerHandle = setInterval(() => {
+      const expires = this.otpExpiresIn();
+      if (expires !== null) this.otpExpiresIn.set(Math.max(0, expires - 1));
+      const resend = this.resendCountdown();
+      if (resend > 0) this.resendCountdown.set(resend - 1);
+      if ((expires === null || expires <= 1) && resend <= 1) this.clearOtpTimer();
+    }, 1000);
   }
 
   private redirectAfterAuth(): void {
@@ -98,7 +127,7 @@ export class RegisterComponent {
         this.submitting.set(false);
         this.customerUuid = res.customerUuid;
         this.maskedMobile.set(res.maskedMobileNumber);
-        this.otpExpiresIn.set(res.expiresInSeconds);
+        this.startOtpTimer(res.expiresInSeconds);
         this.mobileStep.set('enter-code');
       },
       error: (err) => {
@@ -129,7 +158,24 @@ export class RegisterComponent {
     });
   }
 
+  resendOtp(): void {
+    if (!this.customerUuid || this.resendCountdown() > 0 || this.resending()) return;
+    this.error.set(null);
+    this.resending.set(true);
+    this.auth.resendOtp({ customerUuid: this.customerUuid, purpose: 'MOBILE_VERIFICATION' }).subscribe({
+      next: (res) => {
+        this.resending.set(false);
+        this.startOtpTimer(res.expiresInSeconds ?? null);
+      },
+      error: (err) => {
+        this.error.set(err?.message || 'Could not resend the code right now.');
+        this.resending.set(false);
+      },
+    });
+  }
+
   backToMobileDetails(): void {
+    this.clearOtpTimer();
     this.mobileStep.set('enter-details');
     this.otpCode = '';
     this.error.set(null);

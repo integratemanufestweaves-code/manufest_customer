@@ -73,6 +73,15 @@
           <button type="submit" class="btn btn--primary btn--full" [disabled]="submitting()">
             {{ submitting() ? 'Verifying…' : 'Verify & sign in' }}
           </button>
+          <button
+            type="button"
+            class="auth__link-btn"
+            [class.auth__link-btn--disabled]="resendCountdown() > 0 || resending()"
+            [disabled]="resendCountdown() > 0 || resending()"
+            (click)="resendOtp()"
+          >
+            {{ resending() ? 'Resending…' : resendCountdown() > 0 ? 'Resend OTP in ' + resendCountdown() + 's' : 'Resend OTP' }}
+          </button>
           <button type="button" class="auth__link-btn" (click)="backToMobileNumber()">Use a different number</button>
         </form>
       }

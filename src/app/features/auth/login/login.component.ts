@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink, ActivatedRoute } from '@angular/router';
 
@@ -29,7 +29,7 @@ type MobileStep = 'enter-number' | 'enter-code';
   templateUrl: './login.component.html',
   styleUrl: './login.component.scss',
 })
-export class LoginComponent implements OnInit {
+export class LoginComponent implements OnInit, OnDestroy {
   private readonly auth = inject(AuthService);
   private readonly cart = inject(CartService);
   private readonly wishlist = inject(WishlistService);
@@ -65,10 +65,39 @@ export class LoginComponent implements OnInit {
   private customerUuid: string | null = null;
   readonly maskedMobile = signal<string | null>(null);
   readonly otpExpiresIn = signal<number | null>(null);
+  /** Seconds left before "Resend OTP" becomes clickable again. */
+  readonly resendCountdown = signal(0);
+  readonly resending = signal(false);
+  private static readonly RESEND_DELAY_SECONDS = 20;
+  private otpTimerHandle: ReturnType<typeof setInterval> | null = null;
+
+  ngOnDestroy(): void {
+    this.clearOtpTimer();
+  }
 
   setMethod(method: LoginMethod): void {
     this.method.set(method);
     this.error.set(null);
+  }
+
+  private clearOtpTimer(): void {
+    if (this.otpTimerHandle !== null) {
+      clearInterval(this.otpTimerHandle);
+      this.otpTimerHandle = null;
+    }
+  }
+
+  private startOtpTimer(expiresInSeconds: number | null): void {
+    this.clearOtpTimer();
+    this.otpExpiresIn.set(expiresInSeconds);
+    this.resendCountdown.set(LoginComponent.RESEND_DELAY_SECONDS);
+    this.otpTimerHandle = setInterval(() => {
+      const expires = this.otpExpiresIn();
+      if (expires !== null) this.otpExpiresIn.set(Math.max(0, expires - 1));
+      const resend = this.resendCountdown();
+      if (resend > 0) this.resendCountdown.set(resend - 1);
+      if ((expires === null || expires <= 1) && resend <= 1) this.clearOtpTimer();
+    }, 1000);
   }
 
   private redirectAfterLogin(): void {
@@ -128,7 +157,7 @@ export class LoginComponent implements OnInit {
         // clean "invalid or expired code" instead of leaking anything here.
         this.customerUuid = res.customerUuid ?? null;
         this.maskedMobile.set(res.maskedMobileNumber ?? null);
-        this.otpExpiresIn.set(res.expiresInSeconds ?? null);
+        this.startOtpTimer(res.expiresInSeconds ?? null);
         this.mobileStep.set('enter-code');
       },
       error: (err) => {
@@ -159,7 +188,24 @@ export class LoginComponent implements OnInit {
     });
   }
 
+  resendOtp(): void {
+    if (!this.customerUuid || this.resendCountdown() > 0 || this.resending()) return;
+    this.error.set(null);
+    this.resending.set(true);
+    this.auth.resendOtp({ customerUuid: this.customerUuid, purpose: 'LOGIN' }).subscribe({
+      next: (res) => {
+        this.resending.set(false);
+        this.startOtpTimer(res.expiresInSeconds ?? null);
+      },
+      error: (err) => {
+        this.error.set(err?.message || 'Could not resend the code right now.');
+        this.resending.set(false);
+      },
+    });
+  }
+
   backToMobileNumber(): void {
+    this.clearOtpTimer();
     this.mobileStep.set('enter-number');
     this.otpCode = '';
     this.error.set(null);
