@@ -65,6 +65,23 @@
   }
 </section>
 
+@if (recentlyViewed().length > 0) {
+  <section class="section container">
+    <div class="section__header">
+      <div>
+        <h2 class="section__title">Recently viewed</h2>
+        <p class="section__subtitle">Pick up where you left off</p>
+      </div>
+    </div>
+
+    <div class="grid">
+      @for (item of recentlyViewed(); track item.uuid) {
+        <app-product-card [product]="item.product" />
+      }
+    </div>
+  </section>
+}
+
 <section class="section container section--tint">
   <div class="section__header">
     <div>

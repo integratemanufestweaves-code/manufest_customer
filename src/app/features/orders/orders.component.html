@@ -41,6 +41,9 @@
             @if (order.markOrderAsGift) {
               <span class="order-card__gift">Gift</span>
             }
+            @if (order.paymentStatus === 'refunded' || order.paymentStatus === 'partially_refunded') {
+              <span class="order-card__refund">{{ order.paymentStatus === 'refunded' ? 'Refunded' : 'Partially refunded' }}</span>
+            }
           </div>
         </a>
       }

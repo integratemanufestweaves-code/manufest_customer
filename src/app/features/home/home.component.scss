@@ -215,20 +215,9 @@
   background: var(--color-bg-tint);
 }
 
-.grid {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 16px;
-
-  @media (max-width: 1023px) {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
-  @media (max-width: 640px) {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
-  }
-}
+/* `.grid` (product-card grid) now lives in the global styles.scss —
+   moved 2026-09-24 once product-detail's own "You may also like" strip
+   became a second consumer. */
 
 /* Flexbox + a fixed tile width, not CSS Grid's `repeat(6, 1fr)` — the
    category count comes from `GET /public/categories/list` and can be

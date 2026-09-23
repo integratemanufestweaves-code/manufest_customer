@@ -4,7 +4,7 @@ import { ProductService } from '../../core/services/product.service';
 import { CartService } from '../../core/services/cart.service';
 import { WishlistService } from '../../core/services/wishlist.service';
 import { AuthService } from '../../core/services/auth.service';
-import { ProductSummary } from '../../core/models/product.models';
+import { ProductCardSummary } from '../../core/models/product.models';
 
 /**
  * Reusable product tile for grids (Home's "Featured Products", eventually
@@ -43,7 +43,7 @@ import { ProductSummary } from '../../core/models/product.models';
   styleUrl: './product-card.component.scss',
 })
 export class ProductCardComponent {
-  @Input({ required: true }) product!: ProductSummary;
+  @Input({ required: true }) product!: ProductCardSummary;
 
   private readonly productService = inject(ProductService);
   private readonly cartService = inject(CartService);

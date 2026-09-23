@@ -6,20 +6,30 @@ import { OrderService } from '../../core/services/order.service';
 import { PaymentService } from '../../core/services/payment.service';
 import { RazorpayCheckoutService } from '../../core/services/razorpay-checkout.service';
 import { ProductService } from '../../core/services/product.service';
-import { OrderDetail, OrderItem } from '../../core/models/order.models';
+import { ShipmentService } from '../../core/services/shipment.service';
+import { OrderDetail, OrderItem, Shipment } from '../../core/models/order.models';
+
+/** Mirrors `RETURN_WINDOW_DAYS` (backend, `manufest_be/src/config/env.schema.js`,
+ * default 7) — added 2026-09-22 alongside `RETURN_WINDOW_EXPIRED`. There's
+ * no API to read the configured value, so this is the same default,
+ * hardcoded; it only gates which buttons this page shows; the backend's
+ * own check is what's actually authoritative on every return-request call
+ * regardless of what this constant says. */
+const RETURN_WINDOW_DAYS = 7;
 
 /**
  * `GET /customer/orders/list_by_id/:orderUuid` (`orders.api.js`) — full
  * order detail: shipping address snapshot, payment, and every seller
  * group's items. Cancel/return/replacement actions call back into the same
- * module's `POST /:orderUuid/cancel`, `POST
- * /order-items/:orderItemUuid/return-request`, and `.../replacement-request`
- * — see that module's header comment for the eligibility rules each one
- * enforces server-side (cancel needs a 'pending'/'confirmed' item;
- * return/replacement need 'delivered'). Rather than duplicate that
- * eligibility logic client-side, buttons are shown a little more broadly
- * and a rejected action just surfaces the backend's own message (e.g.
- * "Nothing in this order can be cancelled").
+ * module's `POST /:orderUuid/cancel`, `POST /:orderUuid/return-request`
+ * (bulk-capable, added 2026-09-22 — omit item uuids for the whole order),
+ * and `.../order-items/:orderItemUuid/replacement-request` — see that
+ * module's header comment for the eligibility rules each one enforces
+ * server-side (cancel needs a 'pending'/'confirmed' item; return/replacement
+ * need 'delivered'). Rather than duplicate that eligibility logic
+ * client-side, buttons are shown a little more broadly and a rejected
+ * action just surfaces the backend's own message (e.g. "Nothing in this
+ * order can be cancelled").
  *
  * Cancel used to fire instantly on one click — no confirmation, no reason,
  * nothing recorded. That made it free to place-and-cancel repeatedly (each
@@ -42,6 +52,7 @@ export class OrderDetailComponent implements OnInit {
   private readonly paymentService = inject(PaymentService);
   private readonly razorpayCheckout = inject(RazorpayCheckoutService);
   private readonly productService = inject(ProductService);
+  private readonly shipmentService = inject(ShipmentService);
 
   readonly order = signal<OrderDetail | null>(null);
   readonly loading = signal(true);
@@ -56,12 +67,22 @@ export class OrderDetailComponent implements OnInit {
   readonly cancelling = signal(false);
   readonly cancelError = signal<string | null>(null);
 
-  /** `orderItemUuid` currently showing its inline return/replacement reason
-   * form, and which kind — `null` when none is open. */
-  readonly actionForm = signal<{ orderItemUuid: string; kind: 'return' | 'replacement' } | null>(null);
-  actionReason = '';
-  readonly actionSubmitting = signal(false);
-  readonly actionError = signal<string | null>(null);
+  /** Which return reason panel is open, if any — `mode: 'item'` is the
+   * inline per-item panel (mirrors the item's own row, same as
+   * replacement); `mode: 'all'` is the header-level "Return order" panel
+   * that requests every currently-`delivered` item in one bulk call. */
+  readonly returnPanel = signal<{ mode: 'item'; orderItemUuid: string } | { mode: 'all' } | null>(null);
+  returnReason = '';
+  readonly returnSubmitting = signal(false);
+  readonly returnError = signal<string | null>(null);
+
+  /** `orderItemUuid` currently showing its inline replacement reason form —
+   * `null` when none is open. Replacement is unrelated to the refund flow
+   * (untouched backend route), kept separate from `returnPanel`. */
+  readonly replacementItemUuid = signal<string | null>(null);
+  replacementReason = '';
+  readonly replacementSubmitting = signal(false);
+  readonly replacementError = signal<string | null>(null);
 
   private readonly brokenThumbnails = signal<ReadonlySet<string>>(new Set());
 
@@ -71,6 +92,15 @@ export class OrderDetailComponent implements OnInit {
    * without paying. */
   readonly completingPayment = signal(false);
   readonly completePaymentError = signal<string | null>(null);
+
+  /** `orderItemUuid` whose "Track package" panel is currently open —
+   * shipment info is fetched lazily on demand (one extra call per item
+   * expanded), not eagerly for the whole order, since most items will
+   * never be expanded in a given visit. */
+  readonly trackingOpenItemUuid = signal<string | null>(null);
+  readonly trackingLoading = signal(false);
+  readonly trackingError = signal<string | null>(null);
+  readonly trackingData = signal<Shipment | null>(null);
 
   ngOnInit(): void {
     const orderUuid = this.route.snapshot.paramMap.get('orderUuid');
@@ -110,6 +140,21 @@ export class OrderDetailComponent implements OnInit {
     return status.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase());
   }
 
+  /** Short explainer shown under a return-related item status so "Return
+   * approved" doesn't read as a dead end while the refund is still moving. */
+  returnStatusNote(status: OrderItem['itemStatus']): string | null {
+    switch (status) {
+      case 'return_requested':
+        return 'Awaiting approval';
+      case 'return_approved':
+        return 'Approved — refund is being processed';
+      case 'returned':
+        return 'Return complete';
+      default:
+        return null;
+    }
+  }
+
   thumbnailSrc(item: OrderItem): string | null {
     if (this.brokenThumbnails().has(item.uuid)) return null;
     return this.productService.mediaSrc(item.product.primaryImage);
@@ -122,6 +167,25 @@ export class OrderDetailComponent implements OnInit {
   get isCancellable(): boolean {
     const status = this.order()?.orderStatus;
     return !!status && !['cancelled', 'delivered', 'returned'].includes(status);
+  }
+
+  /** Whether at least one item is still eligible for a return request —
+   * gates the header-level "Return order" button. Requires both
+   * `delivered` and still within `RETURN_WINDOW_DAYS` — the backend
+   * silently excludes an expired item from an implicit "return everything"
+   * call rather than erroring, so this stays consistent with that. */
+  get hasReturnableItems(): boolean {
+    const order = this.order();
+    if (!order) return false;
+    return order.sellerGroups.some((group) =>
+      group.items.some((item) => item.itemStatus === 'delivered' && this.isWithinReturnWindow(item.deliveredAt)),
+    );
+  }
+
+  isWithinReturnWindow(deliveredAt: string | null): boolean {
+    if (!deliveredAt) return false;
+    const deadline = new Date(deliveredAt).getTime() + RETURN_WINDOW_DAYS * 24 * 60 * 60 * 1000;
+    return Date.now() <= deadline;
   }
 
   startCancelOrder(): void {
@@ -187,41 +251,107 @@ export class OrderDetailComponent implements OnInit {
       });
   }
 
-  openActionForm(item: OrderItem, kind: 'return' | 'replacement'): void {
-    this.actionForm.set({ orderItemUuid: item.uuid, kind });
-    this.actionReason = '';
-    this.actionError.set(null);
+  openItemReturnForm(item: OrderItem): void {
+    this.returnPanel.set({ mode: 'item', orderItemUuid: item.uuid });
+    this.returnReason = '';
+    this.returnError.set(null);
   }
 
-  closeActionForm(): void {
-    this.actionForm.set(null);
+  openOrderReturnForm(): void {
+    this.returnPanel.set({ mode: 'all' });
+    this.returnReason = '';
+    this.returnError.set(null);
   }
 
-  submitActionForm(): void {
-    const form = this.actionForm();
+  closeReturnForm(): void {
+    this.returnPanel.set(null);
+  }
+
+  confirmReturn(): void {
     const order = this.order();
-    if (!form || !order) return;
-    if (!this.actionReason.trim()) {
-      this.actionError.set('Tell us why so we can process this faster.');
+    const panel = this.returnPanel();
+    if (!order || !panel) return;
+    if (!this.returnReason.trim()) {
+      this.returnError.set('Tell us why you\'re returning this.');
       return;
     }
-    this.actionError.set(null);
-    this.actionSubmitting.set(true);
+    this.returnError.set(null);
+    this.returnSubmitting.set(true);
 
-    const request$ =
-      form.kind === 'return'
-        ? this.orderService.requestReturn(form.orderItemUuid, this.actionReason.trim())
-        : this.orderService.requestReplacement(form.orderItemUuid, this.actionReason.trim());
+    const orderItemUuids = panel.mode === 'item' ? [panel.orderItemUuid] : undefined;
 
-    request$.subscribe({
+    this.orderService.requestReturn(order.uuid, { orderItemUuids, reason: this.returnReason.trim() }).subscribe({
+      next: (updated) => {
+        this.order.set(updated);
+        this.returnSubmitting.set(false);
+        this.returnPanel.set(null);
+      },
+      error: (err) => {
+        this.returnError.set(err?.message || 'Could not submit this return request.');
+        this.returnSubmitting.set(false);
+      },
+    });
+  }
+
+  openReplacementForm(item: OrderItem): void {
+    this.replacementItemUuid.set(item.uuid);
+    this.replacementReason = '';
+    this.replacementError.set(null);
+  }
+
+  closeReplacementForm(): void {
+    this.replacementItemUuid.set(null);
+  }
+
+  submitReplacementForm(): void {
+    const orderItemUuid = this.replacementItemUuid();
+    const order = this.order();
+    if (!orderItemUuid || !order) return;
+    if (!this.replacementReason.trim()) {
+      this.replacementError.set('Tell us why so we can process this faster.');
+      return;
+    }
+    this.replacementError.set(null);
+    this.replacementSubmitting.set(true);
+
+    this.orderService.requestReplacement(orderItemUuid, this.replacementReason.trim()).subscribe({
       next: () => {
-        this.actionSubmitting.set(false);
-        this.actionForm.set(null);
+        this.replacementSubmitting.set(false);
+        this.replacementItemUuid.set(null);
         this.load(order.uuid);
       },
       error: (err) => {
-        this.actionError.set(err?.message || 'Could not submit this request.');
-        this.actionSubmitting.set(false);
+        this.replacementError.set(err?.message || 'Could not submit this request.');
+        this.replacementSubmitting.set(false);
+      },
+    });
+  }
+
+  /** A shipment only ever exists for an item a seller has actually
+   * dispatched — no point offering "Track package" any earlier. */
+  canTrackPackage(item: OrderItem): boolean {
+    return item.itemStatus === 'shipped' || item.itemStatus === 'delivered';
+  }
+
+  toggleTracking(item: OrderItem): void {
+    if (this.trackingOpenItemUuid() === item.uuid) {
+      this.trackingOpenItemUuid.set(null);
+      return;
+    }
+
+    this.trackingOpenItemUuid.set(item.uuid);
+    this.trackingData.set(null);
+    this.trackingError.set(null);
+    this.trackingLoading.set(true);
+
+    this.shipmentService.getForItem(item.uuid).subscribe({
+      next: (shipment) => {
+        this.trackingLoading.set(false);
+        this.trackingData.set(shipment);
+      },
+      error: (err) => {
+        this.trackingLoading.set(false);
+        this.trackingError.set(err?.message || 'Could not load tracking info.');
       },
     });
   }

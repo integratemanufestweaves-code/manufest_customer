@@ -14,8 +14,8 @@
  */
 export const environment = {
   production: false,
-  // apiBaseUrl: 'http://localhost:4000/api/v1',
-  apiBaseUrl: 'https://manufestweaves.in/api/v1',
+  apiBaseUrl: 'http://localhost:4000/api/v1',
+  // apiBaseUrl: 'https://manufestweaves.in/api/v1',
   csrfCookieName: 'XSRF-TOKEN',
   csrfHeaderName: 'X-XSRF-TOKEN',
   // Shows the "test environment / dummy products" notice (see

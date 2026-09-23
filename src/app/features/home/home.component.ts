@@ -4,8 +4,11 @@ import { ProductCardComponent } from '../../shared/product-card/product-card.com
 import { ResponsiveBannerComponent } from '../../shared/responsive-banner/responsive-banner.component';
 import { ProductService } from '../../core/services/product.service';
 import { CategoryService } from '../../core/services/category.service';
+import { RecentlyViewedService } from '../../core/services/recently-viewed.service';
+import { AuthService } from '../../core/services/auth.service';
 import { ProductSummary } from '../../core/models/product.models';
 import { Category } from '../../core/models/category.models';
+import { RecentlyViewedItem } from '../../core/models/recently-viewed.models';
 
 interface TrustBadge {
   title: string;
@@ -52,6 +55,12 @@ interface CustomerReview {
  *   (marketing copy, not data).
  * - Featured Products: **live**, `GET /public/products/list`, "View all"
  *   goes to the real `/new-arrivals` listing page.
+ * - Recently Viewed: **live** (added 2026-09-24, alongside
+ *   `manufest_be`'s new `recently-viewed` module), customer-only — the
+ *   section renders nothing at all (not even a heading) for a logged-out
+ *   visitor or a customer with zero recorded views, rather than showing an
+ *   empty ribbon. Views are recorded from `ProductDetailComponent`, not
+ *   here — this page only reads the list.
  * - Shop by Category: **live**, `GET /public/categories/list`; each tile
  *   goes to `/category/:categoryUuid` (`ProductListingComponent`).
  * - Shop by Occasion: **static** (added 2026-09-10) — fixed tiles using
@@ -102,6 +111,8 @@ interface CustomerReview {
 export class HomeComponent implements OnInit {
   private readonly productService = inject(ProductService);
   private readonly categoryService = inject(CategoryService);
+  private readonly recentlyViewedService = inject(RecentlyViewedService);
+  private readonly auth = inject(AuthService);
 
   readonly trustBadges: TrustBadge[] = [
     { title: 'Direct from manufacturer', desc: 'Verified units across India' },
@@ -198,6 +209,12 @@ export class HomeComponent implements OnInit {
   readonly productsLoading = signal(true);
   readonly productsError = signal<string | null>(null);
 
+  /** Stays empty for a logged-out visitor or a customer with no recorded
+   * views yet — the template renders nothing for this section in either
+   * case (see this class's header comment), so there's no dedicated
+   * loading/error state to track. */
+  readonly recentlyViewed = signal<RecentlyViewedItem[]>([]);
+
   readonly categories = signal<Category[]>([]);
   readonly categoriesLoading = signal(true);
   readonly categoriesError = signal<string | null>(null);
@@ -235,6 +252,16 @@ export class HomeComponent implements OnInit {
         this.categoriesLoading.set(false);
       },
     });
+
+    if (this.auth.isAuthenticated()) {
+      // Silently leaves `recentlyViewed` empty on failure — a personalized
+      // ribbon isn't worth showing an error banner for on the storefront
+      // home page, same reasoning as the empty-list case.
+      this.recentlyViewedService.list(10).subscribe({
+        next: (items) => this.recentlyViewed.set(items),
+        error: () => this.recentlyViewed.set([]),
+      });
+    }
   }
 
   onCategoryImageError(categoryUuid: string): void {

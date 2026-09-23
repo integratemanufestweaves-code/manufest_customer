@@ -124,6 +124,15 @@
   border-radius: 999px;
 }
 
+.order-card__refund {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--color-success);
+  background: #e7f4e8;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
 .orders-pagination {
   display: flex;
   align-items: center;

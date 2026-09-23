@@ -3,7 +3,7 @@ import { Injectable } from '@angular/core';
 import { catchError, map, Observable, throwError } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { ApiError, ApiErrorBody, ApiSuccess, CursorMeta } from '../models/api.models';
-import { ProductDetail, ProductSummary } from '../models/product.models';
+import { ProductDetail, ProductSummary, RelatedProduct } from '../models/product.models';
 
 export interface ProductPage {
   items: ProductSummary[];
@@ -75,6 +75,17 @@ export class ProductService {
 
   getProductDetail(productUuid: string): Observable<ProductDetail> {
     return this.http.get<ApiSuccess<ProductDetail>>(`${this.base}/detail/${productUuid}`).pipe(
+      map((res) => res.data),
+      catchError((err) => this.rethrow(err)),
+    );
+  }
+
+  /** `GET /public/products/detail/:productUuid/related` (added
+   * 2026-09-24) — same category as `productUuid` is a hard boundary,
+   * ranked within that by sub-category/name/price-proximity relevance.
+   * `limit` capped at 20 server-side (defaults to 8). */
+  getRelatedProducts(productUuid: string, limit = 8): Observable<RelatedProduct[]> {
+    return this.http.get<ApiSuccess<RelatedProduct[]>>(`${this.base}/detail/${productUuid}/related`, { params: { limit: String(limit) } }).pipe(
       map((res) => res.data),
       catchError((err) => this.rethrow(err)),
     );

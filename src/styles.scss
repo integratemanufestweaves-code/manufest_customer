@@ -214,6 +214,24 @@ button {
   gap: 4px;
 }
 
+/* Product-card grid — moved here from home.component.scss (2026-09-24)
+   once product-detail's own "You may also like" strip became a second
+   consumer; identical rules, just no longer duplicated per component. */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 16px;
+
+  @media (max-width: 1023px) {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  @media (max-width: 640px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+}
+
 .visually-hidden {
   position: absolute;
   width: 1px;

@@ -23,29 +23,55 @@
       <p class="order-detail-page__cancel-reason">Cancelled {{ formatDate(orderDetail.cancelledAt) }} — reason given: "{{ orderDetail.cancelReason }}"</p>
     }
 
-    @if (isCancellable) {
-      @if (!showCancelForm()) {
+    <div class="order-detail-page__actions">
+      @if (isCancellable && !showCancelForm()) {
         <button type="button" class="btn btn--outline" (click)="startCancelOrder()">Cancel order</button>
-      } @else {
-        <div class="cancel-confirm">
-          <p class="cancel-confirm__title">Are you sure you want to cancel this order?</p>
-          @if (cancelError()) {
-            <p class="state-message state-message--error">{{ cancelError() }}</p>
-          }
-          <textarea
-            rows="2"
-            placeholder="Reason for cancelling (required)"
-            [(ngModel)]="cancelReason"
-            name="cancelReason"
-          ></textarea>
-          <div class="cancel-confirm__actions">
-            <button type="button" class="btn btn--primary" [disabled]="cancelling()" (click)="confirmCancelOrder()">
-              {{ cancelling() ? 'Cancelling…' : 'Confirm cancellation' }}
-            </button>
-            <button type="button" class="btn btn--outline" [disabled]="cancelling()" (click)="closeCancelForm()">Never mind</button>
-          </div>
-        </div>
       }
+      @if (hasReturnableItems && returnPanel()?.mode !== 'all') {
+        <button type="button" class="btn btn--outline" (click)="openOrderReturnForm()">Return order</button>
+      }
+    </div>
+
+    @if (showCancelForm()) {
+      <div class="cancel-confirm">
+        <p class="cancel-confirm__title">Are you sure you want to cancel this order?</p>
+        @if (cancelError()) {
+          <p class="state-message state-message--error">{{ cancelError() }}</p>
+        }
+        <textarea
+          rows="2"
+          placeholder="Reason for cancelling (required)"
+          [(ngModel)]="cancelReason"
+          name="cancelReason"
+        ></textarea>
+        <div class="cancel-confirm__actions">
+          <button type="button" class="btn btn--primary" [disabled]="cancelling()" (click)="confirmCancelOrder()">
+            {{ cancelling() ? 'Cancelling…' : 'Confirm cancellation' }}
+          </button>
+          <button type="button" class="btn btn--outline" [disabled]="cancelling()" (click)="closeCancelForm()">Never mind</button>
+        </div>
+      </div>
+    }
+
+    @if (returnPanel()?.mode === 'all') {
+      <div class="cancel-confirm">
+        <p class="cancel-confirm__title">Return this entire order?</p>
+        @if (returnError()) {
+          <p class="state-message state-message--error">{{ returnError() }}</p>
+        }
+        <textarea
+          rows="2"
+          placeholder="Reason for returning (required)"
+          [(ngModel)]="returnReason"
+          name="returnAllReason"
+        ></textarea>
+        <div class="cancel-confirm__actions">
+          <button type="button" class="btn btn--primary" [disabled]="returnSubmitting()" (click)="confirmReturn()">
+            {{ returnSubmitting() ? 'Submitting…' : 'Confirm return request' }}
+          </button>
+          <button type="button" class="btn btn--outline" [disabled]="returnSubmitting()" (click)="closeReturnForm()">Never mind</button>
+        </div>
+      </div>
     }
 
     <div class="order-detail-layout">
@@ -76,25 +102,87 @@
                     </p>
                   }
                   <p class="order-item__status">{{ statusLabel(item.itemStatus) }}</p>
+                  @if (returnStatusNote(item.itemStatus); as note) {
+                    <p class="order-item__status-note">{{ note }}</p>
+                  } @else if (item.itemStatus === 'delivered' && !isWithinReturnWindow(item.deliveredAt)) {
+                    <p class="order-item__status-note">Return window closed</p>
+                  }
 
-                  @if (item.itemStatus === 'delivered') {
+                  @if (item.itemStatus === 'delivered' || canTrackPackage(item)) {
                     <div class="order-item__actions">
-                      <button type="button" (click)="openActionForm(item, 'return')">Return</button>
-                      <button type="button" (click)="openActionForm(item, 'replacement')">Replacement</button>
+                      @if (item.itemStatus === 'delivered' && isWithinReturnWindow(item.deliveredAt)) {
+                        <button type="button" (click)="openItemReturnForm(item)">Return</button>
+                      }
+                      @if (item.itemStatus === 'delivered') {
+                        <button type="button" (click)="openReplacementForm(item)">Replacement</button>
+                      }
+                      @if (canTrackPackage(item)) {
+                        <button type="button" (click)="toggleTracking(item)">
+                          {{ trackingOpenItemUuid() === item.uuid ? 'Hide tracking' : 'Track package' }}
+                        </button>
+                      }
                     </div>
                   }
 
-                  @if (actionForm()?.orderItemUuid === item.uuid) {
+                  @if (trackingOpenItemUuid() === item.uuid) {
+                    <div class="order-item__tracking">
+                      @if (trackingLoading()) {
+                        <p class="order-item__status-note">Loading tracking info…</p>
+                      } @else if (trackingError()) {
+                        <p class="state-message state-message--error">{{ trackingError() }}</p>
+                      } @else {
+                        @if (trackingData(); as shipment) {
+                          <p class="order-item__tracking-line"><strong>{{ shipment.courierPartner }}</strong> &middot; {{ shipment.trackingNumber }}</p>
+                          <p class="order-item__status-note">{{ statusLabel(shipment.dispatchStatus) }}</p>
+                          @if (shipment.estimatedDeliveryDate) {
+                            <p class="order-item__status-note">Estimated delivery: {{ formatDate(shipment.estimatedDeliveryDate) }}</p>
+                          }
+                          @if (shipment.events.length) {
+                            <ul class="order-item__tracking-events">
+                              @for (event of shipment.events; track event.eventDatetime) {
+                                <li>
+                                  <span class="order-item__tracking-event-status">{{ statusLabel(event.status) }}</span>
+                                  @if (event.location) { <span> — {{ event.location }}</span> }
+                                  <span class="order-item__status-note"> {{ formatDate(event.eventDatetime) }}</span>
+                                </li>
+                              }
+                            </ul>
+                          }
+                        } @else {
+                          <p class="order-item__status-note">No tracking info yet.</p>
+                        }
+                      }
+                    </div>
+                  }
+
+                  @if (returnPanel(); as panel) {
+                    @if (panel.mode === 'item' && panel.orderItemUuid === item.uuid) {
+                      <div class="order-item__action-form">
+                        <textarea rows="2" placeholder="Reason (required)" [(ngModel)]="returnReason" [name]="'return-reason-' + item.uuid"></textarea>
+                        @if (returnError()) {
+                          <p class="state-message state-message--error">{{ returnError() }}</p>
+                        }
+                        <div class="order-item__action-form-buttons">
+                          <button type="button" class="btn btn--primary" [disabled]="returnSubmitting()" (click)="confirmReturn()">
+                            {{ returnSubmitting() ? 'Submitting…' : 'Submit' }}
+                          </button>
+                          <button type="button" class="btn btn--outline" (click)="closeReturnForm()">Cancel</button>
+                        </div>
+                      </div>
+                    }
+                  }
+
+                  @if (replacementItemUuid() === item.uuid) {
                     <div class="order-item__action-form">
-                      <textarea rows="2" placeholder="Reason (required)" [(ngModel)]="actionReason" [name]="'reason-' + item.uuid"></textarea>
-                      @if (actionError()) {
-                        <p class="state-message state-message--error">{{ actionError() }}</p>
+                      <textarea rows="2" placeholder="Reason (required)" [(ngModel)]="replacementReason" [name]="'replacement-reason-' + item.uuid"></textarea>
+                      @if (replacementError()) {
+                        <p class="state-message state-message--error">{{ replacementError() }}</p>
                       }
                       <div class="order-item__action-form-buttons">
-                        <button type="button" class="btn btn--primary" [disabled]="actionSubmitting()" (click)="submitActionForm()">
-                          {{ actionSubmitting() ? 'Submitting…' : 'Submit' }}
+                        <button type="button" class="btn btn--primary" [disabled]="replacementSubmitting()" (click)="submitReplacementForm()">
+                          {{ replacementSubmitting() ? 'Submitting…' : 'Submit' }}
                         </button>
-                        <button type="button" class="btn btn--outline" (click)="closeActionForm()">Cancel</button>
+                        <button type="button" class="btn btn--outline" (click)="closeReplacementForm()">Cancel</button>
                       </div>
                     </div>
                   }
@@ -125,6 +213,11 @@
               {{ payment.method === 'cod' ? 'Cash on delivery' : payment.method === 'razorpay' ? 'Paid online (Razorpay)' : 'Bank transfer' }}
             </p>
             <p class="order-detail-card__muted">Status: {{ statusLabel(payment.status) }}</p>
+            @if (payment.refundedAmount > 0) {
+              <p class="order-detail-card__refund">
+                {{ payment.status === 'refunded' ? 'Refunded: ' : 'Refunded so far: ' }}{{ formatPrice(payment.refundedAmount) }}
+              </p>
+            }
             @if (payment.failureReason) {
               <p class="state-message state-message--error">{{ payment.failureReason }}</p>
             }

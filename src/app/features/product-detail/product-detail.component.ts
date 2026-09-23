@@ -1,10 +1,12 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ProductCardComponent } from '../../shared/product-card/product-card.component';
 import { ProductService } from '../../core/services/product.service';
 import { CartService } from '../../core/services/cart.service';
 import { WishlistService } from '../../core/services/wishlist.service';
 import { AuthService } from '../../core/services/auth.service';
-import { ProductDetail, ProductVariant } from '../../core/models/product.models';
+import { RecentlyViewedService } from '../../core/services/recently-viewed.service';
+import { ProductDetail, ProductVariant, RelatedProduct } from '../../core/models/product.models';
 
 /**
  * `GET /public/products/detail/:productUuid` — see
@@ -13,11 +15,20 @@ import { ProductDetail, ProductVariant } from '../../core/models/product.models'
  * all products yet, per the scope decisions in home.component.ts). "Add to
  * cart"/wishlist-heart wired to real `cart`/`wishlist` module calls
  * 2026-09-12 — see `CUSTOMER_APP_TODO.md`'s §2/§3.
+ *
+ * Also records this view (added 2026-09-24) — fire-and-forget `POST
+ * /customer/recently-viewed`, only when a customer session exists (see
+ * `recently-viewed.models.ts`'s header comment for why this is a separate
+ * call from the public detail fetch above, not folded into it), and shows
+ * a "You may also like" related-products strip (`GET
+ * .../related`, public, no auth needed) — both render nothing at all if
+ * there's nothing to show, same "no empty section" rule as the home
+ * page's Recently Viewed ribbon.
  */
 @Component({
   selector: 'app-product-detail',
   standalone: true,
-  imports: [RouterLink],
+  imports: [RouterLink, ProductCardComponent],
   templateUrl: './product-detail.component.html',
   styleUrl: './product-detail.component.scss',
 })
@@ -28,12 +39,15 @@ export class ProductDetailComponent implements OnInit {
   private readonly cartService = inject(CartService);
   private readonly wishlistService = inject(WishlistService);
   private readonly auth = inject(AuthService);
+  private readonly recentlyViewedService = inject(RecentlyViewedService);
 
   readonly product = signal<ProductDetail | null>(null);
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);
   readonly selectedVariant = signal<ProductVariant | null>(null);
   readonly selectedMediaUrl = signal<string | null>(null);
+
+  readonly relatedProducts = signal<RelatedProduct[]>([]);
 
   readonly addingToCart = signal(false);
   readonly addToCartError = signal<string | null>(null);
@@ -58,6 +72,19 @@ export class ProductDetailComponent implements OnInit {
         this.error.set(err?.message || 'Could not load this product right now.');
         this.loading.set(false);
       },
+    });
+
+    if (this.auth.isAuthenticated()) {
+      // Fire-and-forget — a failed view-record must never affect the page
+      // the customer is actually trying to see.
+      this.recentlyViewedService.recordView(productUuid).subscribe({ error: () => undefined });
+    }
+
+    this.productService.getRelatedProducts(productUuid).subscribe({
+      next: (related) => this.relatedProducts.set(related),
+      // Same "no error banner for a nice-to-have strip" call as the home
+      // page's Recently Viewed section.
+      error: () => this.relatedProducts.set([]),
     });
   }
 

@@ -127,5 +127,20 @@
         </div>
       </div>
     </div>
+
+    @if (relatedProducts().length > 0) {
+      <section class="section container">
+        <div class="section__header">
+          <div>
+            <h2 class="section__title">You may also like</h2>
+          </div>
+        </div>
+        <div class="grid">
+          @for (related of relatedProducts(); track related.uuid) {
+            <app-product-card [product]="related" />
+          }
+        </div>
+      </section>
+    }
   }
 }

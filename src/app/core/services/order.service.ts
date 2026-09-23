@@ -67,8 +67,18 @@ export class OrderService {
     );
   }
 
-  requestReturn(orderItemUuid: string, reason: string): Observable<{ status: string }> {
-    return this.http.post<ApiSuccess<{ status: string }>>(`${this.base}/order-items/${orderItemUuid}/return-request`, { reason }).pipe(
+  /**
+   * `POST /:orderUuid/return-request` — order-level, bulk-capable return
+   * request (added 2026-09-22 alongside the admin approval + Razorpay
+   * refund flow). Omit `orderItemUuids` to request the whole order back;
+   * pass one uuid to return a single item (replaces the old single-item
+   * `.../order-items/:orderItemUuid/return-request` call — same backend
+   * eligibility rule, every targeted item must currently be `delivered`).
+   * Unlike the old single-item call, this returns the full refreshed
+   * `OrderDetail` directly, so callers don't need a separate reload.
+   */
+  requestReturn(orderUuid: string, payload: { orderItemUuids?: string[]; reason: string }): Observable<OrderDetail> {
+    return this.http.post<ApiSuccess<OrderDetail>>(`${this.base}/${orderUuid}/return-request`, payload).pipe(
       map((res) => res.data),
       catchError((err) => rethrowApiError(err)),
     );

@@ -142,12 +142,23 @@ export interface OrderShippingAddress {
 
 export interface OrderPayment {
   method: PaymentMethod;
+  /** 'pending' | 'success' | 'failed' | 'refunded' | 'partially_refunded' —
+   * the last two only became reachable once `attemptGatewayRefund()`
+   * (backend, 2026-09) started driving refunds through Razorpay/manual
+   * bank transfer and rolling the result up onto `payments.payment_status`
+   * (added 2026-09-22 alongside `refundedAmount` below). */
   status: string;
   amount: number;
   /** Set only once a `razorpay` payment attempt actually failed (signature
    * mismatch, gateway declined, or the order was abandoned) — `null`
    * otherwise, including for a still-`pending` payment. */
   failureReason: string | null;
+  /** Sum of every `order_items.total_price` whose refund has actually
+   * completed (`refunds.refund_status === 'refunded'`) — NOT the amount
+   * merely requested or approved. 0 until a refund is fully settled, added
+   * 2026-09-22 on every order-detail response (`list_by_id`, `checkout`,
+   * `cancel`, `return-request`, `return-approve`). */
+  refundedAmount: number;
 }
 
 export interface OrderDetail extends OrderSummary {
@@ -157,4 +168,30 @@ export interface OrderDetail extends OrderSummary {
    * is an unpaid `razorpay` order right now. */
   razorpayOrder: RazorpayOrderInfo | null;
   sellerGroups: OrderSellerGroup[];
+}
+
+export type DispatchStatus = 'pending' | 'picked_up' | 'in_transit' | 'out_for_delivery' | 'delivered' | 'failed' | 'rto';
+
+export interface ShipmentTrackingEvent {
+  location: string | null;
+  remarks: string | null;
+  status: string;
+  eventDatetime: string;
+}
+
+/** `GET /customer/shipments/order-items/:orderItemUuid` (added 2026-09-23,
+ * read-only mirror of the seller-entered parcel — see
+ * `manufest_be/src/modules/shipments/shipments.api.js`'s header comment).
+ * Manual courier/tracking entry, no courier API integrated — one parcel
+ * per physical unit (`order_items` row), independent of `itemStatus`. */
+export interface Shipment {
+  uuid: string;
+  orderItemUuid: string;
+  courierPartner: string;
+  trackingNumber: string;
+  dispatchStatus: DispatchStatus;
+  dispatchDate: string | null;
+  deliveredDate: string | null;
+  estimatedDeliveryDate: string | null;
+  events: ShipmentTrackingEvent[];
 }

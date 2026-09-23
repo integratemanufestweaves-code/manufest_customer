@@ -39,19 +39,39 @@ export interface ProductPriceRange {
   to: number | null;
 }
 
-export interface ProductSummary {
+/** Minimal shape `ProductCardComponent` actually reads (uuid, name, price
+ * range, thumbnail — see that component's own header comment for why it
+ * renders nothing else). `ProductSummary` below is a structural superset,
+ * so it satisfies this for free; the narrower type also lets a slimmer
+ * response — `GET /customer/recently-viewed`'s `product` sub-object
+ * carries no `productType`/`category`/`seller`/etc — feed the same card
+ * without fabricating placeholder values for fields it never uses. */
+export interface ProductCardSummary {
   uuid: string;
   productName: string;
+  pricing: ProductPriceRange;
+  thumbnail: ProductThumbnail;
+}
+
+export interface ProductSummary extends ProductCardSummary {
   sku: string;
   productType: 'SAREE' | 'NON_SAREE' | string;
-  pricing: ProductPriceRange;
   isActive?: boolean;
   productApproval: string;
   lifecycleStatus: string;
   category?: { uuid: string; name: string };
   seller?: { uuid: string; name: string };
-  thumbnail: ProductThumbnail;
   createdAt: string;
+}
+
+/** `GET /public/products/detail/:productUuid/related` — added 2026-09-24,
+ * same shape as `ProductSummary` (`toPublicProductSummary()` reused
+ * as-is) plus the ranking score that produced this ordering. Category is
+ * a hard boundary (every result shares it with the viewed product); the
+ * score itself isn't shown anywhere, just used to order the grid the
+ * backend already returned in relevance order. */
+export interface RelatedProduct extends ProductSummary {
+  relevanceScore: number;
 }
 
 /** Per-variant pricing breakdown — `toPublicPricing()`. Detail view only. */
