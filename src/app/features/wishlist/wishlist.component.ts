@@ -5,6 +5,7 @@ import { WishlistService } from '../../core/services/wishlist.service';
 import { CartService } from '../../core/services/cart.service';
 import { ProductService } from '../../core/services/product.service';
 import { WishlistItem } from '../../core/models/wishlist.models';
+import { formatPrice } from '../../core/utils/format-price';
 
 /**
  * `GET/POST/DELETE /customer/wishlist*` (`wishlist.api.js`) — product-level,
@@ -53,7 +54,7 @@ export class WishlistComponent implements OnInit {
   }
 
   formatPrice(n: number): string {
-    return `₹${Math.round(n).toLocaleString('en-IN')}`;
+    return formatPrice(n);
   }
 
   thumbnailSrc(item: WishlistItem): string | null {

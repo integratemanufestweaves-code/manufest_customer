@@ -54,9 +54,6 @@
                 } @else {
                   <span class="cart-item__price cart-item__price--unavailable">Price unavailable</span>
                 }
-                @if (priceChanged(item)) {
-                  <span class="cart-item__price-changed">Price changed since you added this (was {{ formatPrice(item.priceAtAdd) }})</span>
-                }
               </div>
 
               @if (isOutOfStock(item)) {

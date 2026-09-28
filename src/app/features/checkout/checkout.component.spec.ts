@@ -278,4 +278,18 @@ describe('CheckoutComponent', () => {
       expect(component.thumbnailSrc(item)).toBeNull();
     });
   });
+
+  describe('price display', () => {
+    it('formatPrice keeps paise and omits them for whole rupees', () => {
+      expect(component.formatPrice(2730.9)).toBe('₹2,730.90');
+      expect(component.formatPrice(2731)).toBe('₹2,731');
+    });
+
+    it('shows the subtotal to the paisa, so it matches what Razorpay charges', () => {
+      const a = makeItem({ uuid: 'a', lineTotal: 1908.46 });
+      const b = makeItem({ uuid: 'b', lineTotal: 822.44 });
+      initWith([a, b]);
+      expect(component.formatPrice(component.checkoutSubtotal())).toBe('₹2,730.90');
+    });
+  });
 });

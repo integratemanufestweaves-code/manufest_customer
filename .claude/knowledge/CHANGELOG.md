@@ -1,5 +1,29 @@
 # Changelog
 
+## 2026-09-28 — Shared paise-aware price formatting; cart "price changed" notice removed
+- **New `core/utils/format-price.ts`:** a single `formatPrice()` for every
+  rupee amount in the app. It shows paise only when there are any
+  (`₹2,730.90`, but `₹2,731`) and uses Indian grouping (`₹1,00,000`). It
+  replaces seven copies of `` `₹${Math.round(n).toLocaleString('en-IN')}` ``
+  in the cart, checkout, order-detail, orders, product-detail, wishlist and
+  product-card components. Rounding paise away made the checkout total
+  differ from what Razorpay charged. It works in integer paise
+  (`Math.round(n * 100)`), so float noise such as `0.1 + 0.2` or `1999.999`
+  formats cleanly.
+- **Cart:** removed the "Price changed since you added this (was ₹…)" notice
+  at the user's request. That removed the `priceChanged()` method, its
+  `.cart-item__price-changed` style and its tests. `CartItem.priceAtAdd` is
+  still in the model; it just isn't displayed any more.
+- **Tests:** added `format-price.spec.ts` (whole rupees, paise, Indian
+  grouping, float noise). Added "price display" specs to the cart
+  (rendered price shows paise; the notice no longer renders) and checkout
+  (subtotal shown to the paisa). The product-card spec now expects
+  `₹1,999.60` rather than the old rounded `₹2,000`. Order-detail, orders
+  and wishlist have no spec files yet, so their `formatPrice` delegation
+  isn't directly tested.
+- **Verified:** `ng test --watch=false` shows 160/160 passing, and
+  `tsc -p tsconfig.app.json` is clean.
+
 ## 2026-09-10 (fifth pass) — Shop by Category alignment fix + real category icons
 The user flagged that the design itself has this problem too ("even the
 figma also same but its a design mistake but we should do that

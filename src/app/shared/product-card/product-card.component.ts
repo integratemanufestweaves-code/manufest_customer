@@ -5,6 +5,7 @@ import { CartService } from '../../core/services/cart.service';
 import { WishlistService } from '../../core/services/wishlist.service';
 import { AuthService } from '../../core/services/auth.service';
 import { ProductCardSummary } from '../../core/models/product.models';
+import { formatPrice } from '../../core/utils/format-price';
 
 /**
  * Reusable product tile for grids (Home's "Featured Products", eventually
@@ -74,7 +75,7 @@ export class ProductCardComponent {
   get priceLabel(): string | null {
     const { from, to } = this.product.pricing;
     if (from == null) return null;
-    const fmt = (n: number) => `₹${Math.round(n).toLocaleString('en-IN')}`;
+    const fmt = formatPrice;
     return from === to ? fmt(from) : `${fmt(from)} – ${fmt(to as number)}`;
   }
 

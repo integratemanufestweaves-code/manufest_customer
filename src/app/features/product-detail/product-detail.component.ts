@@ -7,6 +7,7 @@ import { WishlistService } from '../../core/services/wishlist.service';
 import { AuthService } from '../../core/services/auth.service';
 import { RecentlyViewedService } from '../../core/services/recently-viewed.service';
 import { ProductDetail, ProductVariant, RelatedProduct } from '../../core/models/product.models';
+import { formatPrice } from '../../core/utils/format-price';
 
 /**
  * `GET /public/products/detail/:productUuid` — see
@@ -109,7 +110,7 @@ export class ProductDetailComponent implements OnInit {
   }
 
   formatPrice(n: number): string {
-    return `₹${Math.round(n).toLocaleString('en-IN')}`;
+    return formatPrice(n);
   }
 
   get isWishlisted(): boolean {

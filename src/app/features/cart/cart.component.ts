@@ -4,6 +4,7 @@ import { Router, RouterLink } from '@angular/router';
 import { CartService } from '../../core/services/cart.service';
 import { ProductService } from '../../core/services/product.service';
 import { CartItem } from '../../core/models/cart.models';
+import { formatPrice } from '../../core/utils/format-price';
 
 /**
  * `GET/PUT/DELETE /customer/cart*` (`cart.api.js`) — see that file's own
@@ -95,12 +96,8 @@ export class CartComponent implements OnInit {
     this.loading.set(false);
   }
 
-  priceChanged(item: CartItem): boolean {
-    return item.currentPrice != null && item.currentPrice !== item.priceAtAdd;
-  }
-
   formatPrice(n: number): string {
-    return `₹${Math.round(n).toLocaleString('en-IN')}`;
+    return formatPrice(n);
   }
 
   thumbnailSrc(item: CartItem): string | null {

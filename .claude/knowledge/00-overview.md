@@ -1,6 +1,6 @@
 ---
 generated: 2026-09-08
-updated: 2026-09-10
+updated: 2026-09-28
 purpose: Entry point for Claude's knowledge base of this repo. Read this first.
 ---
 
@@ -29,6 +29,17 @@ persistent sidebar. There's no shared component library between the
 manufest_* apps, so this is copied-and-adapted, not imported — worth
 checking that sibling app's `layout/` folder before building a new
 responsive UI pattern here, since a validated one may already exist there.
+
+**Prices (2026-09-28):** every rupee amount goes through
+`core/utils/format-price.ts`'s `formatPrice()`. Components keep a thin
+`formatPrice(n)` method that delegates to it, for use in templates. It
+shows paise only when there are any (`₹1,908.46`, but `₹2,000`), with
+Indian digit grouping. Never round prices to whole rupees: they're stored
+with paise (GST/delivery are baked into `selling_price`), and the old
+`Math.round` formatting made checkout show a different total from what
+Razorpay charged. The cart deliberately shows no "Price changed since you
+added this (was ₹…)" notice. The user asked for it to be removed, so don't
+add it back.
 
 ## What's real vs. "coming soon" (updated 2026-09-12)
 **Ten** routes call a live `manufest_be` API:

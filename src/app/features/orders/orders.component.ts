@@ -5,6 +5,7 @@ import { RouterLink } from '@angular/router';
 import { OrderService } from '../../core/services/order.service';
 import { OrderSummary } from '../../core/models/order.models';
 import { OffsetMeta } from '../../core/models/api.models';
+import { formatPrice } from '../../core/utils/format-price';
 
 /** `order_status` values `recomputeOrderStatus()` (orders.api.js) can ever
  * roll an order up to — used to build the status filter dropdown without
@@ -63,7 +64,7 @@ export class OrdersComponent implements OnInit {
   }
 
   formatPrice(n: number): string {
-    return `₹${Math.round(n).toLocaleString('en-IN')}`;
+    return formatPrice(n);
   }
 
   formatDate(iso: string): string {

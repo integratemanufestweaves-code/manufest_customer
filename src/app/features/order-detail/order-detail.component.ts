@@ -8,6 +8,7 @@ import { RazorpayCheckoutService } from '../../core/services/razorpay-checkout.s
 import { ProductService } from '../../core/services/product.service';
 import { ShipmentService } from '../../core/services/shipment.service';
 import { OrderDetail, OrderItem, Shipment } from '../../core/models/order.models';
+import { formatPrice } from '../../core/utils/format-price';
 
 /** Mirrors `RETURN_WINDOW_DAYS` (backend, `manufest_be/src/config/env.schema.js`,
  * default 7) — added 2026-09-22 alongside `RETURN_WINDOW_EXPIRED`. There's
@@ -128,7 +129,7 @@ export class OrderDetailComponent implements OnInit {
   }
 
   formatPrice(n: number): string {
-    return `₹${Math.round(n).toLocaleString('en-IN')}`;
+    return formatPrice(n);
   }
 
   formatDate(iso: string | null): string {

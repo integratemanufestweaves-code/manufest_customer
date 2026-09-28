@@ -100,8 +100,13 @@ describe('ProductCardComponent', () => {
       expect(component.priceLabel).toBeNull();
     });
 
-    it('rounds fractional prices before formatting', () => {
+    it('shows paise when a price has any (never rounds them away)', () => {
       component.product = makeSummary({ pricing: { from: 1999.6, to: 1999.6 } });
+      expect(component.priceLabel).toBe('₹1,999.60');
+    });
+
+    it('omits paise for whole-rupee prices', () => {
+      component.product = makeSummary({ pricing: { from: 2000, to: 2000 } });
       expect(component.priceLabel).toBe('₹2,000');
     });
   });

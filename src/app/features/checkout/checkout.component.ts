@@ -11,6 +11,7 @@ import { ProductService } from '../../core/services/product.service';
 import { Address, AddressRequest } from '../../core/models/customer.models';
 import { OrderDetail, PaymentMethod } from '../../core/models/order.models';
 import { CartItem } from '../../core/models/cart.models';
+import { formatPrice } from '../../core/utils/format-price';
 
 /**
  * `POST /customer/orders/checkout` (`orders.api.js`) — by default converts
@@ -170,7 +171,7 @@ export class CheckoutComponent implements OnInit {
   }
 
   formatPrice(n: number): string {
-    return `₹${Math.round(n).toLocaleString('en-IN')}`;
+    return formatPrice(n);
   }
 
   thumbnailSrc(item: CartItem): string | null {

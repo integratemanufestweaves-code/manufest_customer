@@ -2,6 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting, HttpTestingController } from '@angular/common/http/testing';
 import { Router, provideRouter } from '@angular/router';
+import { By } from '@angular/platform-browser';
 import { of, throwError } from 'rxjs';
 
 import { CartComponent } from './cart.component';
@@ -306,20 +307,29 @@ describe('CartComponent', () => {
     });
   });
 
-  describe('priceChanged', () => {
-    it('is true when currentPrice differs from priceAtAdd', () => {
-      const item = makeItem({ currentPrice: 1200, priceAtAdd: 1000 });
-      expect(component.priceChanged(item)).toBeTrue();
+  describe('price display', () => {
+    it('formatPrice keeps paise and omits them for whole rupees', () => {
+      expect(component.formatPrice(1908.46)).toBe('₹1,908.46');
+      expect(component.formatPrice(2000)).toBe('₹2,000');
     });
 
-    it('is false when currentPrice is null (unavailable) rather than reporting a bogus change', () => {
-      const item = makeItem({ currentPrice: null, priceAtAdd: 1000 });
-      expect(component.priceChanged(item)).toBeFalse();
+    it('renders the current price with paise in the item row', () => {
+      fixture.detectChanges();
+      setCart([makeItem({ currentPrice: 1908.46 })]);
+      fixture.detectChanges();
+
+      const price = fixture.debugElement.query(By.css('.cart-item__price'));
+      expect(price.nativeElement.textContent.trim()).toBe('₹1,908.46');
     });
 
-    it('is false when prices match', () => {
-      const item = makeItem({ currentPrice: 1000, priceAtAdd: 1000 });
-      expect(component.priceChanged(item)).toBeFalse();
+    it('no longer shows a "Price changed since you added this" notice when the price moved', () => {
+      fixture.detectChanges();
+      setCart([makeItem({ currentPrice: 2000, priceAtAdd: 1908.46 })]);
+      fixture.detectChanges();
+
+      const row = fixture.debugElement.query(By.css('.cart-item__price-row'));
+      expect(row.nativeElement.textContent).not.toContain('Price changed');
+      expect(fixture.debugElement.query(By.css('.cart-item__price-changed'))).toBeNull();
     });
   });
 });
