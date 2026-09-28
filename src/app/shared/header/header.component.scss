@@ -122,7 +122,7 @@
   flex-direction: column;
   align-items: center;
   gap: 2px;
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   color: var(--color-text);
 
   &:hover {
@@ -342,6 +342,25 @@
 
   .header__logo-word {
     display: none;
+  }
+
+  /* Icon-only on phones — give each icon a 40px tap target (the glyphs were
+     18–20px hit areas) without changing how they look; tighter gap keeps
+     the row the same width. */
+  .header__actions {
+    gap: 2px;
+  }
+
+  .header__icon-btn {
+    justify-content: center;
+    min-width: 40px;
+    min-height: 40px;
+  }
+
+  .header__menu-toggle {
+    width: 40px;
+    height: 40px;
+    padding: 0 4px;
   }
 }
 

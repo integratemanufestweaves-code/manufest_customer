@@ -1,5 +1,5 @@
 .orders-page {
-  padding: 24px 0 64px;
+  padding-block: 24px 64px; // not `padding` — keeps .container's side gutter
 }
 
 .orders-page__crumbs {
@@ -75,7 +75,7 @@
 
 .order-card__status {
   flex-shrink: 0;
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   font-weight: 700;
   padding: 3px 10px;
   border-radius: 999px;

@@ -55,7 +55,8 @@
   border: 1px solid var(--color-border);
   background: var(--color-white);
   border-radius: var(--radius-sm);
-  padding: 9px 14px;
+  padding: 0 14px;
+  min-height: 40px;
   font-size: 0.85rem;
   font-weight: 500;
   color: var(--color-text);
@@ -77,7 +78,8 @@
   select {
     border: 1px solid var(--color-border);
     border-radius: var(--radius-sm);
-    padding: 8px 10px;
+    padding: 0 10px;
+    min-height: 40px; // matches .listing__filter-toggle beside it on mobile
     font-size: 0.85rem;
     color: var(--color-text);
     background: var(--color-white);
@@ -138,6 +140,11 @@
   color: var(--color-text-muted);
   cursor: pointer;
   padding: 0;
+  // 40px tap target around the bare × glyph (was 15×22).
+  min-width: 40px;
+  min-height: 40px;
+  align-items: center;
+  justify-content: center;
 }
 
 .listing__filter-group h3 {
@@ -302,7 +309,7 @@
   }
 
   .listing__filters-close {
-    display: block;
+    display: flex;
   }
 
   .listing__scrim {

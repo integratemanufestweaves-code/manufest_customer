@@ -168,8 +168,8 @@
 }
 
 .pd__swatch {
-  width: 30px;
-  height: 30px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   border: 2px solid var(--color-white);
   outline: 1px solid var(--color-border);
@@ -227,14 +227,20 @@
   div {
     display: flex;
     justify-content: space-between;
+    gap: 16px;
     font-size: 0.85rem;
 
+    // Label never wraps; a long value (e.g. wash-care instructions) wraps
+    // within its own column and stays right-aligned like the short ones.
     span:first-child {
       color: var(--color-text-muted);
+      flex-shrink: 0;
+      white-space: nowrap;
     }
 
     span:last-child {
       font-weight: 500;
+      text-align: right;
     }
   }
 }

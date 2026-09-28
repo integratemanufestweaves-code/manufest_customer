@@ -1,5 +1,5 @@
 .wishlist-page {
-  padding: 24px 0 64px;
+  padding-block: 24px 64px; // not `padding` — keeps .container's side gutter
 }
 
 .wishlist-page__crumbs {

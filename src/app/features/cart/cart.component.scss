@@ -1,5 +1,5 @@
 .cart-page {
-  padding: 24px 0 64px;
+  padding-block: 24px 64px; // not `padding` — keeps .container's side gutter
 }
 
 .cart-page__crumbs {
@@ -51,12 +51,14 @@
   font-size: 0.85rem;
   font-weight: 600;
   color: var(--color-text);
-  padding: 0 2px;
+  // Card padding (16px) + border (1px) — lines this checkbox up with each
+  // .cart-item's own checkbox below it.
+  padding: 0 17px;
 }
 
 .cart-item {
   display: grid;
-  grid-template-columns: auto 44px minmax(0, 1fr) auto;
+  grid-template-columns: auto 64px minmax(0, 1fr) auto;
   gap: 16px;
   align-items: start;
   padding: 16px;
@@ -74,7 +76,8 @@
   }
 
   @media (max-width: 560px) {
-    grid-template-columns: auto 32px minmax(0, 1fr);
+    grid-template-columns: auto 56px minmax(0, 1fr);
+    gap: 12px;
 
     .cart-item__actions {
       grid-column: 1 / -1;
@@ -92,8 +95,10 @@
 
 .cart-item__media {
   display: block;
-  width: 44px;
-  height: 44px;
+  // Portrait, like the product photos themselves — the old 44px square
+  // (32px track on phones, which it overflowed) showed only a sliver.
+  width: 100%;
+  aspect-ratio: 4 / 5;
   border-radius: var(--radius-sm);
   overflow: hidden;
 

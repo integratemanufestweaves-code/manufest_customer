@@ -4,7 +4,7 @@
 @use '../auth/auth-shared';
 
 .checkout-page {
-  padding: 24px 0 64px;
+  padding-block: 24px 64px; // not `padding` — keeps .container's side gutter
 }
 
 .checkout-page__crumbs {
@@ -159,7 +159,7 @@
 }
 
 .address-option__label {
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--color-accent-dark);

@@ -87,8 +87,20 @@ img {
   display: block;
 }
 
-button {
+/* Form controls don't inherit the page font by default — inputs/selects
+   were rendering in the browser's Arial next to the body's system stack. */
+button,
+input,
+select,
+textarea {
   font-family: inherit;
+}
+
+/* Native checkboxes/radios (cart select, checkout address/payment) were
+   the browser's default blue — tint them with the brand color instead. */
+input[type='checkbox'],
+input[type='radio'] {
+  accent-color: var(--color-primary);
 }
 
 .container {

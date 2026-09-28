@@ -25,8 +25,6 @@
         <a routerLink="/orders" class="account-nav__link">Orders</a>
         <a routerLink="/wishlist" class="account-nav__link">Wishlist @if (wishlistItemCount() > 0) { <span class="account-nav__badge">{{ wishlistItemCount() }}</span> }</a>
         <a routerLink="/cart" class="account-nav__link">Cart @if (cartItemCount() > 0) { <span class="account-nav__badge">{{ cartItemCount() }}</span> }</a>
-        <button type="button" class="account-nav__link" [class.account-nav__link--active]="tab() === 'profile'" (click)="setTab('profile')">Account</button>
-        <button type="button" class="account-nav__link" [class.account-nav__link--active]="tab() === 'addresses'" (click)="setTab('addresses')">Manage addresses</button>
         <button type="button" class="account-nav__link account-nav__signout" (click)="logout()">Sign out</button>
       </nav>
     </aside>
@@ -41,10 +39,17 @@
         <form class="account-form" (ngSubmit)="saveProfile()">
           <label class="account-form__photo">
             @if (profile()?.profileImage; as photoUrl) {
-              <img class="account-form__photo-preview" [src]="photoUrl" alt="" />
+              <img class="account-form__photo-preview" [src]="photoUrl" alt="" width="48" height="48" />
+            } @else {
+              <span class="account-form__photo-preview" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" width="22" height="22"><circle cx="12" cy="8" r="3.5" stroke="currentColor" stroke-width="1.5"/><path d="M4.5 20c1.4-3.6 4.4-5.5 7.5-5.5s6.1 1.9 7.5 5.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+              </span>
             }
             <input type="file" accept="image/*" (change)="onPhotoSelected($event)" [disabled]="photoUploading()" />
-            <span>{{ photoUploading() ? 'Uploading…' : (profile()?.profileImage ? 'Change profile picture' : '+ Add profile picture') }}</span>
+            <span class="account-form__photo-text">
+              {{ photoUploading() ? 'Uploading…' : (profile()?.profileImage ? 'Change profile picture' : 'Add profile picture') }}
+              <small>A square photo works best</small>
+            </span>
           </label>
           @if (photoWarning()) {
             <p class="account-form__hint">{{ photoWarning() }}</p>
@@ -54,27 +59,27 @@
             <p class="auth__error">{{ profileError() }}</p>
           }
           @if (profileSaved()) {
-            <p class="account-form__success">Profile updated.</p>
+            <p class="account-form__success" aria-live="polite">Profile updated.</p>
           }
 
           <div class="account-form__row">
             <label class="auth__field">
               <span>First name</span>
-              <input type="text" name="firstName" [(ngModel)]="firstName" required />
+              <input type="text" name="firstName" [(ngModel)]="firstName" autocomplete="given-name" required />
             </label>
             <label class="auth__field">
               <span>Last name</span>
-              <input type="text" name="lastName" [(ngModel)]="lastName" required />
+              <input type="text" name="lastName" [(ngModel)]="lastName" autocomplete="family-name" required />
             </label>
           </div>
           <div class="account-form__row">
             <label class="auth__field">
               <span>Date of birth</span>
-              <input type="date" name="dob" [(ngModel)]="dob" />
+              <input type="date" name="dob" [(ngModel)]="dob" autocomplete="bday" />
             </label>
             <label class="auth__field">
               <span>Phone</span>
-              <input type="tel" name="phone" [(ngModel)]="phone" />
+              <input type="tel" name="phone" [(ngModel)]="phone" autocomplete="tel" inputmode="tel" />
             </label>
           </div>
 
@@ -124,7 +129,7 @@
             <div class="account-form__row">
               <label class="auth__field">
                 <span>Label <span class="auth__optional">(optional)</span></span>
-                <input type="text" name="label" [(ngModel)]="addressForm.label" placeholder="Home, Work..." />
+                <input type="text" name="label" [(ngModel)]="addressForm.label" placeholder="Home, Work…" />
               </label>
               <label class="auth__field">
                 <span>Recipient name</span>

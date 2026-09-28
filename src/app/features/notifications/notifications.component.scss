@@ -1,5 +1,5 @@
 .notifications-page {
-  padding: 24px 0 64px;
+  padding-block: 24px 64px; // not `padding` — keeps .container's side gutter
 }
 
 .notifications-page__crumbs {

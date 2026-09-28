@@ -66,6 +66,14 @@ export const authRefreshInterceptor: HttpInterceptorFn = (req, next) => {
       }
 
       if (!refreshInFlight$) {
+        // Captured before the refresh attempt: only a customer who actually
+        // had a session can have it "expire". A guest has no session at all
+        // — `AuthService.bootstrap()`'s startup `/me` probe 401s for every
+        // guest on every page load, and redirecting that to the login page
+        // used to lock guests out of the whole storefront (home, listings,
+        // even /register) behind a false "session expired" notice.
+        // Protected routes stay protected by `customerAuthGuard`.
+        const hadSession = authService.isAuthenticated();
         refreshInFlight$ = authService.refresh().pipe(
           map(() => true),
           catchError(() => {
@@ -77,7 +85,9 @@ export const authRefreshInterceptor: HttpInterceptorFn = (req, next) => {
             // redirect already uses) so login lands them back where they
             // were, not just at the homepage.
             authService.clearLocalSession();
-            void router.navigate(['/login'], { queryParams: { sessionExpired: '1', redirectTo: router.url } });
+            if (hadSession) {
+              void router.navigate(['/login'], { queryParams: { sessionExpired: '1', redirectTo: router.url } });
+            }
             return of(false);
           }),
           shareReplay(1),

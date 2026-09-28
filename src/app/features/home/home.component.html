@@ -112,7 +112,7 @@
               <img [src]="tileImage(categoryImageBucket(cat.name))" [alt]="cat.name" loading="lazy" />
             }
           </div>
-          <p>{{ cat.name }} <span class="cat-tile__arrow" aria-hidden="true">&rarr;</span></p>
+          <p>{{ cat.name }}&nbsp;<span class="cat-tile__arrow" aria-hidden="true">&rarr;</span></p>
         </a>
       }
     </div>
@@ -134,7 +134,7 @@
         <span class="occasion-tile__media">
           <img [src]="tileImage(occ.bucket)" [alt]="occ.label" loading="lazy" />
         </span>
-        <p>{{ occ.label }} <span aria-hidden="true">&rarr;</span></p>
+        <p>{{ occ.label }}&nbsp;<span aria-hidden="true">&rarr;</span></p>
       </a>
     }
   </div>

@@ -244,7 +244,7 @@
 
 .cat-tile {
   display: flex;
-  flex: 0 0 170px;
+  flex: 0 0 200px;
   flex-direction: column;
   align-items: center;
   gap: 8px;
@@ -275,12 +275,12 @@
   img {
     width: 100%;
     height: 100%;
-    // `contain`, not `cover` — a source photo bigger or a different aspect
-    // ratio than this square tile used to get cropped/zoomed by `cover`
-    // (the actual saree could end up mostly out of frame). `contain` always
-    // shows the whole image, letterboxed by the gradient background above
-    // instead of cutting it off.
-    object-fit: contain;
+    // `cover` anchored to the top: the source photos are tall portraits
+    // (≈1:2), so `contain` left each one as a thin strip between two wide
+    // maroon bars. Cropping from the top keeps the face and upper drape —
+    // the recognisable part — and only trims the hem.
+    object-fit: cover;
+    object-position: center top;
   }
 
   svg {
@@ -299,12 +299,13 @@
   grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 16px;
 
+  // 3 per row below desktop — the list is always exactly 6, so 4 columns
+  // left a 4 + 2 orphan row on tablets.
   @media (max-width: 1023px) {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   @media (max-width: 640px) {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 10px;
   }
 }
@@ -340,10 +341,10 @@
   img {
     width: 100%;
     height: 100%;
-    // Same reasoning as .cat-tile__media above — `contain` so a large/
-    // differently-shaped source photo is never cropped past recognition
-    // inside this circle, just letterboxed by the gradient behind it.
-    object-fit: contain;
+    // Same reasoning as .cat-tile__media above — `cover` from the top so the
+    // 2:3 portrait fills the circle instead of sitting between maroon bars.
+    object-fit: cover;
+    object-position: center 20%;
   }
 }
 
@@ -599,6 +600,14 @@
   background: var(--color-bg-tint);
   display: block;
   border-radius: var(--radius-md);
+
+  // Stacked (single column) there's no neighbouring text column to match
+  // heights with, so the 260px floor just padded the collage with empty
+  // tint above and below — let it take its natural height.
+  @media (max-width: 767px) {
+    min-height: 0;
+    height: auto;
+  }
 }
 
 .grow__sub {
@@ -652,17 +661,26 @@
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 16px;
 
+  // Below desktop, a horizontally scrolling strip instead of a wrapped
+  // grid — 5 reviews in 3 or 2 columns always left an orphan row.
   @media (max-width: 1023px) {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: none;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(220px, 40%);
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    overscroll-behavior-x: contain;
+    padding-bottom: 8px;
   }
 
   @media (max-width: 640px) {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-auto-columns: 72%;
     gap: 12px;
   }
 }
 
 .review-card {
+  scroll-snap-align: start;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   padding: 16px;

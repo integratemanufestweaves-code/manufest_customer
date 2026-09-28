@@ -4,8 +4,16 @@
 // not a cross-component style leak.
 @use '../auth/auth-shared';
 
+// `padding-block`, not the `padding` shorthand: this element is also
+// `.container`, and a shorthand here zeroes the container's side gutter
+// (same issue as `.section` in styles.scss), leaving the page flush against
+// the screen edge on mobile.
 .account-page {
-  padding: 24px 0 64px;
+  padding-block: 24px 64px;
+
+  @media (max-width: 480px) {
+    padding-block: 16px 48px;
+  }
 }
 
 .account-page__crumbs {
@@ -24,8 +32,12 @@
   gap: 28px;
   align-items: start;
 
+  /* `minmax(0, 1fr)`, not bare `1fr`: a bare `1fr` track's minimum is its
+     content's min-content width, so an unbreakable email or a native date
+     input could push the single mobile column wider than the viewport. */
   @media (max-width: 800px) {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 20px;
   }
 }
 
@@ -35,9 +47,11 @@
   padding: 20px;
   position: sticky;
   top: calc(var(--header-height) + 16px);
+  min-width: 0;
 
   @media (max-width: 800px) {
     position: static;
+    padding: 16px;
   }
 }
 
@@ -48,6 +62,10 @@
   padding-bottom: 16px;
   margin-bottom: 12px;
   border-bottom: 1px solid var(--color-border);
+
+  > div {
+    min-width: 0;
+  }
 }
 
 .account-nav__avatar {
@@ -79,12 +97,21 @@
   margin: 2px 0 0;
   font-size: 0.76rem;
   color: var(--color-text-muted);
+  overflow-wrap: anywhere;
 }
 
 .account-nav__links {
   display: flex;
   flex-direction: column;
   gap: 4px;
+
+  /* On mobile the stacked link list turns into a wrapping row of chips so
+     it doesn't take a full screen of height above the form. */
+  @media (max-width: 800px) {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
 }
 
 .account-nav__link {
@@ -109,6 +136,18 @@
     color: var(--color-primary);
     font-weight: 600;
   }
+
+  &:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 1px;
+  }
+
+  @media (max-width: 800px) {
+    border: 1px solid var(--color-border);
+    border-radius: 999px;
+    padding: 8px 14px;
+    min-height: 40px;
+  }
 }
 
 .account-nav__badge {
@@ -125,6 +164,12 @@
   border-top: 1px solid var(--color-border);
   padding-top: 12px;
   color: var(--color-danger);
+
+  @media (max-width: 800px) {
+    margin-top: 0;
+    padding-top: 8px;
+    border-top: 1px solid var(--color-border);
+  }
 }
 
 .account-content {
@@ -153,38 +198,87 @@
     color: var(--color-primary);
     border-bottom-color: var(--color-primary);
   }
+
+  &:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: -2px;
+  }
+
+  @media (max-width: 480px) {
+    flex: 1;
+    margin-right: 0;
+    padding: 12px 4px;
+  }
 }
 
 .account-form {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  max-width: 480px;
+  width: 100%;
+  max-width: 520px;
+
+  // Every field the same height and able to shrink with its column — native
+  // date inputs otherwise render taller than text inputs and carry their own
+  // intrinsic minimum width.
+  .auth__field {
+    min-width: 0;
+
+    input,
+    select {
+      width: 100%;
+      min-width: 0;
+      min-height: 44px;
+      line-height: 1.25;
+    }
+
+    input:focus-visible,
+    select:focus-visible {
+      box-shadow: 0 0 0 3px rgba(90, 29, 64, 0.15);
+    }
+  }
+
+  > .btn {
+    min-height: 46px;
+  }
+
+  @media (max-width: 480px) {
+    gap: 14px;
+  }
 }
 
 .account-form__row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
 
   @media (max-width: 480px) {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
   }
 }
 
 .account-form__photo {
   position: relative;
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 10px;
-  width: fit-content;
-  padding: 8px 16px;
+  gap: 14px;
+  padding: 12px 14px;
   border: 1px dashed var(--color-border);
-  border-radius: var(--radius-sm);
-  font-size: 0.82rem;
+  border-radius: var(--radius-md);
+  font-size: 0.85rem;
+  font-weight: 600;
   color: var(--color-primary);
   cursor: pointer;
+
+  &:hover {
+    background: var(--color-bg-tint);
+  }
+
+  &:focus-within {
+    border-color: var(--color-primary);
+    border-style: solid;
+  }
 
   input {
     position: absolute;
@@ -195,11 +289,29 @@
 }
 
 .account-form__photo-preview {
-  width: 40px;
-  height: 40px;
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
   object-fit: cover;
   flex-shrink: 0;
+  background: var(--color-bg-tint);
+  color: var(--color-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.account-form__photo-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+
+  small {
+    font-size: 0.75rem;
+    font-weight: 400;
+    color: var(--color-text-muted);
+  }
 }
 
 .account-form__hint {
@@ -225,6 +337,15 @@
 .account-form__actions {
   display: flex;
   gap: 12px;
+
+  @media (max-width: 480px) {
+    flex-direction: column-reverse;
+
+    .btn {
+      width: 100%;
+      min-height: 46px;
+    }
+  }
 }
 
 .address-list {

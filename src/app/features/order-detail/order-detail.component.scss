@@ -1,5 +1,5 @@
 .order-detail-page {
-  padding: 24px 0 64px;
+  padding-block: 24px 64px; // not `padding` — keeps .container's side gutter
 }
 
 .order-detail-page__crumbs {
@@ -14,10 +14,15 @@
 
 .order-detail-head {
   display: flex;
+  flex-wrap: wrap; // a long order number used to push the status pill off-screen on phones
   justify-content: space-between;
   align-items: flex-start;
-  gap: 12px;
+  gap: 8px 12px;
   margin-bottom: 16px;
+
+  > div {
+    min-width: 0;
+  }
 }
 
 .order-detail-page__actions {
@@ -33,6 +38,7 @@
 .order-detail-page__title {
   font-size: 1.4rem;
   margin: 0;
+  overflow-wrap: anywhere;
 }
 
 .order-detail-page__date {
@@ -91,7 +97,7 @@
   color: var(--color-text-muted);
 
   &--sm {
-    font-size: 0.68rem;
+    font-size: 0.72rem;
     padding: 2px 8px;
   }
 
@@ -213,7 +219,7 @@
 
 .order-item__status-note {
   margin: 2px 0 0;
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   color: var(--color-text-muted);
 }
 
