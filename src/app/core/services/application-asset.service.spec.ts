@@ -64,5 +64,43 @@ describe('ApplicationAssetService', () => {
       req.flush({ success: false, error: { code: 'SERVER_ERROR', message: 'Boom' } }, { status: 500, statusText: 'Server Error' });
       expect(error.code).toBe('SERVER_ERROR');
     });
+
+    it('returns the assets together with meta.version', () => {
+      let result: any;
+      service.getActive('home_hero_banner').subscribe((r) => (result = r));
+      httpMock.expectOne((r) => r.url === `${base}/active`).flush({ success: true, data: [], meta: { version: 'abc123' } });
+      expect(result).toEqual({ assets: [], version: 'abc123' });
+    });
+
+    it('falls back to the payload as the version when the backend sends no meta.version', () => {
+      let result: any;
+      service.getActive('home_hero_banner').subscribe((r) => (result = r));
+      httpMock.expectOne((r) => r.url === `${base}/active`).flush({ success: true, data: [] });
+      expect(result.version).toBe('[]');
+    });
+  });
+
+  describe('cached set (localStorage)', () => {
+    const set = { assets: [], version: 'v1' };
+    afterEach(() => localStorage.removeItem('manufest.activeAssets.v1:home_hero_banner:'));
+
+    it('round-trips a set per placement', () => {
+      expect(service.readCachedSet('home_hero_banner')).toBeNull();
+      service.writeCachedSet('home_hero_banner', undefined, set);
+      expect(service.readCachedSet('home_hero_banner')).toEqual(set);
+      expect(service.readCachedSet('home_secondary_banner')).toBeNull();
+    });
+
+    it('treats corrupt data as no cache', () => {
+      localStorage.setItem('manufest.activeAssets.v1:home_hero_banner:', '{not json');
+      expect(service.readCachedSet('home_hero_banner')).toBeNull();
+    });
+
+    it('treats blocked storage as no cache instead of throwing', () => {
+      spyOn(localStorage, 'getItem').and.throwError('SecurityError');
+      spyOn(localStorage, 'setItem').and.throwError('QuotaExceededError');
+      expect(() => service.writeCachedSet('home_hero_banner', undefined, set)).not.toThrow();
+      expect(service.readCachedSet('home_hero_banner')).toBeNull();
+    });
   });
 });

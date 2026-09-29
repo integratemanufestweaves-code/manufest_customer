@@ -31,4 +31,7 @@ export const environment = {
   // shared/test-mode-banner). Flip to false once this is the real,
   // official launch — that's the only change needed to remove it.
   showTestBanner: true,
+  // How often an open storefront tab re-checks the live banner set
+  // (ResponsiveBannerComponent) — see environment.development.ts.
+  bannerPollMs: 15 * 60 * 1000,
 };

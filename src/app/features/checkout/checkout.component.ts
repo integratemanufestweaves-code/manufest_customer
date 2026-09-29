@@ -101,7 +101,11 @@ export class CheckoutComponent implements OnInit {
   readonly addressSaving = signal(false);
   readonly addressFormError = signal<string | null>(null);
 
-  paymentMethod: PaymentMethod = 'cod';
+  /** COD and bank transfer are switched off for launch (2026-09-29) —
+   * online payment via Razorpay only. The backend still accepts both, so
+   * flipping this back to `true` is the only change needed to re-offer them. */
+  readonly offlinePaymentsEnabled = false;
+  paymentMethod: PaymentMethod = 'razorpay';
   markOrderAsGift = false;
 
   readonly placingOrder = signal(false);

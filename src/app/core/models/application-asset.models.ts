@@ -18,6 +18,14 @@ export interface ApplicationAssetFile {
 
 export type ApplicationAssetFilesMap = Partial<Record<AssetBreakpoint, ApplicationAssetFile>>;
 
+/** One placement's live set plus the backend's fingerprint of it
+ * (`meta.version` on `GET /active`) — ResponsiveBannerComponent polls and
+ * only re-renders when `version` changes. */
+export interface ActiveAssetSet {
+  assets: ApplicationAsset[];
+  version: string;
+}
+
 export interface ApplicationAsset {
   uuid: string;
   category: string;

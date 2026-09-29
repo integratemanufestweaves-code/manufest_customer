@@ -129,20 +129,22 @@
                 <small>Cards, UPI, NetBanking, or wallets — via Razorpay.</small>
               </span>
             </label>
-            <label class="payment-option" [class.payment-option--selected]="paymentMethod === 'cod'">
-              <input type="radio" name="paymentMethod" value="cod" [(ngModel)]="paymentMethod" />
-              <span>
-                <strong>Cash on delivery</strong>
-                <small>Pay when your order arrives.</small>
-              </span>
-            </label>
-            <label class="payment-option" [class.payment-option--selected]="paymentMethod === 'manual'">
-              <input type="radio" name="paymentMethod" value="manual" [(ngModel)]="paymentMethod" />
-              <span>
-                <strong>Bank transfer</strong>
-                <small>Pay manually — we'll confirm once received, before your order ships.</small>
-              </span>
-            </label>
+            @if (offlinePaymentsEnabled) {
+              <label class="payment-option" [class.payment-option--selected]="paymentMethod === 'cod'">
+                <input type="radio" name="paymentMethod" value="cod" [(ngModel)]="paymentMethod" />
+                <span>
+                  <strong>Cash on delivery</strong>
+                  <small>Pay when your order arrives.</small>
+                </span>
+              </label>
+              <label class="payment-option" [class.payment-option--selected]="paymentMethod === 'manual'">
+                <input type="radio" name="paymentMethod" value="manual" [(ngModel)]="paymentMethod" />
+                <span>
+                  <strong>Bank transfer</strong>
+                  <small>Pay manually — we'll confirm once received, before your order ships.</small>
+                </span>
+              </label>
+            }
           </div>
 
           <label class="checkout-gift">

@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-09-29 — Checkout is online-payment only (COD and bank transfer hidden)
+- **Why:** the business isn't taking cash on delivery for now; only
+  Razorpay (cards, UPI, net banking, wallets).
+- `checkout.component.ts` has `offlinePaymentsEnabled = false` and
+  defaults `paymentMethod` to `'razorpay'`; the COD and bank-transfer
+  options in `checkout.component.html` render only when that flag is true.
+  The backend still accepts `cod`/`manual`, so flipping the flag is the
+  only change needed to bring them back.
+- The header announcement bar no longer says "Cash on delivery available".
+
 ## 2026-09-28 — Shared paise-aware price formatting; cart "price changed" notice removed
 - **New `core/utils/format-price.ts`:** a single `formatPrice()` for every
   rupee amount in the app. It shows paise only when there are any
