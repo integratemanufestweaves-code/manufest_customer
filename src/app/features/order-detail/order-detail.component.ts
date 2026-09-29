@@ -141,6 +141,30 @@ export class OrderDetailComponent implements OnInit {
     return status.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase());
   }
 
+  /** Customer-facing wording for a parcel's courier status. */
+  dispatchLabel(status: string): string {
+    const labels: Record<string, string> = {
+      pending: 'Preparing your parcel',
+      ready_to_ship: 'Packed, waiting for courier pickup',
+      pickup_scheduled: 'Courier pickup scheduled',
+      picked_up: 'Picked up by courier',
+      in_transit: 'In transit',
+      out_for_delivery: 'Out for delivery',
+      undelivered: 'Delivery attempt failed. The courier will try again',
+      delivered: 'Delivered',
+      failed: 'There is a problem with this delivery. Please contact support',
+      rto: 'Returning to seller',
+    };
+    return labels[status] ?? this.statusLabel(status);
+  }
+
+  /** A cancelled courier booking isn't a parcel on its way — show it as
+   * "no tracking yet" rather than a dead AWB. */
+  visibleShipment(shipment: Shipment | null): Shipment | null {
+    if (!shipment || shipment.dispatchStatus === 'cancelled' || !shipment.trackingNumber) return null;
+    return shipment;
+  }
+
   /** Short explainer shown under a return-related item status so "Return
    * approved" doesn't read as a dead end while the refund is still moving. */
   returnStatusNote(status: OrderItem['itemStatus']): string | null {

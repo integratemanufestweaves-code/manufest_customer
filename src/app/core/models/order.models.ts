@@ -170,7 +170,21 @@ export interface OrderDetail extends OrderSummary {
   sellerGroups: OrderSellerGroup[];
 }
 
-export type DispatchStatus = 'pending' | 'picked_up' | 'in_transit' | 'out_for_delivery' | 'delivered' | 'failed' | 'rto';
+/** Seller-entered parcels use the manual set; courier-booked (Shiprocket)
+ * parcels also report ready_to_ship, pickup_scheduled, undelivered and
+ * cancelled. */
+export type DispatchStatus =
+  | 'pending'
+  | 'ready_to_ship'
+  | 'pickup_scheduled'
+  | 'picked_up'
+  | 'in_transit'
+  | 'out_for_delivery'
+  | 'undelivered'
+  | 'delivered'
+  | 'failed'
+  | 'rto'
+  | 'cancelled';
 
 export interface ShipmentTrackingEvent {
   location: string | null;
@@ -182,13 +196,18 @@ export interface ShipmentTrackingEvent {
 /** `GET /customer/shipments/order-items/:orderItemUuid` (added 2026-09-23,
  * read-only mirror of the seller-entered parcel — see
  * `manufest_be/src/modules/shipments/shipments.api.js`'s header comment).
- * Manual courier/tracking entry, no courier API integrated — one parcel
- * per physical unit (`order_items` row), independent of `itemStatus`. */
+ * Either typed in by the seller (`provider: 'manual'`) or booked through
+ * Shiprocket (`provider: 'shiprocket'` — live courier updates, and a
+ * public `trackingUrl`). One parcel per physical unit (`order_items` row),
+ * independent of `itemStatus`. */
 export interface Shipment {
   uuid: string;
   orderItemUuid: string;
-  courierPartner: string;
-  trackingNumber: string;
+  provider: 'manual' | 'shiprocket';
+  courierPartner: string | null;
+  trackingNumber: string | null;
+  /** Courier's public tracking page (Shiprocket parcels). */
+  trackingUrl: string | null;
   dispatchStatus: DispatchStatus;
   dispatchDate: string | null;
   deliveredDate: string | null;

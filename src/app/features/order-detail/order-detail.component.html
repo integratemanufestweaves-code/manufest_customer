@@ -131,18 +131,25 @@
                       } @else if (trackingError()) {
                         <p class="state-message state-message--error">{{ trackingError() }}</p>
                       } @else {
-                        @if (trackingData(); as shipment) {
-                          <p class="order-item__tracking-line"><strong>{{ shipment.courierPartner }}</strong> &middot; {{ shipment.trackingNumber }}</p>
-                          <p class="order-item__status-note">{{ statusLabel(shipment.dispatchStatus) }}</p>
-                          @if (shipment.estimatedDeliveryDate) {
+                        @if (visibleShipment(trackingData()); as shipment) {
+                          <p class="order-item__tracking-line">
+                            <strong>{{ shipment.courierPartner }}</strong> &middot; <span translate="no">{{ shipment.trackingNumber }}</span>
+                          </p>
+                          <p class="order-item__status-note">{{ dispatchLabel(shipment.dispatchStatus) }}</p>
+                          @if (shipment.estimatedDeliveryDate && shipment.dispatchStatus !== 'delivered') {
                             <p class="order-item__status-note">Estimated delivery: {{ formatDate(shipment.estimatedDeliveryDate) }}</p>
+                          }
+                          @if (shipment.trackingUrl) {
+                            <p class="order-item__status-note">
+                              <a [href]="shipment.trackingUrl" target="_blank" rel="noopener">Track on courier website</a>
+                            </p>
                           }
                           @if (shipment.events.length) {
                             <ul class="order-item__tracking-events">
-                              @for (event of shipment.events; track event.eventDatetime) {
+                              @for (event of shipment.events; track $index) {
                                 <li>
-                                  <span class="order-item__tracking-event-status">{{ statusLabel(event.status) }}</span>
-                                  @if (event.location) { <span> — {{ event.location }}</span> }
+                                  <span class="order-item__tracking-event-status">{{ statusLabel(event.remarks || event.status) }}</span>
+                                  @if (event.location) { <span> at {{ event.location }}</span> }
                                   <span class="order-item__status-note"> {{ formatDate(event.eventDatetime) }}</span>
                                 </li>
                               }
