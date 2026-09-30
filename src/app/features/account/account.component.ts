@@ -92,8 +92,8 @@ export class AccountComponent implements OnInit, OnDestroy {
     const p = this.profile();
     if (!p) return;
     // `first_name`/`last_name` are only ever set via this form's own
-    // PATCH /profile — registration (email or mobile) only ever writes
-    // `full_name` (see auth.api.js's /register, /register/mobile). So a
+    // PATCH /profile — sign-up only ever writes `full_name` (see
+    // auth.api.js's /signup/complete). So a
     // customer who registered but never touched this form would see blank
     // name fields. Fall back to splitting `fullName` so they start populated.
     if (p.firstName || p.lastName) {

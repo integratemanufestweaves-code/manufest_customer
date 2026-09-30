@@ -54,18 +54,16 @@ export const routes: Routes = [
 
   // ---- account / auth ----
   // Backed by manufest_be's `auth` module (`/api/v1/auth/customer`) — see
-  // CUSTOMER_APP_TODO.md's §1. `login`/`register` are public; `account` is
+  // CUSTOMER_APP_TODO.md's §1. `login` is public and is the one screen for
+  // both sign-in and sign-up (mobile OTP, name asked only for new numbers);
+  // `register` just redirects there so old links keep working. `account` is
   // gated by `customerAuthGuard` (same as `cart`/`wishlist` below).
   {
     path: 'login',
     loadComponent: () => import('./features/auth/login/login.component').then((m) => m.LoginComponent),
     title: 'Manufest Weaves — Sign in',
   },
-  {
-    path: 'register',
-    loadComponent: () => import('./features/auth/register/register.component').then((m) => m.RegisterComponent),
-    title: 'Manufest Weaves — Create account',
-  },
+  { path: 'register', redirectTo: 'login', pathMatch: 'full' },
   {
     path: 'account',
     loadComponent: () => import('./features/account/account.component').then((m) => m.AccountComponent),

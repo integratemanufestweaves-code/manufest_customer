@@ -1,0 +1,29 @@
+<div class="captcha">
+  <span class="captcha__label" id="captchaLabel">Type the characters in the image</span>
+  <div class="captcha__row">
+    <div class="captcha__challenge">
+      @if (image()) {
+        <img class="captcha__image" [src]="image()" width="150" height="50" alt="Security check image" [class.captcha__image--loading]="loading()" />
+      } @else {
+        <span class="captcha__image captcha__image--empty">{{ loadFailed() ? 'Couldn’t load' : 'Loading…' }}</span>
+      }
+      <button type="button" class="captcha__refresh" (click)="refresh()" [disabled]="loading()" title="Get a new image" aria-label="Get a new image">
+        &#8635;
+      </button>
+    </div>
+    <input
+      type="text"
+      class="captcha__input"
+      name="captchaAnswer"
+      [ngModel]="answer"
+      (ngModelChange)="onAnswerInput($event)"
+      aria-labelledby="captchaLabel"
+      placeholder="Enter code"
+      autocomplete="off"
+      autocapitalize="characters"
+      spellcheck="false"
+      maxlength="8"
+      required
+    />
+  </div>
+</div>

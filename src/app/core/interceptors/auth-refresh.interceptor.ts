@@ -1,12 +1,29 @@
 import { HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
 import { inject } from '@angular/core';
-import { Router } from '@angular/router';
+import { ActivatedRouteSnapshot, Router } from '@angular/router';
 import { Observable, catchError, finalize, map, of, shareReplay, switchMap, throwError } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
+import { customerAuthGuard } from '../guards/customer-auth.guard';
 import { AuthService } from '../services/auth.service';
 
 const REFRESH_URL = `${environment.apiBaseUrl}/auth/customer/refresh`;
+const CSRF_URL = `${environment.apiBaseUrl}/auth/customer/csrf`;
+
+function hasCsrfCookie(): boolean {
+  return document.cookie.split('; ').some((c) => c.startsWith(`${environment.csrfCookieName}=`));
+}
+
+/** True when the page being shown sits behind `customerAuthGuard` (cart,
+ * checkout, account, orders...), i.e. it can't work without a session. */
+function currentPageRequiresLogin(router: Router): boolean {
+  let snapshot: ActivatedRouteSnapshot | null = router.routerState.snapshot.root;
+  while (snapshot) {
+    if (snapshot.routeConfig?.canActivate?.includes(customerAuthGuard)) return true;
+    snapshot = snapshot.firstChild;
+  }
+  return false;
+}
 
 /** Shared across every request in flight so N concurrent 401s trigger one
  * refresh call, not N — module-level (not a class field) since functional
@@ -52,7 +69,7 @@ export const authRefreshInterceptor: HttpInterceptorFn = (req, next) => {
   const authService = inject(AuthService);
   const router = inject(Router);
 
-  if (!req.url.startsWith(environment.apiBaseUrl) || req.url.startsWith(REFRESH_URL)) {
+  if (!req.url.startsWith(environment.apiBaseUrl) || req.url.startsWith(REFRESH_URL) || req.url.startsWith(CSRF_URL)) {
     return next(req);
   }
 
@@ -74,18 +91,26 @@ export const authRefreshInterceptor: HttpInterceptorFn = (req, next) => {
         // even /register) behind a false "session expired" notice.
         // Protected routes stay protected by `customerAuthGuard`.
         const hadSession = authService.isAuthenticated();
-        refreshInFlight$ = authService.refresh().pipe(
+        // POST /refresh needs the CSRF double-submit header. If the CSRF
+        // cookie is gone (it used to expire after 24h while the refresh
+        // token lasts 30 days; a browser can also drop it), fetch a fresh
+        // one first instead of letting a perfectly valid refresh token 401.
+        const csrfReady$: Observable<unknown> = hasCsrfCookie() ? of(null) : authService.primeCsrf();
+        refreshInFlight$ = csrfReady$.pipe(
+          switchMap(() => authService.refresh()),
           map(() => true),
           catchError(() => {
-            // Refresh token itself is missing/expired/invalid — this is a
-            // real "logged out" state, not a transient hiccup. Carries
-            // `sessionExpired=1` (login.component.ts shows a "please log
-            // in again" notice instead of a bare unexplained form) and
-            // `redirectTo` (the same param a manual "please sign in" guard
-            // redirect already uses) so login lands them back where they
-            // were, not just at the homepage.
+            // Refresh token itself is missing/expired/revoked — a real
+            // "logged out" state. Drop to guest. Only a page that can't work
+            // without a session (behind customerAuthGuard) is sent to the
+            // sign-in page, with `sessionExpired=1` (login.component.ts shows
+            // a notice) and `redirectTo` to come back. A public page (home,
+            // product, listing) stays put: its logged-in extras (e.g. Home's
+            // "Recently viewed") just fail quietly. Redirecting from there
+            // used to replace whatever the customer was browsing with the
+            // sign-in page, which a reload kept showing.
             authService.clearLocalSession();
-            if (hadSession) {
+            if (hadSession && currentPageRequiresLogin(router)) {
               void router.navigate(['/login'], { queryParams: { sessionExpired: '1', redirectTo: router.url } });
             }
             return of(false);

@@ -1,32 +1,46 @@
-import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, ViewChild, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router, RouterLink, ActivatedRoute } from '@angular/router';
+import { Router, ActivatedRoute } from '@angular/router';
 
+import { CaptchaAnswer } from '../../../core/models/auth.models';
 import { AuthService } from '../../../core/services/auth.service';
+import { CaptchaComponent } from '../../../shared/captcha/captcha.component';
 import { OtpInputComponent } from '../../../shared/otp-input/otp-input.component';
 import { CartService } from '../../../core/services/cart.service';
 import { WishlistService } from '../../../core/services/wishlist.service';
 
-type LoginMethod = 'email' | 'mobile';
-type MobileStep = 'enter-number' | 'enter-code';
+type Step = 'enter-number' | 'enter-code' | 'enter-name';
+
+/** Mirrors manufest_be's auth.validation.js (customerMobileNumberSchema /
+ * completeCustomerSignup.fullName) so mistakes show before a round trip.
+ * The server re-checks both regardless. */
+const MOBILE_PATTERN = /^[6-9][0-9]{9}$/;
+const NAME_PATTERN = /^[\p{L}\p{M}][\p{L}\p{M} .'-]*$/u;
+
+/** Backend codes after which the only way forward is a fresh code. */
+const RESTART_CODES = new Set(['SIGNUP_TOKEN_INVALID', 'SIGNUP_CONFLICT']);
 
 /**
- * `ui_design/Login Page.png` shows an identifier-first modal (type an
- * email/mobile, the app silently decides sign-in vs. create-account,
- * offers a Passkey option). Backend reality: two genuinely separate flows
- * (email+password, mobile+OTP) and no such "detect new vs. existing"
- * endpoint at all — see auth.api.js directly. Built as an explicit method
- * toggle instead (tabs, not silent detection) so every state is reachable
- * without guessing what a not-really-existing endpoint would return, and
- * as a full page rather than a modal — this app has no global overlay/
- * portal infrastructure yet, and building one just for this one flow
- * wasn't worth the added surface area for a first pass. Passkey/WebAuthn
- * is dropped entirely: no such concept exists anywhere in manufest_be.
+ * The only customer sign-in AND sign-up screen (`/register` redirects here).
+ * One flow for every number, matching manufest_be's auth.api.js:
+ *
+ *   1. enter-number: number + server-verified captcha, then sends a code.
+ *      The backend answers the same way whether or not the number has an
+ *      account, so this screen never says which. "Resend code" comes back
+ *      here too (new captcha every send).
+ *   2. enter-code: a correct code signs an existing customer straight in.
+ *      For a new number the backend returns a short-lived signup token
+ *      instead, and no account exists yet.
+ *   3. enter-name (new numbers only): a name is required and can't be
+ *      skipped; the account is only created when it's submitted.
+ *
+ * The signup token lives only in this component's memory, never in
+ * storage, so leaving the page abandons the sign-up cleanly.
  */
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [FormsModule, RouterLink, OtpInputComponent],
+  imports: [FormsModule, OtpInputComponent, CaptchaComponent],
   templateUrl: './login.component.html',
   styleUrl: './login.component.scss',
 })
@@ -37,48 +51,39 @@ export class LoginComponent implements OnInit, OnDestroy {
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
 
-  readonly method = signal<LoginMethod>('email');
+  /** Present only on the enter-number step. */
+  @ViewChild(CaptchaComponent) private captchaComponent?: CaptchaComponent;
+
+  readonly step = signal<Step>('enter-number');
   readonly submitting = signal(false);
   readonly error = signal<string | null>(null);
+  /** Neutral guidance (not an error), e.g. why the captcha is back. */
+  readonly notice = signal<string | null>(null);
+  readonly captcha = signal<CaptchaAnswer | null>(null);
+
+  mobileNumber = '';
+  otpCode = '';
+  fullName = '';
+  private challengeId: string | null = null;
+  private signupToken: string | null = null;
+  readonly maskedMobile = signal<string | null>(null);
+  readonly otpExpiresIn = signal<number | null>(null);
+  /** Seconds left before "Resend code" becomes clickable again. */
+  readonly resendCountdown = signal(0);
+  private otpTimerHandle: ReturnType<typeof setInterval> | null = null;
 
   ngOnInit(): void {
     // Set by `auth-refresh.interceptor.ts` when a session dies for real
     // (refresh token itself missing/expired/revoked) and it force-navigates
-    // here — without this, a customer mid-checkout who got silently bounced
-    // sees a bare, unexplained login form and no idea why they're here.
+    // here. Without this, a customer mid-checkout who got silently bounced
+    // sees a bare, unexplained sign-in form and no idea why they're here.
     if (this.route.snapshot.queryParamMap.get('sessionExpired') === '1') {
-      this.error.set('Your session has expired. Please log in again to continue.');
+      this.error.set('Your session has expired. Please sign in again to continue.');
     }
   }
 
-  // -- email + password --
-  email = '';
-  password = '';
-  readonly showForgotPassword = signal(false);
-  readonly forgotEmail = signal('');
-  readonly forgotSubmitting = signal(false);
-  readonly forgotDone = signal(false);
-
-  // -- mobile + OTP --
-  readonly mobileStep = signal<MobileStep>('enter-number');
-  mobileNumber = '';
-  otpCode = '';
-  private customerUuid: string | null = null;
-  readonly maskedMobile = signal<string | null>(null);
-  readonly otpExpiresIn = signal<number | null>(null);
-  /** Seconds left before "Resend OTP" becomes clickable again. */
-  readonly resendCountdown = signal(0);
-  readonly resending = signal(false);
-  private static readonly RESEND_DELAY_SECONDS = 20;
-  private otpTimerHandle: ReturnType<typeof setInterval> | null = null;
-
   ngOnDestroy(): void {
     this.clearOtpTimer();
-  }
-
-  setMethod(method: LoginMethod): void {
-    this.method.set(method);
-    this.error.set(null);
   }
 
   private clearOtpTimer(): void {
@@ -88,10 +93,10 @@ export class LoginComponent implements OnInit, OnDestroy {
     }
   }
 
-  private startOtpTimer(expiresInSeconds: number | null): void {
+  private startOtpTimer(expiresInSeconds: number, resendAfterSeconds: number): void {
     this.clearOtpTimer();
     this.otpExpiresIn.set(expiresInSeconds);
-    this.resendCountdown.set(LoginComponent.RESEND_DELAY_SECONDS);
+    this.resendCountdown.set(resendAfterSeconds);
     this.otpTimerHandle = setInterval(() => {
       const expires = this.otpExpiresIn();
       if (expires !== null) this.otpExpiresIn.set(Math.max(0, expires - 1));
@@ -101,77 +106,68 @@ export class LoginComponent implements OnInit, OnDestroy {
     }, 1000);
   }
 
-  private redirectAfterLogin(): void {
+  private redirectAfterSignIn(): void {
+    this.signupToken = null;
     this.cart.refresh();
     this.wishlist.refresh();
     const redirectTo = this.route.snapshot.queryParamMap.get('redirectTo');
     this.router.navigateByUrl(redirectTo || '/');
   }
 
-  submitEmailLogin(): void {
-    if (!this.email || !this.password) {
-      this.error.set('Enter your email and password.');
-      return;
-    }
-    this.error.set(null);
-    this.submitting.set(true);
-    this.auth.loginEmail({ email: this.email, password: this.password }).subscribe({
-      next: () => this.redirectAfterLogin(),
-      error: (err) => {
-        this.error.set(err?.message || 'Could not sign in — check your details and try again.');
-        this.submitting.set(false);
-      },
-    });
+  /** Back to step 1 (number kept, fresh captcha), dropping every piece of
+   * in-flight state. */
+  private restart(message: string | null, notice: string | null = null): void {
+    this.clearOtpTimer();
+    this.challengeId = null;
+    this.signupToken = null;
+    this.otpCode = '';
+    this.fullName = '';
+    this.captcha.set(null);
+    this.submitting.set(false);
+    this.step.set('enter-number');
+    this.error.set(message);
+    this.notice.set(notice);
   }
 
-  submitForgotPassword(): void {
-    if (!this.forgotEmail()) return;
-    this.forgotSubmitting.set(true);
-    this.auth.requestPasswordReset(this.forgotEmail()).subscribe({
-      next: () => {
-        this.forgotSubmitting.set(false);
-        this.forgotDone.set(true);
-      },
-      error: () => {
-        // Backend always responds success here regardless of whether the
-        // account exists (no email enumeration) — a network-level failure
-        // is the only way this branch fires.
-        this.forgotSubmitting.set(false);
-        this.forgotDone.set(true);
-      },
-    });
+  onMobileInput(value: string): void {
+    this.mobileNumber = value.replace(/\D/g, '').slice(0, 10);
   }
 
-  requestMobileOtp(): void {
-    if (!/^[0-9]{10}$/.test(this.mobileNumber)) {
+  requestOtp(): void {
+    if (!MOBILE_PATTERN.test(this.mobileNumber)) {
       this.error.set('Enter a valid 10-digit mobile number.');
       return;
     }
+    const captcha = this.captcha();
+    if (!captcha) {
+      this.error.set('Type the characters shown in the image.');
+      return;
+    }
     this.error.set(null);
     this.submitting.set(true);
-    this.auth.requestLoginOtp({ mobileNumber: this.mobileNumber }).subscribe({
+    this.auth.requestOtp(this.mobileNumber, captcha).subscribe({
       next: (res) => {
         this.submitting.set(false);
-        // Deliberately generic on the backend (no account-existence
-        // signal) — always advance to the code step; an unregistered
-        // number just never receives an SMS, verify-otp then fails with a
-        // clean "invalid or expired code" instead of leaking anything here.
-        this.customerUuid = res.customerUuid ?? null;
-        this.maskedMobile.set(res.maskedMobileNumber ?? null);
-        this.startOtpTimer(res.expiresInSeconds ?? null);
-        this.mobileStep.set('enter-code');
+        this.notice.set(null);
+        this.challengeId = res.challengeId;
+        this.maskedMobile.set(res.maskedMobileNumber);
+        this.otpCode = '';
+        this.startOtpTimer(res.expiresInSeconds, res.resendAfterSeconds);
+        this.step.set('enter-code');
       },
       error: (err) => {
-        this.error.set(err?.message || 'Could not send a code right now.');
+        // The server consumed that captcha whatever went wrong. Always
+        // continue with a fresh one.
+        this.captchaComponent?.refresh();
+        this.error.set(err?.message || 'Could not send a code right now. Please try again.');
         this.submitting.set(false);
       },
     });
   }
 
-  verifyMobileOtp(): void {
-    if (!this.customerUuid) {
-      this.error.set('That code has expired — request a new one.');
-      this.mobileStep.set('enter-number');
+  verifyOtp(): void {
+    if (!this.challengeId) {
+      this.restart('That code has expired. Request a new one.');
       return;
     }
     if (!/^[0-9]{6}$/.test(this.otpCode)) {
@@ -180,35 +176,66 @@ export class LoginComponent implements OnInit, OnDestroy {
     }
     this.error.set(null);
     this.submitting.set(true);
-    this.auth.verifyLoginOtp({ customerUuid: this.customerUuid, code: this.otpCode }).subscribe({
-      next: () => this.redirectAfterLogin(),
+    this.auth.verifyOtp({ challengeId: this.challengeId, code: this.otpCode }).subscribe({
+      next: (res) => {
+        if (res.status === 'authenticated') {
+          this.redirectAfterSignIn();
+          return;
+        }
+        this.clearOtpTimer();
+        this.challengeId = null;
+        this.signupToken = res.signupToken;
+        this.submitting.set(false);
+        this.step.set('enter-name');
+        // Same focus hand-off as account.component's focusMobileField: the
+        // field only exists once the new step has rendered.
+        setTimeout(() => document.getElementById('signupFullName')?.focus());
+      },
       error: (err) => {
-        this.error.set(err?.message || 'That code is invalid or expired.');
+        this.otpCode = '';
+        this.error.set(err?.message || 'That code is invalid or has expired.');
         this.submitting.set(false);
       },
     });
   }
 
-  resendOtp(): void {
-    if (!this.customerUuid || this.resendCountdown() > 0 || this.resending()) return;
+  completeSignup(): void {
+    if (!this.signupToken) {
+      this.restart('Please verify your mobile number again.');
+      return;
+    }
+    const name = this.fullName.trim();
+    if (name.length < 2) {
+      this.error.set('Enter your full name.');
+      return;
+    }
+    if (name.length > 150 || !NAME_PATTERN.test(name)) {
+      this.error.set("Use letters, spaces and . ' - only in your name.");
+      return;
+    }
     this.error.set(null);
-    this.resending.set(true);
-    this.auth.resendOtp({ customerUuid: this.customerUuid, purpose: 'LOGIN' }).subscribe({
-      next: (res) => {
-        this.resending.set(false);
-        this.startOtpTimer(res.expiresInSeconds ?? null);
-      },
+    this.submitting.set(true);
+    this.auth.completeSignup({ signupToken: this.signupToken, fullName: name }).subscribe({
+      next: () => this.redirectAfterSignIn(),
       error: (err) => {
-        this.error.set(err?.message || 'Could not resend the code right now.');
-        this.resending.set(false);
+        if (RESTART_CODES.has(err?.code)) {
+          this.restart(err?.message || 'Please verify your mobile number again.');
+          return;
+        }
+        this.error.set(err?.message || 'Could not create your account. Please try again.');
+        this.submitting.set(false);
       },
     });
   }
 
-  backToMobileNumber(): void {
-    this.clearOtpTimer();
-    this.mobileStep.set('enter-number');
-    this.otpCode = '';
-    this.error.set(null);
+  /** Every send needs a solved captcha, so a resend goes back to step 1
+   * with the number already filled in. */
+  resendOtp(): void {
+    if (this.resendCountdown() > 0) return;
+    this.restart(null, 'Enter the characters in the image to get a new code.');
+  }
+
+  useDifferentNumber(): void {
+    this.restart(null);
   }
 }

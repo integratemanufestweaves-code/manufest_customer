@@ -1,20 +1,17 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
-import { Observable, catchError, map, switchMap, tap } from 'rxjs';
+import { Observable, catchError, map, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { ApiSuccess } from '../models/api.models';
 import {
-  ChangePasswordRequest,
+  CaptchaAnswer,
+  CaptchaChallenge,
+  CompleteSignupRequest,
+  CompleteSignupResponse,
   CustomerProfile,
-  LoginRequest,
-  RegisterMobileRequest,
-  RegisterMobileResponse,
-  RegisterRequest,
-  RequestLoginOtpRequest,
-  RequestLoginOtpResponse,
-  ResendOtpRequest,
-  ResendOtpResponse,
+  RequestOtpResponse,
   VerifyOtpRequest,
+  VerifyOtpResponse,
 } from '../models/auth.models';
 import { rethrowApiError } from './http-error.util';
 
@@ -29,11 +26,12 @@ import { rethrowApiError } from './http-error.util';
  *
  * All calls rely on `credentials.interceptor.ts` for `withCredentials` +
  * the CSRF double-submit header — nothing here touches cookies directly.
- * `register`/`login`'s own success response is a narrower shape than
- * `GET /me` — every method that establishes a session below chains into
- * `me()` afterward so `currentUser` always ends up fully populated from
- * one canonical source, rather than juggling two response shapes in
- * component code.
+ *
+ * One mobile-OTP flow for sign-in and sign-up (`requestOtp` → `verifyOtp`
+ * → `completeSignup` for a new number). There is no email+password login,
+ * registration or password reset; the backend routes were removed, not
+ * just hidden. Every call that establishes a session returns the full
+ * `GET /me` profile shape, so `currentUser` is populated directly from it.
  */
 @Injectable({ providedIn: 'root' })
 export class AuthService {
@@ -71,53 +69,41 @@ export class AuthService {
     );
   }
 
-  registerEmail(payload: RegisterRequest): Observable<CustomerProfile> {
-    return this.http.post<ApiSuccess<{ id: string; email: string; fullName: string }>>(`${this.base}/register`, payload).pipe(
-      switchMap(() => this.me()),
-      catchError((err) => rethrowApiError(err)),
-    );
-  }
-
-  loginEmail(payload: LoginRequest): Observable<CustomerProfile> {
-    return this.http.post<ApiSuccess<{ id: string; email: string; fullName: string }>>(`${this.base}/login`, payload).pipe(
-      switchMap(() => this.me()),
-      catchError((err) => rethrowApiError(err)),
-    );
-  }
-
-  registerMobile(payload: RegisterMobileRequest): Observable<RegisterMobileResponse> {
-    return this.http.post<ApiSuccess<RegisterMobileResponse>>(`${this.base}/register/mobile`, payload).pipe(
+  /** A fresh server-verified captcha. Each one allows a single attempt. */
+  getCaptcha(): Observable<CaptchaChallenge> {
+    return this.http.get<ApiSuccess<CaptchaChallenge>>(`${this.base}/captcha`).pipe(
       map((res) => res.data),
       catchError((err) => rethrowApiError(err)),
     );
   }
 
-  verifyRegisterMobileOtp(payload: VerifyOtpRequest): Observable<CustomerProfile> {
-    return this.http.post<ApiSuccess<CustomerProfile>>(`${this.base}/register/mobile/verify-otp`, payload).pipe(
-      tap((res) => this.currentUserSignal.set(res.data)),
+  /** Sends a code to any valid number (also used for "Resend"). Needs a
+   * solved captcha every time, which the server consumes either way. */
+  requestOtp(mobileNumber: string, captcha: CaptchaAnswer): Observable<RequestOtpResponse> {
+    const body = { mobileNumber, captchaId: captcha.captchaId, captchaAnswer: captcha.answer };
+    return this.http.post<ApiSuccess<RequestOtpResponse>>(`${this.base}/otp/request`, body).pipe(
       map((res) => res.data),
       catchError((err) => rethrowApiError(err)),
     );
   }
 
-  requestLoginOtp(payload: RequestLoginOtpRequest): Observable<RequestLoginOtpResponse> {
-    return this.http.post<ApiSuccess<RequestLoginOtpResponse>>(`${this.base}/login/otp/request`, payload).pipe(
+  /** Signs in when the number has an account; otherwise returns the
+   * `name_required` step and leaves `currentUser` untouched. */
+  verifyOtp(payload: VerifyOtpRequest): Observable<VerifyOtpResponse> {
+    return this.http.post<ApiSuccess<VerifyOtpResponse>>(`${this.base}/otp/verify`, payload).pipe(
+      tap((res) => {
+        if (res.data.status === 'authenticated') this.currentUserSignal.set(res.data.customer);
+      }),
       map((res) => res.data),
       catchError((err) => rethrowApiError(err)),
     );
   }
 
-  verifyLoginOtp(payload: VerifyOtpRequest): Observable<CustomerProfile> {
-    return this.http.post<ApiSuccess<CustomerProfile>>(`${this.base}/login/otp/verify`, payload).pipe(
-      tap((res) => this.currentUserSignal.set(res.data)),
-      map((res) => res.data),
-      catchError((err) => rethrowApiError(err)),
-    );
-  }
-
-  resendOtp(payload: ResendOtpRequest): Observable<ResendOtpResponse> {
-    return this.http.post<ApiSuccess<ResendOtpResponse>>(`${this.base}/otp/resend`, payload).pipe(
-      map((res) => res.data),
+  /** Creates the account for a verified new number and signs in. */
+  completeSignup(payload: CompleteSignupRequest): Observable<CustomerProfile> {
+    return this.http.post<ApiSuccess<CompleteSignupResponse>>(`${this.base}/signup/complete`, payload).pipe(
+      tap((res) => this.currentUserSignal.set(res.data.customer)),
+      map((res) => res.data.customer),
       catchError((err) => rethrowApiError(err)),
     );
   }
@@ -147,28 +133,6 @@ export class AuthService {
   me(): Observable<CustomerProfile> {
     return this.http.get<ApiSuccess<CustomerProfile>>(`${this.base}/me`).pipe(
       tap((res) => this.currentUserSignal.set(res.data)),
-      map((res) => res.data),
-      catchError((err) => rethrowApiError(err)),
-    );
-  }
-
-  changePassword(payload: ChangePasswordRequest): Observable<{ status: string }> {
-    return this.http.post<ApiSuccess<{ status: string }>>(`${this.base}/password/change`, payload).pipe(
-      tap(() => this.currentUserSignal.set(null)),
-      map((res) => res.data),
-      catchError((err) => rethrowApiError(err)),
-    );
-  }
-
-  requestPasswordReset(email: string): Observable<{ status: string }> {
-    return this.http.post<ApiSuccess<{ status: string }>>(`${this.base}/password/reset/request`, { email }).pipe(
-      map((res) => res.data),
-      catchError((err) => rethrowApiError(err)),
-    );
-  }
-
-  confirmPasswordReset(token: string, newPassword: string): Observable<{ status: string }> {
-    return this.http.post<ApiSuccess<{ status: string }>>(`${this.base}/password/reset/confirm`, { token, newPassword }).pipe(
       map((res) => res.data),
       catchError((err) => rethrowApiError(err)),
     );

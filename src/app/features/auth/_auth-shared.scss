@@ -1,6 +1,5 @@
-// Shared by login.component.scss and register.component.scss (`@use` below)
-// — both screens are the same card-on-tint layout with a method-tab
-// switcher, so this avoids maintaining two near-identical copies.
+// The sign-in screen's card-on-tint layout (login.component.scss), also
+// `@use`d by the account and checkout pages for their form fields/errors.
 
 .auth {
   display: flex;
@@ -49,34 +48,6 @@
   margin: 0 0 4px;
   color: var(--color-text-muted);
   font-size: 0.88rem;
-}
-
-.auth__tabs {
-  display: flex;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  padding: 3px;
-  margin-bottom: 20px;
-  background: var(--color-bg-tint);
-}
-
-.auth__tabs button {
-  flex: 1;
-  border: none;
-  background: transparent;
-  padding: 9px 8px;
-  font-size: 0.82rem;
-  font-weight: 600;
-  color: var(--color-text-muted);
-  border-radius: calc(var(--radius-sm) - 2px);
-  cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease;
-
-  &.auth__tab--active {
-    background: var(--color-white);
-    color: var(--color-primary);
-    box-shadow: var(--shadow-card);
-  }
 }
 
 .auth__error {
@@ -130,12 +101,6 @@
   }
 }
 
-.auth__hint {
-  margin: -8px 0 0;
-  font-size: 0.76rem;
-  color: var(--color-text-faint);
-}
-
 .auth__link-btn {
   align-self: flex-start;
   background: none;
@@ -157,33 +122,6 @@
 
     &:hover {
       text-decoration: none;
-    }
-  }
-}
-
-.auth__notice {
-  text-align: center;
-  padding: 12px 0;
-  color: var(--color-text);
-  font-size: 0.9rem;
-
-  p {
-    margin: 0 0 12px;
-  }
-}
-
-.auth__switch {
-  text-align: center;
-  margin: 24px 0 0;
-  font-size: 0.85rem;
-  color: var(--color-text-muted);
-
-  a {
-    color: var(--color-primary);
-    font-weight: 600;
-
-    &:hover {
-      text-decoration: underline;
     }
   }
 }

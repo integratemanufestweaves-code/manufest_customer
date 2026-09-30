@@ -5,13 +5,12 @@
  * `api.models.ts` already defines the shared `ApiSuccess`/`ApiError`
  * envelope this module reuses.
  *
- * Two parallel login/register paths exist (email+password and mobile+OTP),
- * neither replacing the other — see 0042_alter_customers_for_dual_auth.sql.
- * `register`/`login`'s own success response is a narrower `{id, email,
- * fullName}` than `GET /me`'s full `toPublicCustomer()` shape; `AuthService`
- * always calls `me()` right after any successful auth action so the
- * frontend has one consistent, fully-populated `CustomerProfile` in state
- * rather than juggling two response shapes.
+ * One mobile-OTP flow covers both sign-in and sign-up:
+ * `POST /otp/request` → `POST /otp/verify` → (new numbers only)
+ * `POST /signup/complete`. The request step answers identically whether or
+ * not the number has an account; only a correct code reveals which case it
+ * is. There are no email+password shapes here because those backend routes
+ * no longer exist.
  */
 
 export interface CustomerProfile {
@@ -36,63 +35,50 @@ export interface CustomerProfile {
   dob: string | null;
 }
 
-export interface RegisterRequest {
-  email: string;
-  password: string;
-  fullName: string;
-}
-
-export interface LoginRequest {
-  email: string;
-  password: string;
-}
-
-export interface RegisterMobileRequest {
-  mobileNumber: string;
-  fullName?: string;
-}
-
-export interface RegisterMobileResponse {
-  customerUuid: string;
-  maskedMobileNumber: string;
-  otpId: number;
+/** `GET /captcha` — a server-drawn image; the answer never reaches the
+ * browser and is checked (once) by `POST /otp/request`. */
+export interface CaptchaChallenge {
+  captchaId: string;
+  /** `data:image/svg+xml;base64,...` — for an `<img>`, never inlined. */
+  image: string;
   expiresInSeconds: number;
-  isNewRegistration: boolean;
+}
+
+/** What the captcha component hands its host form once something is typed. */
+export interface CaptchaAnswer {
+  captchaId: string;
+  answer: string;
+}
+
+/** `POST /otp/request` — the same shape for every number. `challengeId` is
+ * an opaque handle for this one code; a resend returns a new one and the
+ * old code stops working. */
+export interface RequestOtpResponse {
+  challengeId: string;
+  maskedMobileNumber: string;
+  expiresInSeconds: number;
+  /** Server-side per-number cooldown before another code can be sent. */
+  resendAfterSeconds: number;
 }
 
 export interface VerifyOtpRequest {
-  customerUuid: string;
+  challengeId: string;
   code: string;
 }
 
-export interface RequestLoginOtpRequest {
-  mobileNumber: string;
+/** `POST /otp/verify` with the right code: an existing account is signed in
+ * (session cookies set); a new number gets a short-lived, single-use
+ * `signupToken` for the name step instead (no session yet, no account). */
+export type VerifyOtpResponse =
+  | { status: 'authenticated'; customer: CustomerProfile }
+  | { status: 'name_required'; signupToken: string; expiresInSeconds: number; maskedMobileNumber: string };
+
+export interface CompleteSignupRequest {
+  signupToken: string;
+  fullName: string;
 }
 
-/** Deliberately vague on failure (no `customerUuid` etc.) so this can't be
- * used to enumerate accounts — see auth.api.js's own comment. */
-export interface RequestLoginOtpResponse {
-  acknowledged: true;
-  customerUuid?: string;
-  maskedMobileNumber?: string;
-  otpId?: number;
-  expiresInSeconds?: number;
-}
-
-export type OtpPurpose = 'MOBILE_VERIFICATION' | 'LOGIN';
-
-export interface ResendOtpRequest {
-  customerUuid: string;
-  purpose: OtpPurpose;
-}
-
-export interface ResendOtpResponse {
-  customerUuid: string;
-  otpId: number;
-  expiresInSeconds: number;
-}
-
-export interface ChangePasswordRequest {
-  currentPassword: string;
-  newPassword: string;
+export interface CompleteSignupResponse {
+  status: 'authenticated';
+  customer: CustomerProfile;
 }
