@@ -191,7 +191,19 @@ export class OrderDetailComponent implements OnInit {
 
   get isCancellable(): boolean {
     const status = this.order()?.orderStatus;
-    return !!status && !['cancelled', 'delivered', 'returned'].includes(status);
+    return !!status && !this.isUnplaced && !['cancelled', 'delivered', 'returned'].includes(status);
+  }
+
+  /** An online checkout that isn't an order yet (see the backend's
+   * orderStatus.js): still waiting on Razorpay, or never paid. */
+  get isUnplaced(): boolean {
+    const status = this.order()?.orderStatus;
+    return status === 'awaiting_payment' || status === 'payment_processing' || status === 'payment_failed';
+  }
+
+  checkPaymentAgain(): void {
+    const order = this.order();
+    if (order) this.load(order.uuid);
   }
 
   /** Whether at least one item is still eligible for a return request —
@@ -256,7 +268,16 @@ export class OrderDetailComponent implements OnInit {
       .open(order.razorpayOrder, { name: order.shippingAddress.recipientName, contact: order.shippingAddress.phone })
       .then((result) => {
         if (result.outcome === 'dismissed') {
-          this.completingPayment.set(false);
+          // Let the backend settle it with Razorpay (placed, still
+          // processing, or not placed) — only matters for an online
+          // checkout that isn't an order yet; anything else is returned as-is.
+          this.paymentService.dismissRazorpayPayment(order.uuid).subscribe({
+            next: (updated) => {
+              this.order.set(updated);
+              this.completingPayment.set(false);
+            },
+            error: () => this.completingPayment.set(false),
+          });
           return;
         }
         this.paymentService.verifyRazorpayPayment(order.uuid, result.payload).subscribe({

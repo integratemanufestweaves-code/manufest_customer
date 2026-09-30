@@ -232,10 +232,9 @@ export class CheckoutComponent implements OnInit {
       });
   }
 
-  /** The order row exists either way by this point (and its cart lines are
-   * already gone server-side) — a razorpay order just isn't PAID yet, so
-   * this branches into opening Checkout.js rather than navigating away
-   * immediately. */
+  /** COD/bank transfer (when enabled) are real orders straight away. An
+   * online checkout is not an order until Razorpay confirms the payment, so
+   * this opens Checkout.js instead of navigating away. */
   private handleOrderCreated(order: OrderDetail): void {
     if (order.razorpayOrder) {
       this.completeRazorpayPayment(order);
@@ -262,21 +261,42 @@ export class CheckoutComponent implements OnInit {
 
     this.razorpayCheckout.open(order.razorpayOrder!, { name: address?.recipientName, contact: address?.phone }).then((result) => {
       if (result.outcome === 'dismissed') {
-        // Nothing failed — the order is just still unpaid. The order-detail
-        // page offers a "Complete payment" button against this same
-        // gateway order for exactly this case.
-        this.finishCheckout(order);
+        this.settleUnconfirmedPayment(order);
         return;
       }
 
       this.paymentService.verifyRazorpayPayment(order.uuid, result.payload).subscribe({
+        // 200 = placed, 202 = paid but awaiting Razorpay's confirmation
+        // (payment_processing) — both are shown on the order page.
         next: (updated) => this.finishCheckout(updated),
-        // A failed verification (bad signature, gateway declined, not yet
-        // captured) still leaves a real, retryable order behind — surface
-        // that from order-detail rather than stranding the customer on
-        // this page with no order to show for it.
-        error: () => this.finishCheckout(order),
+        // Verification failed (bad signature, declined) — let the backend
+        // settle it against Razorpay the same way as a closed popup.
+        error: () => this.settleUnconfirmedPayment(order),
       });
     });
+  }
+
+  /** Popup closed or verification failed: the backend checks with Razorpay.
+   * Anything that ended up placed or still settling goes to the order page;
+   * otherwise no order was placed — stay here with the cart untouched (online
+   * checkout never cleared it) so the customer can simply try again. */
+  private settleUnconfirmedPayment(order: OrderDetail): void {
+    this.paymentService.dismissRazorpayPayment(order.uuid).subscribe({
+      next: (settled) => {
+        if (settled.orderStatus === 'payment_failed' || settled.orderStatus === 'awaiting_payment') {
+          this.showNotPlaced();
+        } else {
+          this.finishCheckout(settled);
+        }
+      },
+      error: () => this.showNotPlaced(),
+    });
+  }
+
+  private showNotPlaced(): void {
+    this.processingPayment.set(false);
+    this.placingOrder.set(false);
+    this.cartService.refresh();
+    this.placeOrderError.set('Payment was not completed, so your order was not placed. Your cart is unchanged. You can try again.');
   }
 }

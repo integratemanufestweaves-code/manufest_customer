@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 
 import { AuthService } from '../../../core/services/auth.service';
+import { OtpInputComponent } from '../../../shared/otp-input/otp-input.component';
 import { CartService } from '../../../core/services/cart.service';
 import { WishlistService } from '../../../core/services/wishlist.service';
 
@@ -14,7 +15,7 @@ type MobileStep = 'enter-details' | 'enter-code';
 @Component({
   selector: 'app-register',
   standalone: true,
-  imports: [FormsModule, RouterLink],
+  imports: [FormsModule, RouterLink, OtpInputComponent],
   templateUrl: './register.component.html',
   styleUrl: './register.component.scss',
 })
@@ -143,8 +144,8 @@ export class RegisterComponent implements OnDestroy {
       this.mobileStep.set('enter-details');
       return;
     }
-    if (!this.otpCode) {
-      this.error.set('Enter the code we sent you.');
+    if (!/^[0-9]{6}$/.test(this.otpCode)) {
+      this.error.set('Enter the 6-digit code we sent you.');
       return;
     }
     this.error.set(null);

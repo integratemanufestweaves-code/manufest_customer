@@ -1,4 +1,5 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
+import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 
@@ -7,8 +8,12 @@ import { CustomerService } from '../../core/services/customer.service';
 import { CartService } from '../../core/services/cart.service';
 import { WishlistService } from '../../core/services/wishlist.service';
 import { Address, AddressRequest } from '../../core/models/customer.models';
+import { OtpInputComponent } from '../../shared/otp-input/otp-input.component';
 
 type AccountTab = 'profile' | 'addresses';
+/** `view` = read-only summary, `edit` = the form, `verify-mobile` = entering
+ * the code sent to a newly entered mobile number after saving the form. */
+type ProfileMode = 'view' | 'edit' | 'verify-mobile';
 
 /**
  * `ui_design/Profile - Account.png` shows four tabs: Profile | Manage
@@ -23,11 +28,11 @@ type AccountTab = 'profile' | 'addresses';
 @Component({
   selector: 'app-account',
   standalone: true,
-  imports: [FormsModule, RouterLink],
+  imports: [FormsModule, RouterLink, DatePipe, OtpInputComponent],
   templateUrl: './account.component.html',
   styleUrl: './account.component.scss',
 })
-export class AccountComponent implements OnInit {
+export class AccountComponent implements OnInit, OnDestroy {
   private readonly auth = inject(AuthService);
   private readonly customerService = inject(CustomerService);
   private readonly cartService = inject(CartService);
@@ -40,15 +45,27 @@ export class AccountComponent implements OnInit {
   readonly tab = signal<AccountTab>('profile');
 
   // -- profile tab --
+  readonly profileMode = signal<ProfileMode>('view');
   firstName = '';
   lastName = '';
   dob = '';
-  phone = '';
+  mobileNumber = '';
+  readonly mobileError = signal<string | null>(null);
   readonly profileSaving = signal(false);
-  readonly profileSaved = signal(false);
+  readonly profileSaved = signal<string | null>(null);
   readonly profileError = signal<string | null>(null);
   readonly photoUploading = signal(false);
   readonly photoWarning = signal<string | null>(null);
+
+  // -- mobile number verification (profile tab) --
+  otpCode = '';
+  readonly otpMaskedMobile = signal<string | null>(null);
+  readonly otpExpiresIn = signal<number | null>(null);
+  readonly resendCountdown = signal(0);
+  readonly resending = signal(false);
+  readonly verifying = signal(false);
+  private static readonly RESEND_DELAY_SECONDS = 20;
+  private otpTimerHandle: ReturnType<typeof setInterval> | null = null;
 
   // -- addresses tab --
   readonly addresses = signal<Address[]>([]);
@@ -61,31 +78,70 @@ export class AccountComponent implements OnInit {
   readonly addressFormError = signal<string | null>(null);
 
   ngOnInit(): void {
-    const p = this.profile();
-    if (p) {
-      // `first_name`/`last_name` are only ever set via this form's own
-      // PATCH /profile — registration (email or mobile) only ever writes
-      // `full_name` (see auth.api.js's /register, /register/mobile). So a
-      // customer who registered but never touched this form sees a blank
-      // form on every visit despite already having a name on file. Fall
-      // back to splitting `fullName` so the fields start populated instead
-      // of empty — still editable, and saving writes firstName/lastName
-      // back explicitly either way.
-      if (p.firstName || p.lastName) {
-        this.firstName = p.firstName || '';
-        this.lastName = p.lastName || '';
-      } else if (p.fullName) {
-        const [first, ...rest] = p.fullName.trim().split(/\s+/);
-        this.firstName = first || '';
-        this.lastName = rest.join(' ');
-      }
-      this.phone = p.phone || '';
-      // `dob` comes back from mysql2 as a full ISO datetime (pool.js has
-      // `dateStrings: false`), e.g. "2026-01-01T00:00:00.000Z" — an
-      // `<input type="date">` only accepts the bare `YYYY-MM-DD` portion.
-      this.dob = p.dob ? p.dob.slice(0, 10) : '';
-    }
+    this.resetProfileForm();
     this.loadAddresses();
+  }
+
+  ngOnDestroy(): void {
+    this.clearOtpTimer();
+  }
+
+  /** Fills the edit form from the current profile — on load, and again on
+   * every "Edit" / "Cancel" so an abandoned edit never lingers. */
+  private resetProfileForm(): void {
+    const p = this.profile();
+    if (!p) return;
+    // `first_name`/`last_name` are only ever set via this form's own
+    // PATCH /profile — registration (email or mobile) only ever writes
+    // `full_name` (see auth.api.js's /register, /register/mobile). So a
+    // customer who registered but never touched this form would see blank
+    // name fields. Fall back to splitting `fullName` so they start populated.
+    if (p.firstName || p.lastName) {
+      this.firstName = p.firstName || '';
+      this.lastName = p.lastName || '';
+    } else if (p.fullName) {
+      const [first, ...rest] = p.fullName.trim().split(/\s+/);
+      this.firstName = first || '';
+      this.lastName = rest.join(' ');
+    } else {
+      this.firstName = '';
+      this.lastName = '';
+    }
+    // `phone` is the old free-text field this form used to write (never
+    // verified, so OTP login ignores it). Pre-fill from it for customers who
+    // entered a number that way, so saving walks them through verification.
+    const legacyPhone = (p.phone || '').replace(/\D/g, '');
+    this.mobileNumber = p.mobileNumber || (legacyPhone.length === 10 ? legacyPhone : '');
+    // `dob` comes back from mysql2 as a full ISO datetime (pool.js has
+    // `dateStrings: false`), e.g. "2026-01-01T00:00:00.000Z" — an
+    // `<input type="date">` only accepts the bare `YYYY-MM-DD` portion.
+    this.dob = p.dob ? p.dob.slice(0, 10) : '';
+    this.mobileError.set(null);
+    this.profileError.set(null);
+  }
+
+  startEditProfile(): void {
+    this.resetProfileForm();
+    this.profileSaved.set(null);
+    this.profileMode.set('edit');
+  }
+
+  cancelEditProfile(): void {
+    this.resetProfileForm();
+    this.profileMode.set('view');
+  }
+
+  /** Digits only, max 10 — strips anything else as it's typed or pasted. */
+  onMobileInput(event: Event): void {
+    const el = event.target as HTMLInputElement;
+    const digits = el.value.replace(/\D/g, '').slice(0, 10);
+    el.value = digits;
+    this.mobileNumber = digits;
+    this.mobileError.set(null);
+  }
+
+  private focusMobileField(): void {
+    setTimeout(() => document.getElementById('profileMobile')?.focus());
   }
 
   setTab(tab: AccountTab): void {
@@ -103,25 +159,132 @@ export class AccountComponent implements OnInit {
   }
 
   saveProfile(): void {
-    if (!this.firstName || !this.lastName) {
+    if (!this.firstName.trim() || !this.lastName.trim()) {
       this.profileError.set('First and last name are required.');
       return;
     }
+    const currentMobile = this.profile()?.mobileNumber || '';
+    if (this.mobileNumber && !/^[0-9]{10}$/.test(this.mobileNumber)) {
+      this.mobileError.set('Enter a valid 10-digit mobile number.');
+      this.focusMobileField();
+      return;
+    }
+    if (!this.mobileNumber && currentMobile) {
+      this.mobileError.set('Your mobile number can be changed but not removed.');
+      this.focusMobileField();
+      return;
+    }
+    const mobileChanged = !!this.mobileNumber && this.mobileNumber !== currentMobile;
+
     this.profileError.set(null);
+    this.mobileError.set(null);
     this.profileSaving.set(true);
-    this.profileSaved.set(false);
-    const fullName = `${this.firstName} ${this.lastName}`.trim();
-    this.customerService.updateProfile({ fullName, firstName: this.firstName, lastName: this.lastName, phone: this.phone || undefined, dob: this.dob || undefined }).subscribe({
+    this.profileSaved.set(null);
+    const firstName = this.firstName.trim();
+    const lastName = this.lastName.trim();
+    const fullName = `${firstName} ${lastName}`;
+    this.customerService.updateProfile({ fullName, firstName, lastName, dob: this.dob || undefined }).subscribe({
       next: () => {
-        this.profileSaving.set(false);
-        this.profileSaved.set(true);
         this.auth.me().subscribe();
+        if (!mobileChanged) {
+          this.profileSaving.set(false);
+          this.profileSaved.set('Profile updated.');
+          this.profileMode.set('view');
+          return;
+        }
+        this.sendMobileOtp();
       },
       error: (err) => {
         this.profileError.set(err?.message || 'Could not save your profile.');
         this.profileSaving.set(false);
       },
     });
+  }
+
+  /** Name/dob are already saved by this point — only the number is pending. */
+  private sendMobileOtp(): void {
+    this.customerService.requestMobileOtp(this.mobileNumber).subscribe({
+      next: (res) => {
+        this.profileSaving.set(false);
+        this.otpCode = '';
+        this.otpMaskedMobile.set(res.maskedMobileNumber);
+        this.startOtpTimer(res.expiresInSeconds);
+        this.profileMode.set('verify-mobile');
+      },
+      error: (err) => {
+        this.profileSaving.set(false);
+        this.mobileError.set(err?.message || 'Could not send a code to that number right now.');
+        this.focusMobileField();
+      },
+    });
+  }
+
+  verifyMobile(): void {
+    if (!/^[0-9]{6}$/.test(this.otpCode)) {
+      this.profileError.set('Enter the 6-digit code we sent you.');
+      return;
+    }
+    this.profileError.set(null);
+    this.verifying.set(true);
+    this.customerService.verifyMobileOtp(this.mobileNumber, this.otpCode).subscribe({
+      next: () => {
+        this.verifying.set(false);
+        this.clearOtpTimer();
+        this.auth.me().subscribe(() => this.resetProfileForm());
+        this.profileSaved.set('Mobile number verified. You can now sign in with OTP.');
+        this.profileMode.set('view');
+      },
+      error: (err) => {
+        this.verifying.set(false);
+        this.otpCode = '';
+        this.profileError.set(err?.message || 'That code is invalid or expired.');
+      },
+    });
+  }
+
+  resendMobileOtp(): void {
+    if (this.resendCountdown() > 0 || this.resending()) return;
+    this.profileError.set(null);
+    this.resending.set(true);
+    this.customerService.requestMobileOtp(this.mobileNumber).subscribe({
+      next: (res) => {
+        this.resending.set(false);
+        this.otpCode = '';
+        this.startOtpTimer(res.expiresInSeconds);
+      },
+      error: (err) => {
+        this.resending.set(false);
+        this.profileError.set(err?.message || 'Could not resend the code right now.');
+      },
+    });
+  }
+
+  /** Back to the form with the new number still filled in, e.g. to fix a typo. */
+  backToProfileForm(): void {
+    this.clearOtpTimer();
+    this.otpCode = '';
+    this.profileError.set(null);
+    this.profileMode.set('edit');
+  }
+
+  private clearOtpTimer(): void {
+    if (this.otpTimerHandle !== null) {
+      clearInterval(this.otpTimerHandle);
+      this.otpTimerHandle = null;
+    }
+  }
+
+  private startOtpTimer(expiresInSeconds: number | null): void {
+    this.clearOtpTimer();
+    this.otpExpiresIn.set(expiresInSeconds);
+    this.resendCountdown.set(AccountComponent.RESEND_DELAY_SECONDS);
+    this.otpTimerHandle = setInterval(() => {
+      const expires = this.otpExpiresIn();
+      if (expires !== null) this.otpExpiresIn.set(Math.max(0, expires - 1));
+      const resend = this.resendCountdown();
+      if (resend > 0) this.resendCountdown.set(resend - 1);
+      if ((expires === null || expires <= 1) && resend <= 1) this.clearOtpTimer();
+    }, 1000);
   }
 
   onPhotoSelected(event: Event): void {

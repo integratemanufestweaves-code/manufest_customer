@@ -25,6 +25,28 @@ export class CustomerService {
     );
   }
 
+  /** Sends a code to a new login mobile number (`users.api.js`'s
+   * `POST /profile/mobile/otp/request`). The number is only saved, and OTP
+   * login only works for it, once `verifyMobileOtp` succeeds. Also serves as
+   * "resend". */
+  requestMobileOtp(mobileNumber: string): Observable<{ maskedMobileNumber: string; expiresInSeconds: number }> {
+    return this.http
+      .post<ApiSuccess<{ maskedMobileNumber: string; expiresInSeconds: number }>>(`${this.base}/profile/mobile/otp/request`, { mobileNumber })
+      .pipe(
+        map((res) => res.data),
+        catchError((err) => rethrowApiError(err)),
+      );
+  }
+
+  verifyMobileOtp(mobileNumber: string, code: string): Observable<{ status: string; mobileNumber: string }> {
+    return this.http
+      .post<ApiSuccess<{ status: string; mobileNumber: string }>>(`${this.base}/profile/mobile/otp/verify`, { mobileNumber, code })
+      .pipe(
+        map((res) => res.data),
+        catchError((err) => rethrowApiError(err)),
+      );
+  }
+
   /** "Warn and continue" on the backend — an unconfigured/failing upload
    * responds `{status:'skipped', warning}` rather than an HTTP error, so
    * callers should check `status` on success, not just `catchError`. */

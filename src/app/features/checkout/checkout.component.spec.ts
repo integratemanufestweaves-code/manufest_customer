@@ -9,6 +9,8 @@ import { CheckoutComponent } from './checkout.component';
 import { CartService } from '../../core/services/cart.service';
 import { CustomerService } from '../../core/services/customer.service';
 import { OrderService } from '../../core/services/order.service';
+import { PaymentService } from '../../core/services/payment.service';
+import { RazorpayCheckoutService } from '../../core/services/razorpay-checkout.service';
 import { CartItem, CartView } from '../../core/models/cart.models';
 import { Address } from '../../core/models/customer.models';
 import { OrderDetail } from '../../core/models/order.models';
@@ -212,6 +214,66 @@ describe('CheckoutComponent', () => {
 
       expect(component.placeOrderError()).toBe('Insufficient stock');
       expect(component.placingOrder()).toBeFalse();
+    });
+  });
+
+  describe('online payment: not an order until Razorpay confirms it', () => {
+    const razorpayOrder = { orderId: 'order_RZP1', amount: 100000, currency: 'INR', keyId: 'rzp_test' };
+    let paymentService: PaymentService;
+    let razorpayCheckout: RazorpayCheckoutService;
+
+    beforeEach(() => {
+      paymentService = TestBed.inject(PaymentService);
+      razorpayCheckout = TestBed.inject(RazorpayCheckoutService);
+    });
+
+    async function placeOnlineOrder(): Promise<void> {
+      initWith([makeItem()], [makeAddress()]);
+      spyOn(orderService, 'checkout').and.returnValue(of({ uuid: 'order-1', orderStatus: 'awaiting_payment', razorpayOrder } as OrderDetail));
+      component.placeOrder();
+      await fixture.whenStable();
+      await Promise.resolve();
+    }
+
+    it('closing the popup without paying stays on checkout, says the order was not placed, and keeps the cart', async () => {
+      spyOn(razorpayCheckout, 'open').and.resolveTo({ outcome: 'dismissed' });
+      const dismissSpy = spyOn(paymentService, 'dismissRazorpayPayment').and.returnValue(
+        of({ uuid: 'order-1', orderStatus: 'payment_failed' } as OrderDetail),
+      );
+      const clearSelectionSpy = spyOn(cartService, 'clearCheckoutSelection');
+
+      await placeOnlineOrder();
+
+      expect(dismissSpy).toHaveBeenCalledWith('order-1');
+      expect(router.navigate).not.toHaveBeenCalled();
+      expect(clearSelectionSpy).not.toHaveBeenCalled();
+      expect(component.placeOrderError()).toContain('not placed');
+      expect(component.processingPayment()).toBeFalse();
+    });
+
+    it('a payment still being confirmed goes to the order page', async () => {
+      spyOn(razorpayCheckout, 'open').and.resolveTo({ outcome: 'dismissed' });
+      spyOn(paymentService, 'dismissRazorpayPayment').and.returnValue(of({ uuid: 'order-1', orderStatus: 'payment_processing' } as OrderDetail));
+
+      await placeOnlineOrder();
+
+      expect(router.navigate).toHaveBeenCalledWith(['/orders', 'order-1']);
+    });
+
+    it('a failed verification is settled with the backend instead of assuming an order exists', async () => {
+      spyOn(razorpayCheckout, 'open').and.resolveTo({
+        outcome: 'success',
+        payload: { razorpayOrderId: 'order_RZP1', razorpayPaymentId: 'pay_1', razorpaySignature: 'sig' },
+      });
+      spyOn(paymentService, 'verifyRazorpayPayment').and.returnValue(throwError(() => ({ message: 'Payment verification failed' })));
+      const dismissSpy = spyOn(paymentService, 'dismissRazorpayPayment').and.returnValue(
+        of({ uuid: 'order-1', orderStatus: 'payment_failed' } as OrderDetail),
+      );
+
+      await placeOnlineOrder();
+
+      expect(dismissSpy).toHaveBeenCalledWith('order-1');
+      expect(router.navigate).not.toHaveBeenCalled();
     });
   });
 

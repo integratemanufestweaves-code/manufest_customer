@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { Router, RouterLink, ActivatedRoute } from '@angular/router';
 
 import { AuthService } from '../../../core/services/auth.service';
+import { OtpInputComponent } from '../../../shared/otp-input/otp-input.component';
 import { CartService } from '../../../core/services/cart.service';
 import { WishlistService } from '../../../core/services/wishlist.service';
 
@@ -25,7 +26,7 @@ type MobileStep = 'enter-number' | 'enter-code';
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [FormsModule, RouterLink],
+  imports: [FormsModule, RouterLink, OtpInputComponent],
   templateUrl: './login.component.html',
   styleUrl: './login.component.scss',
 })
@@ -173,8 +174,8 @@ export class LoginComponent implements OnInit, OnDestroy {
       this.mobileStep.set('enter-number');
       return;
     }
-    if (!this.otpCode) {
-      this.error.set('Enter the code we sent you.');
+    if (!/^[0-9]{6}$/.test(this.otpCode)) {
+      this.error.set('Enter the 6-digit code we sent you.');
       return;
     }
     this.error.set(null);

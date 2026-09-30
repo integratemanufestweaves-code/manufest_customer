@@ -28,4 +28,17 @@ export class PaymentService {
       catchError((err) => rethrowApiError(err)),
     );
   }
+
+  /** The Razorpay popup closed without a verified success. The backend asks
+   * Razorpay what actually happened and returns the settled checkout:
+   * `orderStatus` 'payment_failed' (not placed, stock released, cart kept),
+   * 'payment_processing' (paid, awaiting Razorpay's confirmation), a placed
+   * status (the capture had already landed), or still 'awaiting_payment' if
+   * Razorpay couldn't be reached (the backend settles it within 15 minutes). */
+  dismissRazorpayPayment(orderUuid: string): Observable<OrderDetail> {
+    return this.http.post<ApiSuccess<OrderDetail>>(`${this.base}/${orderUuid}/razorpay/dismiss`, {}).pipe(
+      map((res) => res.data),
+      catchError((err) => rethrowApiError(err)),
+    );
+  }
 }

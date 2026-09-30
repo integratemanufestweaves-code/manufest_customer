@@ -14,12 +14,32 @@
     <div class="order-detail-head">
       <div>
         <h1 class="order-detail-page__title">{{ orderDetail.orderNumber }}</h1>
-        <p class="order-detail-page__date">Placed {{ formatDate(orderDetail.orderDateTime) }}</p>
+        @if (!isUnplaced) {
+          <p class="order-detail-page__date">Placed {{ formatDate(orderDetail.orderDateTime) }}</p>
+        }
       </div>
       <span class="order-detail-status" [class]="'order-detail-status--' + orderDetail.orderStatus">{{ statusLabel(orderDetail.orderStatus) }}</span>
     </div>
 
-    @if (orderDetail.cancelReason) {
+    @if (orderDetail.orderStatus === 'payment_processing') {
+      <div class="payment-notice" role="status">
+        <p class="payment-notice__title">Waiting for payment confirmation</p>
+        <p>We're waiting for Razorpay to confirm your payment. This can take up to 15 minutes. Your order is placed as soon as it's confirmed. If it isn't confirmed, it won't be placed and any amount debited is refunded.</p>
+        <button type="button" class="btn btn--outline" [disabled]="loading()" (click)="checkPaymentAgain()">Check again</button>
+      </div>
+    } @else if (orderDetail.orderStatus === 'payment_failed' || orderDetail.orderStatus === 'awaiting_payment') {
+      <div class="payment-notice payment-notice--failed" role="status">
+        <p class="payment-notice__title">Order not placed</p>
+        <p>
+          Payment wasn't completed, so this order wasn't placed.
+          @if (orderDetail.payment?.status === 'refund_due' || orderDetail.payment?.status === 'refunded') {
+            Your payment arrived too late and is being refunded.
+          }
+        </p>
+      </div>
+    }
+
+    @if (orderDetail.cancelReason && !isUnplaced) {
       <p class="order-detail-page__cancel-reason">Cancelled {{ formatDate(orderDetail.cancelledAt) }} — reason given: "{{ orderDetail.cancelReason }}"</p>
     }
 

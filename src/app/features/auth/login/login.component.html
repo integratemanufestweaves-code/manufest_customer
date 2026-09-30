@@ -66,10 +66,10 @@
             Code sent to {{ maskedMobile() || 'your mobile number' }}.
             @if (otpExpiresIn()) { Valid for {{ otpExpiresIn() }} seconds. }
           </p>
-          <label class="auth__field">
-            <span>Enter code</span>
-            <input type="text" name="otpCode" [(ngModel)]="otpCode" inputmode="numeric" maxlength="10" required placeholder="6-digit code" />
-          </label>
+          <div class="auth__field">
+            <span>Enter the 6-digit code</span>
+            <app-otp-input name="otpCode" [(ngModel)]="otpCode" [autofocus]="true" label="6-digit code" />
+          </div>
           <button type="submit" class="btn btn--primary btn--full" [disabled]="submitting()">
             {{ submitting() ? 'Verifying…' : 'Verify & sign in' }}
           </button>

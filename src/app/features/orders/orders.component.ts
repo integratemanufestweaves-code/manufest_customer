@@ -7,19 +7,30 @@ import { OrderSummary } from '../../core/models/order.models';
 import { OffsetMeta } from '../../core/models/api.models';
 import { formatPrice } from '../../core/utils/format-price';
 
-/** `order_status` values `recomputeOrderStatus()` (orders.api.js) can ever
- * roll an order up to — used to build the status filter dropdown without
- * inventing labels the backend can't actually produce. */
-const ORDER_STATUS_OPTIONS: Array<{ value: string; label: string }> = [
+/** Status filter dropdown — deliberately short: all, plus the four states
+ * a customer actually looks for. Each filters on one exact `order_status`
+ * (the list route's `orderStatus` param). */
+const ORDER_STATUS_FILTERS: Array<{ value: string; label: string }> = [
   { value: '', label: 'All orders' },
-  { value: 'placed', label: 'Placed' },
   { value: 'processing', label: 'Processing' },
-  { value: 'shipped', label: 'Shipped' },
-  { value: 'partially_shipped', label: 'Partially shipped' },
   { value: 'delivered', label: 'Delivered' },
   { value: 'cancelled', label: 'Cancelled' },
   { value: 'returned', label: 'Returned' },
 ];
+
+/** Badge text for every `order_status` an order card can show — kept
+ * separate from the filter above so trimming the filter never turns a card's
+ * status back into a raw value like "partially_shipped". */
+const ORDER_STATUS_LABELS: Record<string, string> = {
+  payment_processing: 'Payment processing',
+  placed: 'Placed',
+  processing: 'Processing',
+  shipped: 'Shipped',
+  partially_shipped: 'Partially shipped',
+  delivered: 'Delivered',
+  cancelled: 'Cancelled',
+  returned: 'Returned',
+};
 
 /**
  * `GET /customer/orders/list` (`orders.api.js`) — page-numbered (not
@@ -40,7 +51,7 @@ const ORDER_STATUS_OPTIONS: Array<{ value: string; label: string }> = [
 export class OrdersComponent implements OnInit {
   private readonly orderService = inject(OrderService);
 
-  readonly statusOptions = ORDER_STATUS_OPTIONS;
+  readonly statusOptions = ORDER_STATUS_FILTERS;
   statusFilter = '';
 
   readonly orders = signal<OrderSummary[]>([]);
@@ -72,7 +83,7 @@ export class OrdersComponent implements OnInit {
   }
 
   statusLabel(status: string): string {
-    return this.statusOptions.find((o) => o.value === status)?.label || status;
+    return ORDER_STATUS_LABELS[status] ?? status.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase());
   }
 
   private load(page: number): void {
