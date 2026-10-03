@@ -1,38 +1,87 @@
-import { Component, inject, signal } from '@angular/core';
-import { RouterLink, RouterLinkActive } from '@angular/router';
+import { Component, DestroyRef, HostListener, OnInit, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { FormsModule } from '@angular/forms';
+import { NavigationEnd, Router, RouterLink } from '@angular/router';
+import { Subject, catchError, debounceTime, distinctUntilChanged, filter, map, of, switchMap } from 'rxjs';
 
 import { BRAND_ASSETS } from '../../core/constants/brand-assets';
 import { AuthService } from '../../core/services/auth.service';
 import { CartService } from '../../core/services/cart.service';
 import { WishlistService } from '../../core/services/wishlist.service';
 import { NotificationService } from '../../core/services/notification.service';
+import { ProductService } from '../../core/services/product.service';
+import { FACETS, FacetKey, ProductFilters, facetOptions } from '../../core/models/product-filters.models';
+import { formatPrice } from '../../core/utils/format-price';
+
+type NavKey = 'new-arrivals' | 'origin' | 'fabric' | 'weave' | 'occasion';
 
 interface NavLink {
   label: string;
-  /** Every nav destination today routes to the shared "coming soon" page —
-   * see app.routes.ts. `path` is that route's path, `title`/`description`
-   * become that route's `data.pageTitle`/`data.description`. None of these
-   * are wired to a real category-browsing API yet (categories.api.js's
-   * `GET /public/categories/list` exists and powers the Home page's "Shop
-   * by Category" tiles, but a full filtered listing/browse page like the
-   * design's "New Arrivals" screen is out of scope for this pass). */
-  path: string;
-  /** Key into the drawer template's `@switch` — same "icon key on the nav
-   * item, inline SVG selected by a template switch" pattern
-   * `manufest_seller/layout/sidebar/sidebar.component.*` uses for its own
-   * nav, applied here for the mobile drawer only (see this component's
-   * header comment for why the drawer specifically borrows that app's
-   * pattern). */
-  icon: 'new-arrivals' | 'origin' | 'fabric' | 'weave' | 'occasion';
+  /** Key into the drawer template's `@switch` for its icon, and into
+   * `menus()` for its filter menu. */
+  icon: NavKey;
 }
+
+interface MenuLink {
+  label: string;
+  commands: string[];
+  queryParams?: Record<string, string | number>;
+  /** Colour swatch, colour links only. */
+  hex?: string;
+}
+
+interface MenuColumn {
+  heading: string;
+  links: MenuLink[];
+  /** "+ N more" link (to the full product list, whose sidebar lists every
+   * value) when the column was truncated. */
+  more?: { count: number };
+}
+
+interface NavMenu {
+  columns: MenuColumn[];
+  viewAll: { label: string; commands: string[] };
+}
+
+interface SearchSuggestion {
+  id: string;
+  label: string;
+  /** Right-aligned hint: "Fabric", "Category", the product's category… */
+  hint: string;
+  commands: string[];
+  queryParams?: Record<string, string>;
+}
+
+/** Longest a mega-menu column gets before it links to its full page. */
+const MENU_COLUMN_LIMIT = 10;
+const SUGGESTION_TERM_LIMIT = 4;
+const SUGGESTION_PRODUCT_LIMIT = 5;
+const VIEW_ALL: NavMenu['viewAll'] = { label: 'View all products', commands: ['/shop'] };
+const NEW_ARRIVALS_VIEW_ALL: NavMenu['viewAll'] = { label: 'See all new arrivals', commands: ['/new-arrivals'] };
 
 /**
  * Storefront header — announcement bar + logo/nav/search/account row.
  * Matches `ui_design/Home Page.png` (desktop nav: New Arrivals / Origin /
  * Fabric / Weave / Occasion; mobile: hamburger + icon-only search/
- * wishlist/cart/account). Every interactive element other than the logo
- * (-> Home) and the mobile menu toggle routes to a "coming soon" page —
- * see app.routes.ts's routes.
+ * wishlist/cart/account).
+ *
+ * Nav filter menus (2026-10-01, modeled on Myntra's category menu): the
+ * nav items aren't pages. Each opens a full-width panel of filter link
+ * columns built from `GET /public/products/filters` (cached, see
+ * `ProductService.getAllFiltersCached()`); every link opens the product
+ * list (`/shop`, or `/new-arrivals` for that menu's price links) with that
+ * filter set. Only values with live products are listed. Hovering previews
+ * a menu; clicking pins it open until the next click outside the nav, a
+ * click on another item (which switches to it), Escape, or following a
+ * link. In the mobile drawer the same menus are accordion sections.
+ *
+ * Search (2026-10-01): submitting goes to `/search?q=` (the listing page
+ * with `GET /public/products/list?q=`). While typing, a suggestion list
+ * shows matching filter terms (from the cached `/filters`, e.g. "Organza ·
+ * Fabric") and the first few matching products. Arrow keys move through
+ * it, Enter opens the highlighted entry or runs the search, Escape closes.
+ * On phones the header search is hidden; its icon opens `/search`, which
+ * has its own search box.
  *
  * Mobile nav (redesigned 2026-09-10): was a plain list that expanded
  * inline below the header row, pushing page content down — replaced with
@@ -40,28 +89,25 @@ interface NavLink {
  * `manufest_seller/layout/{sidebar,seller-shell,topbar}.component.*`'s
  * mobile pattern (a fixed-position panel sliding in from the left,
  * `transform: translateX(...)`, a semi-transparent backdrop that closes it
- * on click, closing on every link tap). manufest_seller's version is
- * genuinely better mobile UX than what this app had — a slide-in panel
- * with a clear brand header and icon+label rows reads as "navigation",
- * where an inline-expanding list reads as an accordion — and since both
- * apps are the same product family, reusing the validated pattern instead
- * of re-deriving a worse one was the right call. Every manufest_* app
- * still styles its own components independently (no shared component
- * library between them), so this is a deliberate visual port, not an
- * import.
+ * on click, closing on every link tap). Every manufest_* app still styles
+ * its own components independently (no shared component library between
+ * them), so this is a deliberate visual port, not an import.
  */
 @Component({
   selector: 'app-header',
   standalone: true,
-  imports: [RouterLink, RouterLinkActive],
+  imports: [RouterLink, FormsModule],
   templateUrl: './header.component.html',
   styleUrl: './header.component.scss',
 })
-export class HeaderComponent {
+export class HeaderComponent implements OnInit {
   private readonly auth = inject(AuthService);
   private readonly cartService = inject(CartService);
   private readonly wishlistService = inject(WishlistService);
   private readonly notificationService = inject(NotificationService);
+  private readonly productService = inject(ProductService);
+  private readonly router = inject(Router);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly logoMark = BRAND_ASSETS.logoMark;
   readonly currentUser = this.auth.currentUser;
@@ -70,14 +116,137 @@ export class HeaderComponent {
   readonly notificationUnreadCount = this.notificationService.unreadCount;
 
   readonly navLinks: NavLink[] = [
-    { label: 'New Arrivals', path: '/new-arrivals', icon: 'new-arrivals' },
-    { label: 'Origin', path: '/origin', icon: 'origin' },
-    { label: 'Fabric', path: '/fabric', icon: 'fabric' },
-    { label: 'Weave', path: '/weave', icon: 'weave' },
-    { label: 'Occasion', path: '/occasion', icon: 'occasion' },
+    { label: 'New Arrivals', icon: 'new-arrivals' },
+    { label: 'Origin', icon: 'origin' },
+    { label: 'Fabric', icon: 'fabric' },
+    { label: 'Weave', icon: 'weave' },
+    { label: 'Occasion', icon: 'occasion' },
   ];
 
   readonly mobileMenuOpen = signal(false);
+
+  // --- mega menu -------------------------------------------------------------
+  private readonly filters = signal<ProductFilters | null>(null);
+  readonly openMenu = signal<NavKey | null>(null);
+  /** Set by clicking a nav item: the menu stays open regardless of hover. */
+  private readonly pinnedMenu = signal<NavKey | null>(null);
+  /** Mobile drawer: which section's accordion is expanded. */
+  readonly drawerSection = signal<NavKey | null>(null);
+  private menuTimer: ReturnType<typeof setTimeout> | null = null;
+
+  readonly menus = computed<Partial<Record<NavKey, NavMenu>>>(() => {
+    const filters = this.filters();
+    if (!filters) return {};
+    const facetColumn = (heading: string, facet: FacetKey): MenuColumn => {
+      const options = facetOptions(filters, facet).filter((o) => o.productCount > 0);
+      return {
+        heading,
+        links: options.slice(0, MENU_COLUMN_LIMIT).map((o) => ({ label: o.name, commands: ['/shop'], queryParams: { [facet]: o.value }, hex: o.hex })),
+        more: options.length > MENU_COLUMN_LIMIT ? { count: options.length - MENU_COLUMN_LIMIT } : undefined,
+      };
+    };
+    const menu = (columns: MenuColumn[], viewAll: NavMenu['viewAll']): NavMenu => ({ columns: columns.filter((c) => c.links.length > 0), viewAll });
+
+    return {
+      'new-arrivals': menu(
+        [
+          {
+            heading: 'Categories',
+            links: filters.categories.filter((c) => c.productCount > 0).map((c) => ({ label: c.name, commands: ['/category', c.uuid] })),
+          },
+          {
+            heading: 'Shop by Price',
+            links: [500, 1500, 2000, 5000, 10000].map((max) => ({ label: `Under ${formatPrice(max)}`, commands: ['/new-arrivals'], queryParams: { priceMax: max } })),
+          },
+        ],
+        NEW_ARRIVALS_VIEW_ALL,
+      ),
+      origin: menu([facetColumn('Districts', 'origin')], VIEW_ALL),
+      fabric: menu([facetColumn('Blended & Specialty', 'fabric'), facetColumn('Material', 'material'), facetColumn('Fabric Purity', 'purity')], VIEW_ALL),
+      weave: menu(
+        [facetColumn('Weaving Technique', 'weave'), facetColumn('Zari Type', 'zariType'), facetColumn('Zari Colour', 'zariColor'), facetColumn('Border Type', 'border')],
+        VIEW_ALL,
+      ),
+      occasion: menu([facetColumn('Occasion', 'occasion'), facetColumn('Popular Colours', 'color')], VIEW_ALL),
+    };
+  });
+
+  readonly activeMenu = computed(() => {
+    const key = this.openMenu();
+    return key ? { key, menu: this.menuFor(key) } : null;
+  });
+
+  /** Falls back to just the "view all" link while `/filters` is loading or
+   * if it failed, so opening a menu always offers somewhere to go. */
+  menuFor(key: NavKey): NavMenu {
+    return this.menus()[key] ?? { columns: [], viewAll: key === 'new-arrivals' ? NEW_ARRIVALS_VIEW_ALL : VIEW_ALL };
+  }
+
+  // --- search ---------------------------------------------------------------
+  searchText = '';
+  private readonly searchInput$ = new Subject<string>();
+  private readonly productSuggestions = signal<SearchSuggestion[]>([]);
+  private readonly typedText = signal('');
+  readonly suggestionsOpen = signal(false);
+  readonly activeSuggestion = signal(-1);
+
+  readonly suggestions = computed<SearchSuggestion[]>(() => {
+    const text = this.typedText().trim().toLowerCase();
+    const filters = this.filters();
+    if (text.length < 2) return [];
+    const terms: SearchSuggestion[] = [];
+    if (filters) {
+      filters.categories
+        .filter((c) => c.productCount > 0 && c.name.toLowerCase().includes(text))
+        .forEach((c) => terms.push({ id: `cat-${c.uuid}`, label: c.name, hint: 'Category', commands: ['/category', c.uuid] }));
+      FACETS.forEach(({ facet, label }) => {
+        facetOptions(filters, facet)
+          .filter((o) => o.productCount > 0 && o.name.toLowerCase().includes(text))
+          .forEach((o) => terms.push({ id: `${facet}-${o.value}`, label: o.name, hint: label, commands: ['/shop'], queryParams: { [facet]: o.value } }));
+      });
+    }
+    return [...terms.slice(0, SUGGESTION_TERM_LIMIT), ...this.productSuggestions()];
+  });
+
+  ngOnInit(): void {
+    this.productService
+      .getAllFiltersCached()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({ next: (filters) => this.filters.set(filters), error: () => this.filters.set(null) });
+
+    this.searchInput$
+      .pipe(
+        map((text) => text.trim()),
+        debounceTime(200),
+        distinctUntilChanged(),
+        switchMap((text) =>
+          text.length < 2
+            ? of([])
+            : this.productService.listProducts({ q: text, limit: SUGGESTION_PRODUCT_LIMIT }).pipe(
+                map((page) =>
+                  page.items.map<SearchSuggestion>((p) => ({ id: `p-${p.uuid}`, label: p.productName, hint: p.category?.name ?? 'Product', commands: ['/product', p.uuid] })),
+                ),
+                catchError(() => of([])),
+              ),
+        ),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe((items) => this.productSuggestions.set(items));
+
+    // Keep the box in sync with the current search; empty it elsewhere.
+    this.router.events
+      .pipe(
+        filter((e): e is NavigationEnd => e instanceof NavigationEnd),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe(() => {
+        const tree = this.router.parseUrl(this.router.url);
+        const onSearch = tree.root.children['primary']?.segments[0]?.path === 'search';
+        this.searchText = onSearch ? (tree.queryParams['q'] ?? '') : '';
+        this.closeSuggestions();
+        this.closeMenuNow();
+      });
+  }
 
   toggleMobileMenu(): void {
     this.mobileMenuOpen.update((open) => !open);
@@ -85,5 +254,103 @@ export class HeaderComponent {
 
   closeMobileMenu(): void {
     this.mobileMenuOpen.set(false);
+    this.drawerSection.set(null);
+  }
+
+  // Hover preview, with small open/close delays so moving the pointer
+  // diagonally from the nav item down into its panel (or brushing past an
+  // item) doesn't flicker. Ignored while a menu is pinned by a click.
+  scheduleMenu(key: NavKey | null): void {
+    if (this.pinnedMenu()) return;
+    if (this.menuTimer) clearTimeout(this.menuTimer);
+    this.menuTimer = setTimeout(() => this.openMenu.set(key), key ? 120 : 160);
+  }
+
+  /** Click on a nav item: pin its menu open, switch to it from another
+   * pinned menu, or close it if it's the one already pinned. */
+  toggleMenu(key: NavKey): void {
+    if (this.menuTimer) clearTimeout(this.menuTimer);
+    const close = this.pinnedMenu() === key;
+    this.pinnedMenu.set(close ? null : key);
+    this.openMenu.set(close ? null : key);
+  }
+
+  closeMenuNow(): void {
+    if (this.menuTimer) clearTimeout(this.menuTimer);
+    this.pinnedMenu.set(null);
+    this.openMenu.set(null);
+  }
+
+  /** Any click outside the nav (items and their panels) closes the menu. */
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: MouseEvent): void {
+    if (!this.openMenu()) return;
+    const target = event.target as Element | null;
+    if (!target?.closest('.header__nav')) this.closeMenuNow();
+  }
+
+  /** Keyboard: close once focus moves to something outside the nav item and
+   * its panel. A mouse click on blank panel space blurs with no
+   * `relatedTarget`, so that alone never closes it. */
+  onMenuFocusOut(event: FocusEvent, item: HTMLElement): void {
+    const next = event.relatedTarget as Node | null;
+    if (next && !item.contains(next)) this.closeMenuNow();
+  }
+
+  toggleDrawerSection(key: NavKey): void {
+    this.drawerSection.update((open) => (open === key ? null : key));
+  }
+
+  onSearchInput(text: string): void {
+    this.typedText.set(text);
+    this.activeSuggestion.set(-1);
+    this.suggestionsOpen.set(true);
+    this.searchInput$.next(text);
+  }
+
+  onSearchKeydown(event: KeyboardEvent): void {
+    const count = this.suggestions().length;
+    if (event.key === 'ArrowDown' && count) {
+      event.preventDefault();
+      this.suggestionsOpen.set(true);
+      this.activeSuggestion.set((this.activeSuggestion() + 1) % count);
+    } else if (event.key === 'ArrowUp' && count) {
+      event.preventDefault();
+      this.activeSuggestion.set((this.activeSuggestion() - 1 + count) % count);
+    } else if (event.key === 'Escape' && this.suggestionsOpen() && count) {
+      // First Escape just closes the list; without preventDefault the
+      // browser's native search-input behavior would also wipe the text.
+      event.preventDefault();
+      this.closeSuggestions();
+    }
+  }
+
+  submitSearch(): void {
+    const active = this.suggestionsOpen() ? this.suggestions()[this.activeSuggestion()] : undefined;
+    if (active) {
+      this.openSuggestion(active);
+      return;
+    }
+    const q = this.searchText.trim();
+    if (!q) return;
+    this.closeSuggestions();
+    this.router.navigate(['/search'], { queryParams: { q } });
+  }
+
+  openSuggestion(suggestion: SearchSuggestion): void {
+    this.closeSuggestions();
+    this.router.navigate(suggestion.commands, { queryParams: suggestion.queryParams ?? {} });
+  }
+
+  closeSuggestions(): void {
+    this.suggestionsOpen.set(false);
+    this.activeSuggestion.set(-1);
+  }
+
+  /** Blur fires before a suggestion's click; suggestions use `mousedown`
+   * with preventDefault so the input keeps focus, and this closes the list
+   * only when focus genuinely leaves the search. */
+  onSearchFocusOut(event: FocusEvent, container: HTMLElement): void {
+    if (!container.contains(event.relatedTarget as Node | null)) this.closeSuggestions();
   }
 }

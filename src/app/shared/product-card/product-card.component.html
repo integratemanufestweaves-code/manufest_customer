@@ -20,7 +20,7 @@
 
     <div class="card__body">
       <p class="card__name">{{ product.productName }}</p>
-      <p class="card__seller">Manufest Weaves</p>
+      <p class="card__seller">{{ product.seller.name }}</p>
       @if (priceLabel) {
         <p class="card__price">{{ priceLabel }}</p>
       }

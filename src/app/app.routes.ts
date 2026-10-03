@@ -17,14 +17,11 @@ import { customerAuthGuard } from './core/guards/customer-auth.guard';
  * requires `authenticateCustomer`.
  *
  * Still "coming soon" (`ComingSoonComponent`) — genuinely blocked, not just
- * unbuilt, per that same audit: `search` (no backend endpoint at all —
- * `notifications` graduated out of this bucket 2026-09-14, backed by the
- * new `customer-notifications` module and the wishlist page's "Notify me"
- * back-in-stock flow), `origin`/`weave` (no matching attribute type exists in
- * `product_attributes_master`), `fabric`/`occasion` (attribute exists but
- * isn't exposed as a public list filter yet, or has no way to resolve a
- * uuid from this app), and everything under "footer" below (no backing
- * module, or out of this app's scope entirely).
+ * unbuilt, per that same audit: everything under "footer" below (no
+ * backing module, or out of this app's scope entirely). `notifications`
+ * graduated out of this bucket 2026-09-14 (the `customer-notifications`
+ * module); `search` and `origin`/`fabric`/`weave`/`occasion` graduated
+ * 2026-10-01 (see the "browse" block below).
  *
  * Adding real functionality later is additive: swap one of these entries'
  * `loadComponent` for a real feature component without touching any other
@@ -119,37 +116,29 @@ export const routes: Routes = [
     title: 'Manufest Weaves — Notifications',
     canActivate: [customerAuthGuard],
   },
+  // Search results are the regular listing page with `?q=` set (manufest_be
+  // `GET /public/products/list?q=`, 2026-10-01), so every filter and sort
+  // works on them too.
   {
     path: 'search',
-    loadComponent: () => import('./shared/coming-soon/coming-soon.component').then((m) => m.ComingSoonComponent),
-    data: { pageTitle: 'Search', description: 'Search is coming soon.' },
+    loadComponent: () => import('./features/product-listing/product-listing.component').then((m) => m.ProductListingComponent),
+    title: 'Manufest Weaves — Search',
   },
 
   // ---- browse (nav bar) ----
-  // 'new-arrivals' and 'category/:categoryUuid' are registered above as real
-  // routes now that GET /public/products/list supports categoryUuid/
-  // priceMin/priceMax/sort. Origin/Fabric/Weave stay "coming soon" below —
-  // there's no public endpoint to browse by those attributes at all.
+  // The nav items (New Arrivals/Origin/Fabric/Weave/Occasion) are filter
+  // menus, not pages (see HeaderComponent); every menu link opens `shop`
+  // with that filter set as a query param (`?fabric=<uuid>`). The old
+  // per-facet paths just redirect there so existing links keep working.
   {
-    path: 'origin',
-    loadComponent: () => import('./shared/coming-soon/coming-soon.component').then((m) => m.ComingSoonComponent),
-    data: { pageTitle: 'Shop by Origin', description: 'Browsing by weaving origin is coming soon.' },
+    path: 'shop',
+    loadComponent: () => import('./features/product-listing/product-listing.component').then((m) => m.ProductListingComponent),
+    title: 'Manufest Weaves — Shop',
   },
-  {
-    path: 'fabric',
-    loadComponent: () => import('./shared/coming-soon/coming-soon.component').then((m) => m.ComingSoonComponent),
-    data: { pageTitle: 'Shop by Fabric', description: 'Browsing by fabric is coming soon.' },
-  },
-  {
-    path: 'weave',
-    loadComponent: () => import('./shared/coming-soon/coming-soon.component').then((m) => m.ComingSoonComponent),
-    data: { pageTitle: 'Shop by Weave', description: 'Browsing by weave is coming soon.' },
-  },
-  {
-    path: 'occasion',
-    loadComponent: () => import('./shared/coming-soon/coming-soon.component').then((m) => m.ComingSoonComponent),
-    data: { pageTitle: 'Shop by Occasion', description: 'Browsing by occasion is coming soon.' },
-  },
+  { path: 'origin', redirectTo: 'shop', pathMatch: 'full' },
+  { path: 'fabric', redirectTo: 'shop', pathMatch: 'full' },
+  { path: 'weave', redirectTo: 'shop', pathMatch: 'full' },
+  { path: 'occasion', redirectTo: 'shop', pathMatch: 'full' },
 
   // ---- footer ----
   {

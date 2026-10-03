@@ -1,26 +1,63 @@
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Injectable } from '@angular/core';
-import { catchError, map, Observable, throwError } from 'rxjs';
+import { catchError, map, Observable, shareReplay, throwError } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { ApiError, ApiErrorBody, ApiSuccess, CursorMeta } from '../models/api.models';
 import { ProductDetail, ProductSummary, RelatedProduct } from '../models/product.models';
+import { ProductFilters } from '../models/product-filters.models';
 
 export interface ProductPage {
   items: ProductSummary[];
   meta: CursorMeta;
 }
 
-export type ProductSort = 'newest' | 'oldest';
+export type ProductSort = 'newest' | 'oldest' | 'price_asc' | 'price_desc';
 
 export interface ListProductsOptions {
   cursor?: string | null;
   limit?: number;
   categoryUuid?: string | null;
   occasionUuid?: string | null;
+  /** Multi-select filters (manufest_be 2026-10-01): OR within a group,
+   * AND across groups. Sent comma-separated. */
+  occasionUuids?: string[];
+  fabricUuids?: string[];
+  weaveUuids?: string[];
+  /** Storefront search text (manufest_be matches every word against
+   * name/SKU/category/colour/attributes/brand/district). */
+  q?: string | null;
+  /** Seller districts — `KeyedFilterOption.value` keys. */
+  origins?: string[];
+  /** Variant colour names — `ColorFilterOption.value` keys. */
+  colors?: string[];
+  /** Brand filter (one brand per seller). */
+  sellerUuids?: string[];
+  fabricPurityUuids?: string[];
+  materialUuids?: string[];
+  zariColorUuids?: string[];
+  zariTypeUuids?: string[];
+  borderTypeUuids?: string[];
+  blouse?: 'with' | 'without' | null;
+  /** Whole percent — at least one variant discounted by this much. */
+  discountMin?: number | null;
   priceMin?: number | null;
   priceMax?: number | null;
   sort?: ProductSort;
 }
+
+const MULTI_VALUE_PARAMS = [
+  'occasionUuids',
+  'fabricUuids',
+  'weaveUuids',
+  'origins',
+  'colors',
+  'sellerUuids',
+  'fabricPurityUuids',
+  'materialUuids',
+  'zariColorUuids',
+  'zariTypeUuids',
+  'borderTypeUuids',
+] as const;
 
 /**
  * Client for manufest_be's `GET /public/products/*` routes — see
@@ -63,12 +100,48 @@ export class ProductService {
     if (opts.cursor) params['cursor'] = opts.cursor;
     if (opts.categoryUuid) params['categoryUuid'] = opts.categoryUuid;
     if (opts.occasionUuid) params['occasionUuid'] = opts.occasionUuid;
+    MULTI_VALUE_PARAMS.forEach((key) => {
+      const values = opts[key];
+      if (values?.length) params[key] = values.join(',');
+    });
+    if (opts.q?.trim()) params['q'] = opts.q.trim();
+    if (opts.blouse) params['blouse'] = opts.blouse;
+    if (opts.discountMin != null) params['discountMin'] = String(opts.discountMin);
     if (opts.priceMin != null) params['priceMin'] = String(opts.priceMin);
     if (opts.priceMax != null) params['priceMax'] = String(opts.priceMax);
     if (opts.sort) params['sort'] = opts.sort;
 
     return this.http.get<ApiSuccess<ProductSummary[]>>(`${this.base}/list`, { params }).pipe(
       map((res) => ({ items: res.data, meta: (res.meta as CursorMeta) ?? { limit: opts.limit ?? 20, nextCursor: null, hasMore: false } })),
+      catchError((err) => this.rethrow(err)),
+    );
+  }
+
+  /** `GET /public/products/filters` — browse taxonomy + live product
+   * counts (see `ProductFilters`). `categoryUuid` scopes the counts to one
+   * category, for the `/category/:uuid` listing's sidebar. */
+  private allFilters$: Observable<ProductFilters> | null = null;
+
+  /** Unscoped `getFilters()`, fetched once per page load and shared — the
+   * header's filter menus and search suggestions read it. A
+   * failed fetch isn't cached, so the next caller retries. */
+  getAllFiltersCached(): Observable<ProductFilters> {
+    if (!this.allFilters$) {
+      this.allFilters$ = this.getFilters().pipe(
+        catchError((err) => {
+          this.allFilters$ = null;
+          return throwError(() => err);
+        }),
+        shareReplay(1),
+      );
+    }
+    return this.allFilters$;
+  }
+
+  getFilters(categoryUuid?: string | null): Observable<ProductFilters> {
+    const params: Record<string, string> = categoryUuid ? { categoryUuid } : {};
+    return this.http.get<ApiSuccess<ProductFilters>>(`${this.base}/filters`, { params }).pipe(
+      map((res) => res.data),
       catchError((err) => this.rethrow(err)),
     );
   }

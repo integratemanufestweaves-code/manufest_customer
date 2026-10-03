@@ -1,32 +1,48 @@
 <div class="container listing">
   <nav class="listing__crumbs" aria-label="Breadcrumb">
-    <a routerLink="/">Home</a> / <span>{{ heading() }}</span>
+    <a routerLink="/">Home</a> /
+    @if (!categoryName() && !searchQuery() && singleFacet(); as single) {
+      <span>{{ single.label }}</span> /
+    }
+    <span>{{ heading() }}</span>
   </nav>
+
+  @if (isSearch) {
+    <form class="listing__search" role="search" (ngSubmit)="submitSearch()">
+      <label class="visually-hidden" for="listing-search">Search products</label>
+      <input id="listing-search" type="search" name="q" placeholder="Search sarees, fabrics, colours…" autocomplete="off" enterkeyhint="search" [(ngModel)]="searchInput" />
+      <button type="submit" class="btn btn--primary">Search</button>
+    </form>
+  }
 
   <div class="listing__toolbar">
     <div>
-      <h1 class="listing__title">{{ heading() }}</h1>
+      <h1 class="listing__title" [class.listing__title--plain]="searchQuery()">{{ heading() }}</h1>
       <p class="listing__subtitle">Handpicked sarees, timeless elegance</p>
     </div>
 
     <div class="listing__toolbar-actions">
       <button type="button" class="listing__filter-toggle" (click)="toggleFilters()" [attr.aria-expanded]="filtersOpen()">
-        <svg viewBox="0 0 20 20" fill="none" width="16" height="16"><path d="M3 5h14M6 10h8M8.5 15h3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        <svg viewBox="0 0 20 20" fill="none" width="16" height="16" aria-hidden="true"><path d="M3 5h14M6 10h8M8.5 15h3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
         Filters
+        @if (activeFilterCount() > 0) {
+          <span class="listing__filter-count">{{ activeFilterCount() }}</span>
+        }
       </button>
 
       <label class="listing__sort">
         <span>Sort by</span>
         <select [value]="sort()" (change)="setSort($any($event.target).value)">
-          <option value="newest">Newest</option>
-          <option value="oldest">Oldest</option>
+          @for (option of sortOptions; track option.value) {
+            <option [value]="option.value" [selected]="option.value === sort()">{{ option.label }}</option>
+          }
         </select>
       </label>
     </div>
   </div>
 
   <div class="listing__layout">
-    <aside class="listing__filters" [class.listing__filters--open]="filtersOpen()">
+    <aside class="listing__filters" [class.listing__filters--open]="filtersOpen()" aria-label="Filters">
       <div class="listing__filters-head">
         <h2>Filters</h2>
         <div class="listing__filters-head-actions">
@@ -37,33 +53,112 @@
         </div>
       </div>
 
-      <div class="listing__filter-group">
-        <h3>Price</h3>
-        <ul class="listing__presets">
-          @for (preset of pricePresets; track preset.label) {
-            <li>
-              <button type="button" class="listing__preset" [class.listing__preset--active]="isPricePresetActive(preset)" (click)="applyPricePreset(preset)">
-                {{ preset.label }}
-              </button>
-            </li>
+      @for (section of sections(); track $index) {
+        @switch (section.kind) {
+          @case ('category') {
+            <fieldset class="listing__filter-group">
+              <legend>Category</legend>
+              <ul class="listing__options">
+                <li>
+                  <label class="listing__option">
+                    <input type="radio" name="category" [checked]="!categoryUuid()" (change)="selectCategory(null)" />
+                    <span class="listing__option-name">All categories</span>
+                  </label>
+                </li>
+                @for (category of categoryOptions(); track category.uuid) {
+                  <li>
+                    <label class="listing__option">
+                      <input type="radio" name="category" [checked]="category.uuid === categoryUuid()" (change)="selectCategory(category.uuid)" />
+                      <span class="listing__option-name">{{ category.name }}</span>
+                      <span class="listing__option-count">{{ category.productCount }}</span>
+                    </label>
+                  </li>
+                }
+              </ul>
+            </fieldset>
           }
-        </ul>
-
-        <div class="listing__price-inputs">
-          <label>
-            <span class="visually-hidden">Minimum price</span>
-            <input type="number" min="0" inputmode="numeric" placeholder="Min" [(ngModel)]="priceMinInput" name="priceMin" />
-          </label>
-          <span class="listing__price-sep">–</span>
-          <label>
-            <span class="visually-hidden">Maximum price</span>
-            <input type="number" min="0" inputmode="numeric" placeholder="Max" [(ngModel)]="priceMaxInput" name="priceMax" />
-          </label>
-          <button type="button" class="btn btn--primary listing__price-apply" (click)="applyCustomPrice()">Apply</button>
-        </div>
-        @if (priceError()) {
-          <p class="listing__price-error">{{ priceError() }}</p>
+          @case ('price') {
+            <fieldset class="listing__filter-group">
+              <legend>Price</legend>
+              <ul class="listing__options">
+                @for (option of priceOptions; track option.value) {
+                  <li>
+                    <label class="listing__option">
+                      <input type="radio" name="price" [checked]="isPriceActive(option.value)" (click)="togglePrice(option.value)" />
+                      <span class="listing__option-name">{{ option.label }}</span>
+                    </label>
+                  </li>
+                }
+              </ul>
+            </fieldset>
+          }
+          @case ('discount') {
+            <fieldset class="listing__filter-group">
+              <legend>Discount Range</legend>
+              <ul class="listing__options">
+                @for (option of discountOptions(); track option.value) {
+                  <li>
+                    <label class="listing__option">
+                      <input type="radio" name="discount" [checked]="discountMin() === option.value" (click)="toggleDiscount(option.value)" />
+                      <span class="listing__option-name">{{ option.label }}</span>
+                      <span class="listing__option-count">{{ option.productCount }}</span>
+                    </label>
+                  </li>
+                }
+              </ul>
+            </fieldset>
+          }
+          @case ('blouse') {
+            <fieldset class="listing__filter-group">
+              <legend>Blouse</legend>
+              <ul class="listing__options">
+                @for (option of blouseOptions(); track option.value) {
+                  <li>
+                    <label class="listing__option">
+                      <input type="radio" name="blouse" [checked]="blouse() === option.value" (click)="toggleBlouse(option.value)" />
+                      <span class="listing__option-name">{{ option.label }}</span>
+                      <span class="listing__option-count">{{ option.productCount }}</span>
+                    </label>
+                  </li>
+                }
+              </ul>
+            </fieldset>
+          }
+          @case ('facet') {
+            @if (section.kind === 'facet') {
+              <fieldset class="listing__filter-group">
+                <legend>{{ section.group.definition.label }}</legend>
+                <ul class="listing__options">
+                  @for (option of section.group.options; track option.value) {
+                    <li>
+                      <label class="listing__option">
+                        <input
+                          type="checkbox"
+                          [checked]="isSelected(section.group.definition.facet, option.value)"
+                          (change)="toggleFacet(section.group.definition.facet, option.value)"
+                        />
+                        @if (option.hex) {
+                          <span class="listing__swatch" [style.background]="option.hex" aria-hidden="true"></span>
+                        }
+                        <span class="listing__option-name">{{ option.name }}</span>
+                        <span class="listing__option-count">{{ option.productCount }}</span>
+                      </label>
+                    </li>
+                  }
+                </ul>
+                @if (section.group.hiddenCount > 0) {
+                  <button type="button" class="listing__more" (click)="toggleExpanded(section.group.definition.facet)">+ {{ section.group.hiddenCount }} more</button>
+                } @else if (expandedGroups().has(section.group.definition.facet)) {
+                  <button type="button" class="listing__more" (click)="toggleExpanded(section.group.definition.facet)">Show less</button>
+                }
+              </fieldset>
+            }
+          }
         }
+      }
+
+      <div class="listing__filters-foot">
+        <button type="button" class="btn btn--primary btn--full" (click)="closeFilters()">Show results</button>
       </div>
     </aside>
 
@@ -71,7 +166,30 @@
       <button type="button" class="listing__scrim" (click)="closeFilters()" aria-label="Close filters"></button>
     }
 
-    <div class="listing__results">
+    <div class="listing__results" [attr.aria-busy]="loading()">
+      <p class="visually-hidden" aria-live="polite">
+        @if (!loading() && !error()) {
+          {{ products().length === 0 ? 'No products match these filters' : 'Showing ' + products().length + (hasMore() ? ' or more' : '') + ' products' }}
+        }
+      </p>
+      @if (activeChips().length > 0) {
+        <ul class="listing__chips" aria-label="Active filters">
+          @for (chip of activeChips(); track chip.key) {
+            <li>
+              <button type="button" class="listing__chip" (click)="chip.remove()" [attr.aria-label]="'Remove filter ' + chip.label">
+                {{ chip.label }}
+                <span aria-hidden="true">&times;</span>
+              </button>
+            </li>
+          }
+          @if (hasActiveFilters()) {
+            <li>
+              <button type="button" class="listing__clear" (click)="clearFilters()">Clear all</button>
+            </li>
+          }
+        </ul>
+      }
+
       @if (loading()) {
         <div class="grid">
           @for (i of [1, 2, 3, 4, 5, 6, 7, 8]; track i) {
@@ -81,7 +199,16 @@
       } @else if (error()) {
         <p class="state-message state-message--error">{{ error() }}</p>
       } @else if (products().length === 0) {
-        <p class="state-message">No products match these filters yet — try adjusting or clearing them.</p>
+        <div class="state-message">
+          @if (searchQuery()) {
+            <p>Nothing found for “{{ searchQuery() }}”. Check the spelling or try a broader word like “silk” or “cotton”.</p>
+          } @else {
+            <p>No products match these filters yet. Try removing a filter or two.</p>
+          }
+          @if (hasActiveFilters()) {
+            <button type="button" class="btn btn--outline" (click)="clearFilters()">Clear all filters</button>
+          }
+        </div>
       } @else {
         <div class="grid">
           @for (product of products(); track product.uuid) {

@@ -17,18 +17,115 @@
       <span class="header__logo-word">Manufest Weaves</span>
     </a>
 
-    <nav class="header__nav" aria-label="Primary">
-      @for (link of navLinks; track link.path) {
-        <a [routerLink]="link.path">{{ link.label }}</a>
+    <nav class="header__nav" aria-label="Shop by">
+      @for (link of navLinks; track link.icon) {
+        <div
+          #navItem
+          class="header__nav-item"
+          (mouseenter)="scheduleMenu(link.icon)"
+          (mouseleave)="scheduleMenu(null)"
+          (focusout)="onMenuFocusOut($event, navItem)"
+          (keydown.escape)="closeMenuNow()"
+        >
+          <button
+            type="button"
+            class="header__nav-link"
+            [class.header__nav-link--open]="activeMenu()?.key === link.icon"
+            [attr.aria-expanded]="activeMenu()?.key === link.icon"
+            [attr.aria-controls]="'nav-menu-' + link.icon"
+            (click)="toggleMenu(link.icon)"
+          >
+            {{ link.label }}
+          </button>
+
+          @if (activeMenu(); as open) {
+            @if (open.key === link.icon) {
+              <div class="header__mega" [id]="'nav-menu-' + link.icon" role="region" [attr.aria-label]="link.label + ' filters'">
+                <div class="container header__mega-inner">
+                  @for (column of open.menu.columns; track column.heading) {
+                    <div class="header__mega-col">
+                      <p class="header__mega-heading">{{ column.heading }}</p>
+                      <ul>
+                        @for (item of column.links; track item.label) {
+                          <li>
+                            <a [routerLink]="item.commands" [queryParams]="item.queryParams ?? {}" (click)="closeMenuNow()">
+                              @if (item.hex) {
+                                <span class="header__mega-swatch" [style.background]="item.hex" aria-hidden="true"></span>
+                              }
+                              {{ item.label }}
+                            </a>
+                          </li>
+                        }
+                      </ul>
+                      @if (column.more) {
+                        <a class="header__mega-more" routerLink="/shop" (click)="closeMenuNow()">+ {{ column.more.count }} more</a>
+                      }
+                    </div>
+                  } @empty {
+                    <p class="header__mega-empty">No filters to show here yet.</p>
+                  }
+                  <div class="header__mega-foot">
+                    <a [routerLink]="open.menu.viewAll.commands" (click)="closeMenuNow()">{{ open.menu.viewAll.label }} &rarr;</a>
+                  </div>
+                </div>
+              </div>
+            }
+          }
+        </div>
       }
     </nav>
 
-    <div class="header__search">
-      <input type="search" placeholder="Search sarees…" aria-label="Search" />
-      <a routerLink="/search" class="header__search-btn" aria-label="Search">
-        <svg viewBox="0 0 20 20" fill="none" width="16" height="16"><path d="M9 17a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm9 1-4.35-4.35" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-      </a>
-    </div>
+    <form #searchBox class="header__search" role="search" (ngSubmit)="submitSearch()" (focusout)="onSearchFocusOut($event, searchBox)">
+      <input
+        type="search"
+        name="q"
+        placeholder="Search sarees, fabrics, colours…"
+        aria-label="Search products"
+        autocomplete="off"
+        enterkeyhint="search"
+        role="combobox"
+        aria-autocomplete="list"
+        aria-controls="header-search-suggestions"
+        [attr.aria-expanded]="suggestionsOpen() && suggestions().length > 0"
+        [attr.aria-activedescendant]="activeSuggestion() >= 0 ? 'suggestion-' + activeSuggestion() : null"
+        [(ngModel)]="searchText"
+        (ngModelChange)="onSearchInput($event)"
+        (keydown)="onSearchKeydown($event)"
+        (focus)="suggestionsOpen.set(true)"
+      />
+      <button type="submit" class="header__search-btn" aria-label="Search">
+        <svg viewBox="0 0 20 20" fill="none" width="16" height="16" aria-hidden="true"><path d="M9 17a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm9 1-4.35-4.35" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+      </button>
+
+      @if (suggestionsOpen() && suggestions().length > 0) {
+        <ul id="header-search-suggestions" class="header__suggestions" role="listbox" aria-label="Search suggestions">
+          @for (suggestion of suggestions(); track suggestion.id; let i = $index) {
+            <li
+              [id]="'suggestion-' + i"
+              role="option"
+              class="header__suggestion"
+              [class.header__suggestion--active]="i === activeSuggestion()"
+              [attr.aria-selected]="i === activeSuggestion()"
+              (mousedown)="$event.preventDefault()"
+              (click)="openSuggestion(suggestion)"
+              (mouseenter)="activeSuggestion.set(i)"
+            >
+              <span class="header__suggestion-label">{{ suggestion.label }}</span>
+              <span class="header__suggestion-hint">{{ suggestion.hint }}</span>
+            </li>
+          }
+          <li
+            role="option"
+            class="header__suggestion header__suggestion--all"
+            [attr.aria-selected]="false"
+            (mousedown)="$event.preventDefault()"
+            (click)="closeSuggestions(); submitSearch()"
+          >
+            See all results for “{{ searchText.trim() }}”
+          </li>
+        </ul>
+      }
+    </form>
 
     <div class="header__actions">
       <a routerLink="/search" class="header__icon-btn header__icon-btn--search-mobile" aria-label="Search">
@@ -99,30 +196,61 @@
     <button type="button" class="header__drawer-close" (click)="closeMobileMenu()" aria-label="Close menu">&times;</button>
   </div>
 
-  <nav class="header__drawer-nav" aria-label="Primary">
-    @for (link of navLinks; track link.path) {
-      <a [routerLink]="link.path" routerLinkActive="header__drawer-link--active" class="header__drawer-link" (click)="closeMobileMenu()">
-        <span class="header__drawer-icon">
-          @switch (link.icon) {
-            @case ('new-arrivals') {
-              <svg viewBox="0 0 24 24" fill="none"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>
+  <nav class="header__drawer-nav" aria-label="Shop by">
+    @for (link of navLinks; track link.icon) {
+      <div class="header__drawer-section">
+        <button
+          type="button"
+          class="header__drawer-link header__drawer-toggle"
+          [class.header__drawer-toggle--open]="drawerSection() === link.icon"
+          [attr.aria-expanded]="drawerSection() === link.icon"
+          [attr.aria-controls]="'drawer-menu-' + link.icon"
+          (click)="toggleDrawerSection(link.icon)"
+        >
+          <span class="header__drawer-icon">
+            @switch (link.icon) {
+              @case ('new-arrivals') {
+                <svg viewBox="0 0 24 24" fill="none"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>
+              }
+              @case ('origin') {
+                <svg viewBox="0 0 24 24" fill="none"><path d="M12 21s7-6.5 7-11.5A7 7 0 0 0 5 9.5C5 14.5 12 21 12 21Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><circle cx="12" cy="9.5" r="2.3" stroke="currentColor" stroke-width="1.5"/></svg>
+              }
+              @case ('fabric') {
+                <svg viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="14" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="3" y="14" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="14" y="14" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.5"/></svg>
+              }
+              @case ('weave') {
+                <svg viewBox="0 0 24 24" fill="none"><path d="M4 4v16M9 4v16M14 4v16M19 4v16" stroke="currentColor" stroke-width="1.3"/><path d="M4 9h16M4 14h16" stroke="currentColor" stroke-width="1.3"/></svg>
+              }
+              @case ('occasion') {
+                <svg viewBox="0 0 24 24" fill="none"><rect x="4" y="9" width="16" height="11" rx="1.5" stroke="currentColor" stroke-width="1.5"/><path d="M4 9h16M12 9v11" stroke="currentColor" stroke-width="1.5"/><path d="M12 9c-2-3-6-3-6-.5C6 9 8 9 12 9Zm0 0c2-3 6-3 6-.5C18 9 16 9 12 9Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+              }
             }
-            @case ('origin') {
-              <svg viewBox="0 0 24 24" fill="none"><path d="M12 21s7-6.5 7-11.5A7 7 0 0 0 5 9.5C5 14.5 12 21 12 21Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><circle cx="12" cy="9.5" r="2.3" stroke="currentColor" stroke-width="1.5"/></svg>
+          </span>
+          <span class="header__drawer-toggle-label">{{ link.label }}</span>
+          <svg class="header__drawer-chevron" viewBox="0 0 20 20" fill="none" width="16" height="16" aria-hidden="true"><path d="m6 8 4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+
+        @if (drawerSection() === link.icon) {
+          <div class="header__drawer-sub" [id]="'drawer-menu-' + link.icon">
+            @for (column of menuFor(link.icon).columns; track column.heading) {
+              <p class="header__drawer-sub-heading">{{ column.heading }}</p>
+              <ul>
+                @for (item of column.links; track item.label) {
+                  <li>
+                    <a [routerLink]="item.commands" [queryParams]="item.queryParams ?? {}" (click)="closeMobileMenu()">
+                      @if (item.hex) {
+                        <span class="header__mega-swatch" [style.background]="item.hex" aria-hidden="true"></span>
+                      }
+                      {{ item.label }}
+                    </a>
+                  </li>
+                }
+              </ul>
             }
-            @case ('fabric') {
-              <svg viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="14" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="3" y="14" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="14" y="14" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.5"/></svg>
-            }
-            @case ('weave') {
-              <svg viewBox="0 0 24 24" fill="none"><path d="M4 4v16M9 4v16M14 4v16M19 4v16" stroke="currentColor" stroke-width="1.3"/><path d="M4 9h16M4 14h16" stroke="currentColor" stroke-width="1.3"/></svg>
-            }
-            @case ('occasion') {
-              <svg viewBox="0 0 24 24" fill="none"><rect x="4" y="9" width="16" height="11" rx="1.5" stroke="currentColor" stroke-width="1.5"/><path d="M4 9h16M12 9v11" stroke="currentColor" stroke-width="1.5"/><path d="M12 9c-2-3-6-3-6-.5C6 9 8 9 12 9Zm0 0c2-3 6-3 6-.5C18 9 16 9 12 9Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
-            }
-          }
-        </span>
-        <span>{{ link.label }}</span>
-      </a>
+            <a class="header__drawer-sub-all" [routerLink]="menuFor(link.icon).viewAll.commands" (click)="closeMobileMenu()">{{ menuFor(link.icon).viewAll.label }} &rarr;</a>
+          </div>
+        }
+      </div>
     }
   </nav>
 

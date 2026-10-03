@@ -66,6 +66,23 @@ describe('ProductService', () => {
     });
   });
 
+  describe('getFilters', () => {
+    it('scopes to a category only when one is given, and unwraps data', () => {
+      let result: any;
+      service.getFilters('cat-1').subscribe((r) => (result = r));
+      const req = httpMock.expectOne((r) => r.url === `${base}/filters`);
+      expect(req.request.params.get('categoryUuid')).toBe('cat-1');
+      const data = { categories: [], fabrics: [], weaves: [], occasions: [], origins: [{ value: 'tenkasi', name: 'Tenkasi', productCount: 3 }] };
+      req.flush({ success: true, data });
+      expect(result).toEqual(data);
+
+      service.getFilters().subscribe();
+      const unscoped = httpMock.expectOne((r) => r.url === `${base}/filters`);
+      expect(unscoped.request.params.keys()).toEqual([]);
+      unscoped.flush({ success: true, data });
+    });
+  });
+
   describe('listProducts', () => {
     it('sends only the params that were actually provided', () => {
       service.listProducts({ limit: 10 }).subscribe();
@@ -82,6 +99,31 @@ describe('ProductService', () => {
       expect(req.request.params.get('priceMax')).toBe('5000');
       expect(req.request.params.get('sort')).toBe('oldest');
       req.flush({ success: true, data: [] });
+    });
+
+    it('sends multi-select facet filters comma-separated and omits empty ones', () => {
+      service
+        .listProducts({ fabricUuids: ['f-1', 'f-2'], weaveUuids: [], occasionUuids: ['o-1'], origins: ['tenkasi'], sort: 'price_asc' })
+        .subscribe();
+      const req = httpMock.expectOne((r) => r.url === `${base}/list`);
+      expect(req.request.params.get('fabricUuids')).toBe('f-1,f-2');
+      expect(req.request.params.has('weaveUuids')).toBeFalse();
+      expect(req.request.params.get('occasionUuids')).toBe('o-1');
+      expect(req.request.params.get('origins')).toBe('tenkasi');
+      expect(req.request.params.get('sort')).toBe('price_asc');
+      req.flush({ success: true, data: [] });
+    });
+
+    it('sends a trimmed search query and omits a blank one', () => {
+      service.listProducts({ q: '  silk saree ' }).subscribe();
+      const req = httpMock.expectOne((r) => r.url === `${base}/list`);
+      expect(req.request.params.get('q')).toBe('silk saree');
+      req.flush({ success: true, data: [] });
+
+      service.listProducts({ q: '   ' }).subscribe();
+      const blank = httpMock.expectOne((r) => r.url === `${base}/list`);
+      expect(blank.request.params.has('q')).toBeFalse();
+      blank.flush({ success: true, data: [] });
     });
 
     it('falls back to a synthetic meta object when the server omits it', () => {
