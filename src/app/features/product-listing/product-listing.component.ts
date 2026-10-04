@@ -6,8 +6,7 @@ import { ProductCardComponent } from '../../shared/product-card/product-card.com
 import { ListProductsOptions, ProductService, ProductSort } from '../../core/services/product.service';
 import { CategoryService } from '../../core/services/category.service';
 import { ProductSummary } from '../../core/models/product.models';
-import { FACETS, FacetDefinition, FacetKey, FacetOption, ProductFilters, facetOptions } from '../../core/models/product-filters.models';
-import { formatPrice } from '../../core/utils/format-price';
+import { FACETS, FacetDefinition, FacetKey, FacetOption, PRICE_BANDS, PriceBand, ProductFilters, facetOptions, priceRangeLabel } from '../../core/models/product-filters.models';
 
 interface SingleOption<T> {
   value: T;
@@ -81,7 +80,7 @@ export class ProductListingComponent implements OnInit, OnDestroy {
   private readonly categoryService = inject(CategoryService);
   private readonly destroy$ = new Subject<void>();
 
-  readonly priceOptions: SingleOption<number>[] = [500, 1500, 2000, 5000, 10000].map((max) => ({ value: max, label: `Under ${formatPrice(max)}` }));
+  readonly priceOptions = PRICE_BANDS;
 
   readonly sortOptions: Array<{ value: ProductSort; label: string }> = [
     { value: 'newest', label: 'Newest' },
@@ -163,7 +162,8 @@ export class ProductListingComponent implements OnInit, OnDestroy {
       ...facet('color'),
       ...(this.discountOptions().length ? [{ kind: 'discount' } as const] : []),
       ...(this.blouseOptions().length ? [{ kind: 'blouse' } as const] : []),
-      ...(['purity', 'material', 'zariColor', 'zariType', 'border', 'occasion', 'fabric', 'weave', 'origin'] as FacetKey[]).flatMap(facet),
+      // 'origin' hidden 2026-10-05 (user request); add it back to this list to restore the filter.
+      ...(['purity', 'material', 'zariColor', 'zariType', 'border', 'occasion', 'fabric', 'weave'] as FacetKey[]).flatMap(facet),
     ];
   });
 
@@ -198,8 +198,7 @@ export class ProductListingComponent implements OnInit, OnDestroy {
     const min = this.priceMin();
     const max = this.priceMax();
     if (min != null || max != null) {
-      const label = min != null && max != null ? `${formatPrice(min)} - ${formatPrice(max)}` : min != null ? `Over ${formatPrice(min)}` : `Under ${formatPrice(max!)}`;
-      chips.push({ key: 'price', label: `Price: ${label}`, remove: () => this.updateQuery({ priceMin: null, priceMax: null }) });
+      chips.push({ key: 'price', label: `Price: ${priceRangeLabel(min, max)}`, remove: () => this.updateQuery({ priceMin: null, priceMax: null }) });
     }
     const discount = this.discountMin();
     if (discount != null) {
@@ -373,15 +372,15 @@ export class ProductListingComponent implements OnInit, OnDestroy {
     this.router.navigate(categoryUuid ? ['/category', categoryUuid] : ['/shop'], { queryParamsHandling: 'preserve' });
   }
 
-  isPriceActive(max: number): boolean {
-    return this.priceMin() == null && this.priceMax() === max;
+  isPriceActive(band: PriceBand): boolean {
+    return this.priceMin() === band.min && this.priceMax() === band.max;
   }
 
   /** Single-select groups (price, discount, blouse) render as radios;
    * clicking the already-selected one clears it. */
-  togglePrice(max: number): void {
-    const active = this.isPriceActive(max);
-    this.updateQuery({ priceMin: null, priceMax: active ? null : max }, false);
+  togglePrice(band: PriceBand): void {
+    const active = this.isPriceActive(band);
+    this.updateQuery({ priceMin: active ? null : band.min, priceMax: active ? null : band.max }, false);
   }
 
   toggleDiscount(min: number): void {

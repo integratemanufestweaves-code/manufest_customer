@@ -16,7 +16,12 @@
           </span>
           <div>
             <p class="account-nav__name">{{ p.fullName || p.firstName || p.email || p.mobileNumber }}</p>
-            <p class="account-nav__email">{{ p.email || p.mobileNumber }}</p>
+            @if (p.mobileNumber) {
+              <p class="account-nav__email">{{ p.mobileNumber }}</p>
+            }
+            @if (p.email) {
+              <p class="account-nav__email">{{ p.email }}</p>
+            }
           </div>
         </div>
       }
@@ -164,6 +169,27 @@
                 }
               </div>
             </div>
+            <div class="account-form__row">
+              <div class="auth__field">
+                <label for="profileEmail">Email</label>
+                <input
+                  id="profileEmail"
+                  type="email"
+                  name="email"
+                  [(ngModel)]="email"
+                  (ngModelChange)="emailError.set(null)"
+                  autocomplete="email"
+                  inputmode="email"
+                  spellcheck="false"
+                  placeholder="you@example.com"
+                  [attr.aria-invalid]="emailError() ? true : null"
+                  [attr.aria-describedby]="emailError() ? 'profileEmailError' : null"
+                />
+                @if (emailError()) {
+                  <small id="profileEmailError" class="account-form__field-error">{{ emailError() }}</small>
+                }
+              </div>
+            </div>
 
             <div class="account-form__actions">
               <button type="submit" class="btn btn--primary" [disabled]="profileSaving()">{{ profileSaving() ? 'Saving…' : 'Save changes' }}</button>
@@ -174,10 +200,7 @@
           <form class="account-form" (ngSubmit)="verifyMobile()" novalidate>
             <div>
               <h2 class="account-form__title">Verify your mobile number</h2>
-              <p class="account-form__lead">
-                Enter the code sent to {{ otpMaskedMobile() || mobileNumber }}.
-                @if (otpExpiresIn()) { Valid for {{ otpExpiresIn() }} seconds. }
-              </p>
+              <p class="account-form__lead">Enter the code sent to {{ otpMaskedMobile() || mobileNumber }}.</p>
             </div>
 
             @if (profileError()) {
@@ -188,6 +211,7 @@
               <span>Enter the 6-digit code</span>
               <app-otp-input name="mobileOtp" [(ngModel)]="otpCode" [autofocus]="true" label="6-digit code" />
             </div>
+            <app-otp-timer [expiresInSeconds]="otpExpiresIn()" [issuedAt]="otpIssuedAt()" />
 
             <div class="account-form__actions">
               <button type="submit" class="btn btn--primary" [disabled]="verifying()">{{ verifying() ? 'Verifying…' : 'Verify number' }}</button>
@@ -260,8 +284,8 @@
                 <input type="tel" name="addrPhone" [(ngModel)]="addressForm.phone" required />
               </label>
               <label class="auth__field">
-                <span>Country code</span>
-                <input type="text" name="countryCode" [(ngModel)]="addressForm.countryCode" maxlength="2" placeholder="IN" required />
+                <span>Country</span>
+                <input type="text" name="countryCode" value="India (IN)" readonly tabindex="-1" autocomplete="off" aria-readonly="true" />
               </label>
             </div>
             <label class="auth__field">

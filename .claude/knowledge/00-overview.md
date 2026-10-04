@@ -1,6 +1,6 @@
 ---
 generated: 2026-09-08
-updated: 2026-09-28
+updated: 2026-10-05
 purpose: Entry point for Claude's knowledge base of this repo. Read this first.
 ---
 
@@ -40,6 +40,32 @@ with paise (GST/delivery are baked into `selling_price`), and the old
 Razorpay charged. The cart deliberately shows no "Price changed since you
 added this (was ₹…)" notice. The user asked for it to be removed, so don't
 add it back.
+
+## App-wide behaviours worth knowing (2026-10-05)
+- **Scroll on navigation:** `core/scroll/scroll-restoration.ts`
+  (`provideScrollRestoration()`, wired in `app.config.ts` with the Router's
+  own `scrollPositionRestoration: 'disabled'`). New navigation → top;
+  back/forward → previous position, retried each frame until the page's
+  HTTP content is tall enough (3s cap), cancelled if the visitor scrolls.
+  Don't switch the Router back to `'top'`/`'enabled'`; see the file header.
+- **Same-route navigation:** a component whose route can change in place
+  (e.g. `/product/A` → `/product/B` from "You may also like") must read
+  `route.paramMap` as an observable, not `snapshot` — the Router reuses the
+  instance. `product-detail.component.ts` does this; follow it elsewhere.
+- **Addresses are India-only:** the Country field in the account and
+  checkout address forms is a greyed, read-only "India (IN)"; every save
+  sends `countryCode: 'IN'`. Read-only inputs inside `.auth__field` get the
+  grey style from `features/auth/_auth-shared.scss`.
+- **Prices:** always `formatPrice()`; product cards show only the cheapest
+  variant's price, and `manufest_be` picks the card thumbnail from that same
+  variant. Price filter bands: see 02-product-listing.md.
+- **Origin** (seller district) is hidden from the header and the listing
+  sidebar for now; see 02-product-listing.md.
+- **iOS Safari pitfalls hit so far** (fixed; avoid reintroducing): empty
+  flex children in a `<button>` collapse to 0 width (header burger needs
+  explicit `width`); `<input type="date">` loses its arrow once styled
+  (custom chevron in `_auth-shared.scss`); `aspect-ratio` + `height: 100%`
+  img inside a grid mis-sizes the row (cart thumbnail uses fixed px sizes).
 
 ## What's real vs. "coming soon" (updated 2026-09-12)
 **Ten** routes call a live `manufest_be` API:

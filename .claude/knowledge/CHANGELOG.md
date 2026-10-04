@@ -1,5 +1,67 @@
 # Changelog
 
+## 2026-10-04 – 2026-10-05 — Storefront fixes and tweaks (user-directed)
+Uncommitted at time of writing. Grouped by area:
+
+- **Navigation / scroll:** back/forward now restores the previous scroll
+  position instead of jumping to the top (`core/scroll/scroll-restoration.ts`,
+  see 00-overview.md). Product detail reloads when its `:productUuid`
+  changes in place, so "You may also like" cards open the clicked product
+  (`route.paramMap` instead of `snapshot`; in-flight requests for the old
+  product are cancelled).
+- **Product cards:** show only the cheapest variant's price (was a
+  "₹57.98 – ₹64.47" range). `manufest_be`'s `THUMBNAIL_ORDER_SQL`
+  (products.api.js) now picks the thumbnail from the cheapest priced variant
+  that has media (primary image first), falling back to the next-cheapest.
+- **Price filter:** four shared `PRICE_BANDS` (Under ₹299 / ₹1,000 / ₹2,000,
+  ₹3,000 and above) for the listing sidebar and the header's Shop by Price
+  menu; details and the ₹2,000–₹3,000 gap in 02-product-listing.md.
+  "Clear all" is now a highlighted pill button.
+- **Origin hidden** in the header and listing sidebar (one-line restores).
+  A district+state ("Tenkasi, TN") feature was built across manufest_be,
+  manufest_seller and this app, then **fully reverted** at the user's
+  request, including dropping the `seller_registration.state` column from
+  the local DB and its `schema_migrations` row.
+- **Account:** profile edit has an Email field (backend `PATCH /profile`
+  accepts `email`, unverified; `''` clears it; 409 `EMAIL_TAKEN` shown under
+  the field). Email is sent only when changed (trim + lower-case compare) so
+  an unchanged address keeps `email_verified_at`. Sidebar shows the mobile
+  number and the email on separate lines, each only if present.
+- **Addresses (account + checkout):** Country is read-only "India (IN)".
+  Checkout: phone field renamed "Receiver's phone number" and pre-filled
+  from the customer's `mobileNumber`; each saved address has an **Edit**
+  button (sibling of the radio `<label>`, so it doesn't change the
+  selection) that reuses the inline form ("Edit address" / "Update
+  address", `updateAddress`), keeping that address selected after saving.
+- **iOS Safari layout fixes:** header burger bars (explicit width +
+  `appearance: none`); date-of-birth input gets a custom down arrow and
+  min-height; cart thumbnail uses fixed px sizes (was `aspect-ratio`), which
+  stopped the quantity stepper/Remove row overlapping "Proceed to checkout".
+  Cart thumbnail is also larger: 104×130 desktop, 88×110 phone.
+- **Reverted the same day:** an "add to cart always adds in place +
+  up-front Out of stock" change to the product card (and its backend
+  `inStock` field). The card behaves as before: multi-variant products open
+  the detail page.
+- **Not from this work, but present in the tree:** `shared/otp-timer/`
+  (live "Code valid for m:ss" readout used by login and account), related
+  login edits, and `environment.ts` (production!) currently pointing
+  `apiBaseUrl` at `http://localhost:4000` — must be switched back to
+  `https://manufestweaves.in/api/v1` before any production build.
+- **Known open issue:** date of birth shifts back a day on save for IST
+  users (`account.component.ts` slices the UTC ISO string). Fix agreed to be
+  backend-side (return/accept plain `YYYY-MM-DD`); not done yet.
+- **Tests added:** `scroll-restoration.spec.ts`; `account.component.spec.ts`
+  (sidebar lines, email edit/validation/EMAIL_TAKEN, India-only country);
+  `product-filters.models.spec.ts` (bands, chip labels);
+  `product-listing.component.spec.ts` (Origin hidden, price band
+  select/clear/active); `header.component.spec.ts` (Origin hidden, Shop by
+  Price links); product-detail (route change reloads); checkout (receiver
+  phone pre-fill/label, edit address flow); product-card (cheapest price).
+  CSS-only fixes have no automated tests. `app.config.spec.ts` now guards
+  `scrollPositionRestoration: 'disabled'` + `provideScrollRestoration()`.
+- **Verified:** `ng test --watch=false` 236/236 passing;
+  `ng build --configuration development` clean.
+
 ## 2026-09-29 — Checkout is online-payment only (COD and bank transfer hidden)
 - **Why:** the business isn't taking cash on delivery for now; only
   Razorpay (cards, UPI, net banking, wallets).

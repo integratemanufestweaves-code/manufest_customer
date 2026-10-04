@@ -31,6 +31,9 @@
             @if (addresses().length > 0) {
               <div class="address-options">
                 @for (address of addresses(); track address.uuid) {
+                  <!-- Edit is a sibling of the <label>, not inside it, so clicking
+                       it doesn't also select the radio. -->
+                  <div class="address-option-wrap">
                   <label class="address-option" [class.address-option--selected]="selectedAddressUuid === address.uuid">
                     <input type="radio" name="address" [value]="address.uuid" [(ngModel)]="selectedAddressUuid" />
                     <span class="address-option__body">
@@ -48,6 +51,16 @@
                       <span class="address-option__phone">{{ address.phone }}</span>
                     </span>
                   </label>
+                  <button
+                    type="button"
+                    class="address-option__edit"
+                    (click)="startEditAddress(address)"
+                    [disabled]="addressSaving()"
+                    [attr.aria-label]="'Edit address for ' + address.recipientName"
+                  >
+                    Edit
+                  </button>
+                  </div>
                 }
               </div>
             }
@@ -58,6 +71,7 @@
               </button>
             } @else {
               <form class="address-form" (ngSubmit)="saveNewAddress()">
+                <h3 class="address-form__title">{{ editingAddressUuid() ? 'Edit address' : 'New address' }}</h3>
                 @if (addressFormError()) {
                   <p class="state-message state-message--error">{{ addressFormError() }}</p>
                 }
@@ -73,12 +87,12 @@
                 </div>
                 <div class="address-form__row">
                   <label class="auth__field">
-                    <span>Phone</span>
-                    <input type="tel" name="addrPhone" [(ngModel)]="addressForm.phone" required />
+                    <span>Receiver's phone number</span>
+                    <input type="tel" name="addrPhone" [(ngModel)]="addressForm.phone" autocomplete="tel-national" inputmode="numeric" required />
                   </label>
                   <label class="auth__field">
-                    <span>Country code</span>
-                    <input type="text" name="countryCode" [(ngModel)]="addressForm.countryCode" maxlength="2" placeholder="IN" required />
+                    <span>Country</span>
+                    <input type="text" name="countryCode" value="India (IN)" readonly tabindex="-1" autocomplete="off" aria-readonly="true" />
                   </label>
                 </div>
                 <label class="auth__field">
@@ -109,7 +123,9 @@
                 </label>
 
                 <div class="address-form__actions">
-                  <button type="submit" class="btn btn--primary" [disabled]="addressSaving()">{{ addressSaving() ? 'Saving…' : 'Save address' }}</button>
+                  <button type="submit" class="btn btn--primary" [disabled]="addressSaving()">
+                    {{ addressSaving() ? 'Saving…' : editingAddressUuid() ? 'Update address' : 'Save address' }}
+                  </button>
                   @if (addresses().length > 0) {
                     <button type="button" class="btn btn--outline" (click)="cancelAddAddress()">Cancel</button>
                   }

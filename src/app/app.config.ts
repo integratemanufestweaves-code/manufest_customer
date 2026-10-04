@@ -10,6 +10,7 @@ import { AuthService } from './core/services/auth.service';
 import { CartService } from './core/services/cart.service';
 import { WishlistService } from './core/services/wishlist.service';
 import { NotificationService } from './core/services/notification.service';
+import { provideScrollRestoration } from './core/scroll/scroll-restoration';
 
 /**
  * Resolves whether a returning visitor already has a valid session cookie
@@ -54,7 +55,13 @@ export const appConfig: ApplicationConfig = {
     // what looked like "clicking anything jumps to the footer." `top`
     // resets to (0,0) on every new navigation; `anchorScrolling` still lets
     // an in-page `#fragment` link scroll to that element instead.
-    provideRouter(routes, withInMemoryScrolling({ scrollPositionRestoration: 'top', anchorScrolling: 'enabled' })),
+    //
+    // 2026-10-04: `'top'` also reset the page on browser *back*, losing the
+    // visitor's place. Now `'disabled'` (positions are still recorded) and
+    // `provideScrollRestoration()` does both jobs: top on a new navigation,
+    // the old position on back/forward (waiting for HTTP content to load).
+    provideRouter(routes, withInMemoryScrolling({ scrollPositionRestoration: 'disabled', anchorScrolling: 'enabled' })),
+    provideScrollRestoration(),
     // Order matters: authRefreshInterceptor must run before
     // credentialsInterceptor (see its own header comment) — interceptors
     // execute request-order left-to-right, and the retried request needs

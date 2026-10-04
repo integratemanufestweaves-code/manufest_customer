@@ -72,11 +72,12 @@ export class ProductCardComponent {
     this.thumbnailBroken.set(true);
   }
 
+  /** The cheapest variant's price only, not the from–to range
+   * (2026-10-05, user-directed); the thumbnail is that same variant's
+   * photo (manufest_be's THUMBNAIL_ORDER_SQL). */
   get priceLabel(): string | null {
-    const { from, to } = this.product.pricing;
-    if (from == null) return null;
-    const fmt = formatPrice;
-    return from === to ? fmt(from) : `${fmt(from)} – ${fmt(to as number)}`;
+    const { from } = this.product.pricing;
+    return from == null ? null : formatPrice(from);
   }
 
   get isWishlisted(): boolean {

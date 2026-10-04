@@ -67,17 +67,41 @@ Same documentation discipline `home.component.ts`'s header comment and
 `product-card.component.ts`'s header comment already use for their own
 API-driven deviations from the design.
 
-## Price filter UX
-Two ways to set `priceMin`/`priceMax`, both writing the same query params:
-1. Six fixed preset buttons (Under ₹5,000 / ₹5,000–10,000 / … /
-   ₹50,000–1,00,000) — same six bands as Home's "Shop by Price" tiles
-   (`home.component.ts`'s `priceBands`), so a Home tile click and the
-   listing page's own preset selection land on the exact same state.
-2. Free-form Min/Max number inputs with an "Apply" button — validated
-   client-side (non-negative, `min <= max`) before being written to the
-   URL, mirroring the same `priceMin <= priceMax` `refine()` the backend's
-   Zod schema enforces (`products.validation.js`) so a request that would
-   422 never gets sent.
+## Price filter UX (updated 2026-10-05)
+A single-select radio group (click the selected one again to clear it) of
+four bands, defined once as `PRICE_BANDS` in
+`core/models/product-filters.models.ts` and shared with the header's
+"New Arrivals → Shop by Price" menu:
+
+| Label | Query params |
+|---|---|
+| Under ₹299 | `priceMax=299` |
+| Under ₹1,000 | `priceMax=1000` |
+| Under ₹2,000 | `priceMax=2000` |
+| ₹3,000 and above | `priceMin=3000` |
+
+- Both bounds are **inclusive** server-side (`selling_price <= priceMax` /
+  `>= priceMin`), so "Under ₹299" includes a product at exactly ₹299.
+- **Known gap (user-chosen bands):** products priced above ₹2,000 and below
+  ₹3,000 match no band; they only appear with no price filter. The user was
+  told and offered a ₹2,000–₹3,000 band; not added unless asked.
+- A product matches if **any** of its variants is in range, while its card
+  shows only the cheapest variant's price (see `product-card`), so a card can
+  show a price outside the selected band.
+- The active-filter chip uses `priceRangeLabel()` ("Under ₹299", "₹3,000 and
+  above", or "₹500 - ₹1,000" for a hand-typed two-sided URL).
+- Home's "Shop by Price" tiles (`home.component.ts`'s `priceBands`, Under
+  ₹5,000 … ₹50,000–1,00,000) are a **separate, older list** and were not
+  changed; landing from one shows no selected radio in the sidebar.
+- The earlier preset buttons and free-form Min/Max inputs no longer exist.
+
+## Origin filter hidden (2026-10-05)
+The Origin (seller district) facet is left out of the sidebar's facet list
+in `sections` (see the comment there), and the header's Origin menu is
+commented out in `header.component.ts`'s `navLinks`. Both are one-line
+restores. `?origin=` URLs still filter; they just show no sidebar group.
+A "Tenkasi, TN" district+state label was built and then fully reverted at
+the user's request (no `state` column exists on `seller_registration`).
 
 Filter/sort state lives in the URL (`router.navigate` with
 `queryParamsHandling: 'merge'`), not just component state — bookmarkable,

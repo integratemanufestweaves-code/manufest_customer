@@ -10,8 +10,7 @@ import { CartService } from '../../core/services/cart.service';
 import { WishlistService } from '../../core/services/wishlist.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { ProductService } from '../../core/services/product.service';
-import { FACETS, FacetKey, ProductFilters, facetOptions } from '../../core/models/product-filters.models';
-import { formatPrice } from '../../core/utils/format-price';
+import { FACETS, FacetKey, PRICE_BANDS, ProductFilters, facetOptions } from '../../core/models/product-filters.models';
 
 type NavKey = 'new-arrivals' | 'origin' | 'fabric' | 'weave' | 'occasion';
 
@@ -117,7 +116,8 @@ export class HeaderComponent implements OnInit {
 
   readonly navLinks: NavLink[] = [
     { label: 'New Arrivals', icon: 'new-arrivals' },
-    { label: 'Origin', icon: 'origin' },
+    // Origin hidden 2026-10-05 (user request); re-add this line to bring it back.
+    // { label: 'Origin', icon: 'origin' },
     { label: 'Fabric', icon: 'fabric' },
     { label: 'Weave', icon: 'weave' },
     { label: 'Occasion', icon: 'occasion' },
@@ -156,7 +156,11 @@ export class HeaderComponent implements OnInit {
           },
           {
             heading: 'Shop by Price',
-            links: [500, 1500, 2000, 5000, 10000].map((max) => ({ label: `Under ${formatPrice(max)}`, commands: ['/new-arrivals'], queryParams: { priceMax: max } })),
+            links: PRICE_BANDS.map((band) => ({
+              label: band.label,
+              commands: ['/new-arrivals'],
+              queryParams: { ...(band.min != null ? { priceMin: band.min } : {}), ...(band.max != null ? { priceMax: band.max } : {}) },
+            })),
           },
         ],
         NEW_ARRIVALS_VIEW_ALL,

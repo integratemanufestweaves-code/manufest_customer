@@ -1,5 +1,7 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, DestroyRef, OnInit, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { Subscription } from 'rxjs';
 import { ProductCardComponent } from '../../shared/product-card/product-card.component';
 import { ProductService } from '../../core/services/product.service';
 import { CartService } from '../../core/services/cart.service';
@@ -41,6 +43,10 @@ export class ProductDetailComponent implements OnInit {
   private readonly wishlistService = inject(WishlistService);
   private readonly auth = inject(AuthService);
   private readonly recentlyViewedService = inject(RecentlyViewedService);
+  private readonly destroyRef = inject(DestroyRef);
+  /** In-flight requests for the product being shown; cancelled when the
+   * shopper moves to another product before they finish. */
+  private loadSubs = new Subscription();
 
   readonly product = signal<ProductDetail | null>(null);
   readonly loading = signal(true);
@@ -54,15 +60,31 @@ export class ProductDetailComponent implements OnInit {
   readonly addToCartError = signal<string | null>(null);
   readonly addedToCart = signal(false);
 
+  /** Watches the route, not a one-off snapshot: clicking a "You may also
+   * like" card goes from /product/A to /product/B, and the Router reuses
+   * this same component instance for that, so ngOnInit never runs again.
+   * Reading the snapshot once left the page showing product A (2026-10-05). */
   ngOnInit(): void {
-    const productUuid = this.route.snapshot.paramMap.get('productUuid');
+    this.route.paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => this.load(params.get('productUuid')));
+    this.destroyRef.onDestroy(() => this.loadSubs.unsubscribe());
+  }
+
+  private load(productUuid: string | null): void {
+    this.loadSubs.unsubscribe();
+    this.loadSubs = new Subscription();
+    this.product.set(null);
+    this.relatedProducts.set([]);
+    this.error.set(null);
+    this.loading.set(true);
+    this.selectVariant(null);
+
     if (!productUuid) {
       this.error.set('Product not found.');
       this.loading.set(false);
       return;
     }
 
-    this.productService.getProductDetail(productUuid).subscribe({
+    this.loadSubs.add(this.productService.getProductDetail(productUuid).subscribe({
       next: (product) => {
         this.product.set(product);
         const firstVariant = product.variants[0] ?? null;
@@ -73,7 +95,7 @@ export class ProductDetailComponent implements OnInit {
         this.error.set(err?.message || 'Could not load this product right now.');
         this.loading.set(false);
       },
-    });
+    }));
 
     if (this.auth.isAuthenticated()) {
       // Fire-and-forget — a failed view-record must never affect the page
@@ -81,12 +103,12 @@ export class ProductDetailComponent implements OnInit {
       this.recentlyViewedService.recordView(productUuid).subscribe({ error: () => undefined });
     }
 
-    this.productService.getRelatedProducts(productUuid).subscribe({
+    this.loadSubs.add(this.productService.getRelatedProducts(productUuid).subscribe({
       next: (related) => this.relatedProducts.set(related),
       // Same "no error banner for a nice-to-have strip" call as the home
       // page's Recently Viewed section.
       error: () => this.relatedProducts.set([]),
-    });
+    }));
   }
 
   selectVariant(variant: ProductVariant | null): void {

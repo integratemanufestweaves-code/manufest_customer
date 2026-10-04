@@ -58,7 +58,7 @@
 
 .cart-item {
   display: grid;
-  grid-template-columns: auto 64px minmax(0, 1fr) auto;
+  grid-template-columns: auto 104px minmax(0, 1fr) auto;
   gap: 16px;
   align-items: start;
   padding: 16px;
@@ -76,7 +76,7 @@
   }
 
   @media (max-width: 560px) {
-    grid-template-columns: auto 56px minmax(0, 1fr);
+    grid-template-columns: auto 88px minmax(0, 1fr);
     gap: 12px;
 
     .cart-item__actions {
@@ -97,10 +97,21 @@
   display: block;
   // Portrait, like the product photos themselves — the old 44px square
   // (32px track on phones, which it overflowed) showed only a sliver.
-  width: 100%;
-  aspect-ratio: 4 / 5;
+  // Fixed 4:5 size matching the grid track, not `aspect-ratio` + a
+  // `height: 100%` img: iOS Safari sized the grid row from that differently
+  // when placing items, pushing the stepper/Remove row out of the card and
+  // over the summary's "Proceed to checkout" button (2026-10-05).
+  // Large enough to tell which product/colour is in the cart (2026-10-05);
+  // keep the grid-template-columns tracks above in step with these widths.
+  width: 104px;
+  height: 130px;
   border-radius: var(--radius-sm);
   overflow: hidden;
+
+  @media (max-width: 560px) {
+    width: 88px;
+    height: 110px;
+  }
 
   img {
     width: 100%;

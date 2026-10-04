@@ -13,6 +13,9 @@ export interface UpdateProfileRequest {
   /** ISO date string (`YYYY-MM-DD`) — `usersValidation.updateProfile` coerces
    * via `z.coerce.date()`, so any parseable date string works. */
   dob?: string;
+  /** Omit to leave unchanged, `''` to clear. Saved unverified; a change
+   * clears `email_verified_at`. 409 `EMAIL_TAKEN` if another customer has it. */
+  email?: string;
 }
 
 export interface UpdateProfilePhotoRequest {

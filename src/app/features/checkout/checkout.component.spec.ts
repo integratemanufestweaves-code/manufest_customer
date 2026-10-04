@@ -11,6 +11,7 @@ import { CustomerService } from '../../core/services/customer.service';
 import { OrderService } from '../../core/services/order.service';
 import { PaymentService } from '../../core/services/payment.service';
 import { RazorpayCheckoutService } from '../../core/services/razorpay-checkout.service';
+import { AuthService } from '../../core/services/auth.service';
 import { CartItem, CartView } from '../../core/models/cart.models';
 import { Address } from '../../core/models/customer.models';
 import { OrderDetail } from '../../core/models/order.models';
@@ -274,6 +275,89 @@ describe('CheckoutComponent', () => {
 
       expect(dismissSpy).toHaveBeenCalledWith('order-1');
       expect(router.navigate).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("new address: receiver's phone", () => {
+    it("pre-fills the signed-in customer's mobile number", () => {
+      (TestBed.inject(AuthService) as any).currentUserSignal.set({ mobileNumber: '7871487161' });
+      initWith([makeItem()]);
+      component.startAddAddress();
+      expect(component.addressForm.phone).toBe('7871487161');
+    });
+
+    it('stays editable: a changed number is what gets sent', () => {
+      (TestBed.inject(AuthService) as any).currentUserSignal.set({ mobileNumber: '7871487161' });
+      initWith([makeItem()]);
+      component.startAddAddress();
+      component.addressForm.phone = '9000000001';
+      expect(component.addressForm.phone).toBe('9000000001');
+    });
+
+    it('is empty when the customer has no mobile number on file', () => {
+      initWith([makeItem()]);
+      component.startAddAddress();
+      expect(component.addressForm.phone).toBe('');
+    });
+
+    it(`labels the field "Receiver's phone number"`, () => {
+      initWith([makeItem()]);
+      component.startAddAddress();
+      fixture.detectChanges();
+      const labels = fixture.debugElement.queryAll(By.css('.auth__field span')).map((e) => e.nativeElement.textContent.trim());
+      expect(labels).toContain("Receiver's phone number");
+      expect(labels).not.toContain('Phone');
+    });
+  });
+
+  describe('editing a saved address', () => {
+    it('Edit fills the form with that address and marks it as editing', () => {
+      const addr = makeAddress({ uuid: 'addr-1', recipientName: 'Suthana', phone: '7871487161', city: 'Tenkasi' });
+      initWith([makeItem()], [addr]);
+      component.startEditAddress(addr);
+      expect(component.showAddressForm()).toBeTrue();
+      expect(component.editingAddressUuid()).toBe('addr-1');
+      expect(component.addressForm.recipientName).toBe('Suthana');
+      expect(component.addressForm.city).toBe('Tenkasi');
+    });
+
+    it('saving calls updateAddress (not createAddress) and keeps that address selected', () => {
+      const addr = makeAddress({ uuid: 'addr-1' });
+      const other = makeAddress({ uuid: 'addr-2', isDefault: true });
+      initWith([makeItem()], [addr, other]);
+      const updateSpy = spyOn(customerService, 'updateAddress').and.returnValue(of({ status: 'ok' }));
+      const createSpy = spyOn(customerService, 'createAddress');
+      (customerService.listAddresses as jasmine.Spy).and.returnValue(of([addr, other]));
+
+      component.startEditAddress(addr);
+      component.addressForm.city = 'Madurai';
+      component.saveNewAddress();
+
+      expect(updateSpy).toHaveBeenCalledWith('addr-1', jasmine.objectContaining({ city: 'Madurai' }));
+      expect(createSpy).not.toHaveBeenCalled();
+      expect(component.selectedAddressUuid).toBe('addr-1');
+      expect(component.showAddressForm()).toBeFalse();
+      expect(component.editingAddressUuid()).toBeNull();
+    });
+
+    it('clicking Edit does not change which address is selected', () => {
+      const a = makeAddress({ uuid: 'addr-1', isDefault: true });
+      const b = makeAddress({ uuid: 'addr-2', isDefault: false });
+      initWith([makeItem()], [a, b]);
+      fixture.detectChanges();
+      const editButtons = fixture.debugElement.queryAll(By.css('.address-option__edit'));
+      editButtons[1].nativeElement.click();
+      expect(component.selectedAddressUuid).toBe('addr-1');
+      expect(component.editingAddressUuid()).toBe('addr-2');
+    });
+
+    it('cancel leaves edit mode', () => {
+      const addr = makeAddress({ uuid: 'addr-1' });
+      initWith([makeItem()], [addr]);
+      component.startEditAddress(addr);
+      component.cancelAddAddress();
+      expect(component.editingAddressUuid()).toBeNull();
+      expect(component.showAddressForm()).toBeFalse();
     });
   });
 

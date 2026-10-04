@@ -90,9 +90,9 @@ describe('ProductCardComponent', () => {
       expect(component.priceLabel).toBe('₹4,999');
     });
 
-    it('shows a "from – to" range when they differ', () => {
-      component.product = makeSummary({ pricing: { from: 2000, to: 8000 } });
-      expect(component.priceLabel).toBe('₹2,000 – ₹8,000');
+    it('shows only the lowest variant price, not a range, when variant prices differ', () => {
+      component.product = makeSummary({ pricing: { from: 57.98, to: 64.47 } });
+      expect(component.priceLabel).toBe('₹57.98');
     });
 
     it('is null when pricing.from is null (no active variant with pricing)', () => {

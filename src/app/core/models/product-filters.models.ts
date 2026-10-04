@@ -1,4 +1,5 @@
 import type { ListProductsOptions } from '../services/product.service';
+import { formatPrice } from '../utils/format-price';
 
 /**
  * `GET /public/products/filters` (manufest_be, added 2026-10-01) — every
@@ -92,4 +93,28 @@ export function facetDefinition(facet: FacetKey): FacetDefinition {
 
 export function facetOptions(filters: ProductFilters, facet: FacetKey): FacetOption[] {
   return facetDefinition(facet).options(filters);
+}
+
+/** Price filter bands, shared by the listing sidebar and the header's
+ * "Shop by Price" menu. Both bounds are inclusive server-side
+ * (`selling_price <= priceMax` / `>= priceMin`), so "Under ₹299" also
+ * includes a product at exactly ₹299. The "Under" bands overlap on purpose;
+ * it's a single-select radio group, so only one applies. */
+export interface PriceBand {
+  min: number | null;
+  max: number | null;
+  label: string;
+}
+
+export const PRICE_BANDS: PriceBand[] = [
+  { min: null, max: 299, label: `Under ${formatPrice(299)}` },
+  { min: null, max: 1000, label: `Under ${formatPrice(1000)}` },
+  { min: null, max: 2000, label: `Under ${formatPrice(2000)}` },
+  { min: 3000, max: null, label: `${formatPrice(3000)} and above` },
+];
+
+/** "₹3,000 and above" / "Under ₹299" for a one-sided range, "₹500 - ₹1,000" for both. */
+export function priceRangeLabel(min: number | null, max: number | null): string {
+  if (min != null && max != null) return `${formatPrice(min)} - ${formatPrice(max)}`;
+  return min != null ? `${formatPrice(min)} and above` : `Under ${formatPrice(max!)}`;
 }

@@ -1,7 +1,9 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
+import { map } from 'rxjs';
 
+import { AuthService } from '../../core/services/auth.service';
 import { CartService } from '../../core/services/cart.service';
 import { CustomerService } from '../../core/services/customer.service';
 import { OrderService } from '../../core/services/order.service';
@@ -47,6 +49,7 @@ import { formatPrice } from '../../core/utils/format-price';
   styleUrl: './checkout.component.scss',
 })
 export class CheckoutComponent implements OnInit {
+  private readonly auth = inject(AuthService);
   private readonly cartService = inject(CartService);
   private readonly customerService = inject(CustomerService);
   private readonly orderService = inject(OrderService);
@@ -97,6 +100,8 @@ export class CheckoutComponent implements OnInit {
    * existing list (both paths land here; see this component's header
    * comment). */
   readonly showAddressForm = signal(false);
+  /** Set while the form is editing a saved address (null = adding a new one). */
+  readonly editingAddressUuid = signal<string | null>(null);
   addressForm: AddressRequest = this.blankAddressForm();
   readonly addressSaving = signal(false);
   readonly addressFormError = signal<string | null>(null);
@@ -138,18 +143,42 @@ export class CheckoutComponent implements OnInit {
     });
   }
 
+  /** The receiver's phone starts as the customer's own verified mobile
+   * number (they can overwrite it when the parcel goes to someone else). */
   private blankAddressForm(): AddressRequest {
-    return { label: '', recipientName: '', phone: '', line1: '', line2: '', city: '', state: '', postalCode: '', countryCode: 'IN', isDefault: false };
+    const phone = this.auth.currentUser()?.mobileNumber || '';
+    return { label: '', recipientName: '', phone, line1: '', line2: '', city: '', state: '', postalCode: '', countryCode: 'IN', isDefault: false };
   }
 
   startAddAddress(): void {
     this.addressForm = this.blankAddressForm();
+    this.editingAddressUuid.set(null);
+    this.addressFormError.set(null);
+    this.showAddressForm.set(true);
+  }
+
+  startEditAddress(address: Address): void {
+    this.addressForm = {
+      label: address.label || '',
+      recipientName: address.recipientName,
+      phone: address.phone,
+      line1: address.line1,
+      line2: address.line2 || '',
+      city: address.city,
+      state: address.state || '',
+      postalCode: address.postalCode,
+      // India-only, same as the add form's read-only Country field.
+      countryCode: 'IN',
+      isDefault: address.isDefault,
+    };
+    this.editingAddressUuid.set(address.uuid);
     this.addressFormError.set(null);
     this.showAddressForm.set(true);
   }
 
   cancelAddAddress(): void {
     this.showAddressForm.set(false);
+    this.editingAddressUuid.set(null);
   }
 
   saveNewAddress(): void {
@@ -161,11 +190,17 @@ export class CheckoutComponent implements OnInit {
     this.addressFormError.set(null);
     this.addressSaving.set(true);
 
-    this.customerService.createAddress(f).subscribe({
-      next: (created) => {
+    // Editing keeps that address selected afterwards; adding selects the new one.
+    const editingUuid = this.editingAddressUuid();
+    const save$ = editingUuid
+      ? this.customerService.updateAddress(editingUuid, f).pipe(map(() => editingUuid))
+      : this.customerService.createAddress(f).pipe(map((created) => created.id));
+    save$.subscribe({
+      next: (uuid) => {
         this.addressSaving.set(false);
         this.showAddressForm.set(false);
-        this.loadAddresses(created.id);
+        this.editingAddressUuid.set(null);
+        this.loadAddresses(uuid);
       },
       error: (err) => {
         this.addressFormError.set(err?.message || 'Could not save this address.');

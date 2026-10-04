@@ -33,9 +33,16 @@
   background: none;
   cursor: pointer;
   padding: 0;
+  -webkit-appearance: none;
+  appearance: none;
 
+  /* Explicit width: iOS Safari doesn't stretch flex items inside a
+     <button>, so these empty bars collapsed to 0px wide there (invisible,
+     though the button still worked). */
   span {
     display: block;
+    width: 100%;
+    flex-shrink: 0;
     height: 2px;
     background: var(--color-text);
     border-radius: 1px;

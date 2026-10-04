@@ -9,6 +9,7 @@ import { CartService } from '../../core/services/cart.service';
 import { WishlistService } from '../../core/services/wishlist.service';
 import { Address, AddressRequest } from '../../core/models/customer.models';
 import { OtpInputComponent } from '../../shared/otp-input/otp-input.component';
+import { OtpTimerComponent } from '../../shared/otp-timer/otp-timer.component';
 
 type AccountTab = 'profile' | 'addresses';
 /** `view` = read-only summary, `edit` = the form, `verify-mobile` = entering
@@ -28,7 +29,7 @@ type ProfileMode = 'view' | 'edit' | 'verify-mobile';
 @Component({
   selector: 'app-account',
   standalone: true,
-  imports: [FormsModule, RouterLink, DatePipe, OtpInputComponent],
+  imports: [FormsModule, RouterLink, DatePipe, OtpInputComponent, OtpTimerComponent],
   templateUrl: './account.component.html',
   styleUrl: './account.component.scss',
 })
@@ -49,8 +50,10 @@ export class AccountComponent implements OnInit, OnDestroy {
   firstName = '';
   lastName = '';
   dob = '';
+  email = '';
   mobileNumber = '';
   readonly mobileError = signal<string | null>(null);
+  readonly emailError = signal<string | null>(null);
   readonly profileSaving = signal(false);
   readonly profileSaved = signal<string | null>(null);
   readonly profileError = signal<string | null>(null);
@@ -60,7 +63,10 @@ export class AccountComponent implements OnInit, OnDestroy {
   // -- mobile number verification (profile tab) --
   otpCode = '';
   readonly otpMaskedMobile = signal<string | null>(null);
+  /** As issued — the countdown itself lives in `app-otp-timer`;
+   * `otpIssuedAt` restarts it on every (re)send. */
   readonly otpExpiresIn = signal<number | null>(null);
+  readonly otpIssuedAt = signal<number | null>(null);
   readonly resendCountdown = signal(0);
   readonly resending = signal(false);
   readonly verifying = signal(false);
@@ -116,6 +122,8 @@ export class AccountComponent implements OnInit, OnDestroy {
     // `dateStrings: false`), e.g. "2026-01-01T00:00:00.000Z" — an
     // `<input type="date">` only accepts the bare `YYYY-MM-DD` portion.
     this.dob = p.dob ? p.dob.slice(0, 10) : '';
+    this.email = p.email || '';
+    this.emailError.set(null);
     this.mobileError.set(null);
     this.profileError.set(null);
   }
@@ -176,14 +184,26 @@ export class AccountComponent implements OnInit, OnDestroy {
     }
     const mobileChanged = !!this.mobileNumber && this.mobileNumber !== currentMobile;
 
+    // Same normalisation the server applies (trim + lower case), so an
+    // unchanged address isn't re-sent and doesn't drop its verified status.
+    const email = this.email.trim().toLowerCase();
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      this.emailError.set('Enter a valid email address.');
+      return;
+    }
+    const emailChanged = email !== (this.profile()?.email || '').toLowerCase();
+
     this.profileError.set(null);
+    this.emailError.set(null);
     this.mobileError.set(null);
     this.profileSaving.set(true);
     this.profileSaved.set(null);
     const firstName = this.firstName.trim();
     const lastName = this.lastName.trim();
     const fullName = `${firstName} ${lastName}`;
-    this.customerService.updateProfile({ fullName, firstName, lastName, dob: this.dob || undefined }).subscribe({
+    this.customerService
+      .updateProfile({ fullName, firstName, lastName, dob: this.dob || undefined, ...(emailChanged ? { email } : {}) })
+      .subscribe({
       next: () => {
         this.auth.me().subscribe();
         if (!mobileChanged) {
@@ -195,7 +215,11 @@ export class AccountComponent implements OnInit, OnDestroy {
         this.sendMobileOtp();
       },
       error: (err) => {
-        this.profileError.set(err?.message || 'Could not save your profile.');
+        if (err?.code === 'EMAIL_TAKEN') {
+          this.emailError.set(err.message || 'This email address is already linked to another account.');
+        } else {
+          this.profileError.set(err?.message || 'Could not save your profile.');
+        }
         this.profileSaving.set(false);
       },
     });
@@ -277,13 +301,12 @@ export class AccountComponent implements OnInit, OnDestroy {
   private startOtpTimer(expiresInSeconds: number | null): void {
     this.clearOtpTimer();
     this.otpExpiresIn.set(expiresInSeconds);
+    this.otpIssuedAt.set(Date.now());
     this.resendCountdown.set(AccountComponent.RESEND_DELAY_SECONDS);
     this.otpTimerHandle = setInterval(() => {
-      const expires = this.otpExpiresIn();
-      if (expires !== null) this.otpExpiresIn.set(Math.max(0, expires - 1));
-      const resend = this.resendCountdown();
-      if (resend > 0) this.resendCountdown.set(resend - 1);
-      if ((expires === null || expires <= 1) && resend <= 1) this.clearOtpTimer();
+      const resend = this.resendCountdown() - 1;
+      this.resendCountdown.set(Math.max(0, resend));
+      if (resend <= 0) this.clearOtpTimer();
     }, 1000);
   }
 
@@ -350,7 +373,8 @@ export class AccountComponent implements OnInit, OnDestroy {
       city: address.city,
       state: address.state || '',
       postalCode: address.postalCode,
-      countryCode: address.countryCode,
+      // India-only: the field is read-only, so always save IN.
+      countryCode: 'IN',
       isDefault: address.isDefault,
     };
     this.addressFormError.set(null);

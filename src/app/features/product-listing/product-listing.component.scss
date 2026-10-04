@@ -129,14 +129,35 @@
   gap: 10px;
 }
 
+/* A filled pill rather than plain link text, so it stands out next to the
+   filter groups and chips. */
 .listing__clear {
-  background: none;
-  border: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--color-bg-tint);
+  border: 1px solid var(--color-primary);
+  border-radius: 999px;
   color: var(--color-primary);
   font-size: 0.8rem;
-  font-weight: 600;
+  font-weight: 700;
+  line-height: 1;
+  padding: 7px 14px;
   cursor: pointer;
-  padding: 0;
+  white-space: nowrap;
+  transition: background-color 0.15s ease, color 0.15s ease;
+
+  &::before {
+    content: '\00d7';
+    font-size: 1rem;
+    line-height: 0.8;
+  }
+
+  &:hover,
+  &:focus-visible {
+    background: var(--color-primary);
+    color: var(--color-white);
+  }
 }
 
 .listing__filters-close {

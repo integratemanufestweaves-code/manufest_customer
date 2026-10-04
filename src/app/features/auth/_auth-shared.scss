@@ -88,6 +88,47 @@
       outline: none;
       border-color: var(--color-primary);
     }
+
+    /* Fixed values (e.g. Country: India) — greyed so they don't read as
+       editable. */
+    &[readonly] {
+      background: var(--color-bg-tint);
+      color: var(--color-text-muted);
+      cursor: not-allowed;
+
+      &:focus {
+        border-color: var(--color-border);
+      }
+    }
+  }
+
+  /* iOS Safari draws a date input with no arrow at all once it has a
+     custom border/background, and collapses it when empty. Draw our own
+     down arrow, and stretch the (invisible) native picker button over it
+     so clicking the arrow still opens the picker on desktop. */
+  input[type='date'] {
+    -webkit-appearance: none;
+    appearance: none;
+    position: relative;
+    min-height: 44px;
+    padding-right: 40px;
+    background: var(--color-white)
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236b6b6b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")
+      no-repeat right 14px center;
+
+    &::-webkit-date-and-time-value {
+      text-align: left;
+    }
+
+    &::-webkit-calendar-picker-indicator {
+      position: absolute;
+      right: 0;
+      top: 0;
+      width: 40px;
+      height: 100%;
+      opacity: 0;
+      cursor: pointer;
+    }
   }
 }
 

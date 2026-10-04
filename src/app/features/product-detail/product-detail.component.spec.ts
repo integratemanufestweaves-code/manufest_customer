@@ -2,7 +2,8 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
-import { ActivatedRoute, Router, convertToParamMap, provideRouter } from '@angular/router';
+import { ActivatedRoute, ParamMap, Router, convertToParamMap, provideRouter } from '@angular/router';
+import { BehaviorSubject } from 'rxjs';
 import { of, throwError } from 'rxjs';
 
 import { ProductDetailComponent } from './product-detail.component';
@@ -53,6 +54,7 @@ describe('ProductDetailComponent', () => {
   let cartService: CartService;
   let authService: AuthService;
   let router: Router;
+  let paramMap$: BehaviorSubject<ParamMap>;
 
   function setup(productUuid: string | null = 'prod-1') {
     TestBed.configureTestingModule({
@@ -63,7 +65,7 @@ describe('ProductDetailComponent', () => {
         provideRouter([]),
         {
           provide: ActivatedRoute,
-          useValue: { snapshot: { paramMap: convertToParamMap(productUuid ? { productUuid } : {}) } },
+          useValue: { paramMap: (paramMap$ = new BehaviorSubject<ParamMap>(convertToParamMap(productUuid ? { productUuid } : {}))) },
         },
       ],
     });
@@ -92,6 +94,23 @@ describe('ProductDetailComponent', () => {
     expect(component.product()?.uuid).toBe('prod-1');
     expect(component.selectedVariant()?.uuid).toBe('v1');
     expect(component.loading()).toBeFalse();
+  });
+
+  it('loads the new product when the route moves to another one on the same page (e.g. a "You may also like" card)', () => {
+    setup('prod-1');
+    const detailSpy = spyOn(productService, 'getProductDetail').and.callFake((uuid: string) =>
+      of({ ...makeDetail([makeVariant({ uuid: `${uuid}-v1` })]), uuid }),
+    );
+    const relatedSpy = spyOn(productService, 'getRelatedProducts').and.returnValue(of([]));
+    fixture.detectChanges();
+    expect(component.product()?.uuid).toBe('prod-1');
+
+    paramMap$.next(convertToParamMap({ productUuid: 'prod-2' }));
+
+    expect(detailSpy).toHaveBeenCalledWith('prod-2');
+    expect(relatedSpy).toHaveBeenCalledWith('prod-2');
+    expect(component.product()?.uuid).toBe('prod-2');
+    expect(component.selectedVariant()?.uuid).toBe('prod-2-v1');
   });
 
   describe('out-of-stock variant disables "Add to cart"', () => {

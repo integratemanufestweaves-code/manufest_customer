@@ -41,8 +41,12 @@ describe('appConfig', () => {
       expect(source).toMatch(/provideRouter\(\s*routes\s*,\s*withInMemoryScrolling\(/);
     });
 
-    it("sets scrollPositionRestoration to 'top'", () => {
-      expect(source).toMatch(/scrollPositionRestoration:\s*'top'/);
+    // 2026-10-04: `'top'` also reset the page on browser back. The Router's
+    // own handling is now off and provideScrollRestoration() (see its spec)
+    // does top-on-new-navigation plus restore-on-back.
+    it("sets scrollPositionRestoration to 'disabled' and hands scrolling to provideScrollRestoration()", () => {
+      expect(source).toMatch(/scrollPositionRestoration:\s*'disabled'/);
+      expect(source).toMatch(/provideScrollRestoration\(\)/);
     });
 
     it("keeps anchorScrolling 'enabled' for in-page #fragment links", () => {

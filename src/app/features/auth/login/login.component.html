@@ -50,14 +50,12 @@
 
       @case ('enter-code') {
         <form class="auth__form" (ngSubmit)="verifyOtp()">
-          <p class="auth__sub">
-            Code sent to {{ maskedMobile() || 'your mobile number' }}.
-            @if (otpExpiresIn()) { Valid for {{ otpExpiresIn() }} seconds. }
-          </p>
+          <p class="auth__sub">Code sent to {{ maskedMobile() || 'your mobile number' }}.</p>
           <div class="auth__field">
             <span>Enter the 6-digit code</span>
             <app-otp-input name="otpCode" [(ngModel)]="otpCode" [autofocus]="true" label="6-digit code" />
           </div>
+          <app-otp-timer [expiresInSeconds]="otpExpiresIn()" [issuedAt]="otpIssuedAt()" />
           <button type="submit" class="btn btn--primary btn--full" [disabled]="submitting()">
             {{ submitting() ? 'Verifying…' : 'Verify' }}
           </button>

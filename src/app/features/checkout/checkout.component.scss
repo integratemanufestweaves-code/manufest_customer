@@ -121,11 +121,46 @@
   margin-bottom: 12px;
 }
 
+.address-option-wrap {
+  position: relative;
+}
+
+/* Sits over the card's top-right corner; the card's own right padding
+   keeps the address text clear of it. */
+.address-option__edit {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: var(--color-white);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  padding: 5px 12px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-primary);
+  cursor: pointer;
+
+  &:hover:not(:disabled),
+  &:focus-visible {
+    border-color: var(--color-primary);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.address-form__title {
+  margin: 0 0 4px;
+  font-size: 0.95rem;
+}
+
 .address-option {
   display: flex;
   align-items: flex-start;
   gap: 10px;
-  padding: 12px;
+  padding: 12px 72px 12px 12px;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   cursor: pointer;

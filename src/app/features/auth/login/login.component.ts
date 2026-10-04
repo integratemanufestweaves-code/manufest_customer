@@ -6,6 +6,7 @@ import { CaptchaAnswer } from '../../../core/models/auth.models';
 import { AuthService } from '../../../core/services/auth.service';
 import { CaptchaComponent } from '../../../shared/captcha/captcha.component';
 import { OtpInputComponent } from '../../../shared/otp-input/otp-input.component';
+import { OtpTimerComponent } from '../../../shared/otp-timer/otp-timer.component';
 import { CartService } from '../../../core/services/cart.service';
 import { WishlistService } from '../../../core/services/wishlist.service';
 
@@ -40,7 +41,7 @@ const RESTART_CODES = new Set(['SIGNUP_TOKEN_INVALID', 'SIGNUP_CONFLICT']);
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [FormsModule, OtpInputComponent, CaptchaComponent],
+  imports: [FormsModule, OtpInputComponent, OtpTimerComponent, CaptchaComponent],
   templateUrl: './login.component.html',
   styleUrl: './login.component.scss',
 })
@@ -67,7 +68,11 @@ export class LoginComponent implements OnInit, OnDestroy {
   private challengeId: string | null = null;
   private signupToken: string | null = null;
   readonly maskedMobile = signal<string | null>(null);
+  /** How long the current code is valid for, as issued — the countdown
+   * itself lives in `app-otp-timer`. `otpIssuedAt` changes on every send so
+   * a resend with the same duration still restarts that countdown. */
   readonly otpExpiresIn = signal<number | null>(null);
+  readonly otpIssuedAt = signal<number | null>(null);
   /** Seconds left before "Resend code" becomes clickable again. */
   readonly resendCountdown = signal(0);
   private otpTimerHandle: ReturnType<typeof setInterval> | null = null;
@@ -96,13 +101,13 @@ export class LoginComponent implements OnInit, OnDestroy {
   private startOtpTimer(expiresInSeconds: number, resendAfterSeconds: number): void {
     this.clearOtpTimer();
     this.otpExpiresIn.set(expiresInSeconds);
+    this.otpIssuedAt.set(Date.now());
     this.resendCountdown.set(resendAfterSeconds);
+    if (resendAfterSeconds <= 0) return;
     this.otpTimerHandle = setInterval(() => {
-      const expires = this.otpExpiresIn();
-      if (expires !== null) this.otpExpiresIn.set(Math.max(0, expires - 1));
-      const resend = this.resendCountdown();
-      if (resend > 0) this.resendCountdown.set(resend - 1);
-      if ((expires === null || expires <= 1) && resend <= 1) this.clearOtpTimer();
+      const resend = this.resendCountdown() - 1;
+      this.resendCountdown.set(Math.max(0, resend));
+      if (resend <= 0) this.clearOtpTimer();
     }, 1000);
   }
 
