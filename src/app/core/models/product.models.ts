@@ -51,6 +51,9 @@ export interface ProductCardSummary {
   productName: string;
   pricing: ProductPriceRange;
   thumbnail: ProductThumbnail;
+  /** `brandName` (2026-10-05): the seller's registered brand, else their
+   * name — shown on the card under the product name. */
+  seller?: { uuid?: string; name?: string; brandName?: string | null };
 }
 
 export interface ProductSummary extends ProductCardSummary {
@@ -60,7 +63,7 @@ export interface ProductSummary extends ProductCardSummary {
   productApproval: string;
   lifecycleStatus: string;
   category?: { uuid: string; name: string };
-  seller?: { uuid: string; name: string };
+  seller?: { uuid: string; name: string; brandName?: string | null };
   createdAt: string;
 }
 
