@@ -42,7 +42,23 @@ export class CartComponent implements OnInit {
   readonly error = signal<string | null>(null);
   /** Per-item uuid, disables that row's controls while a mutation is in
    * flight — prevents a double-click firing two overlapping PUTs. */
-  readonly pendingItem = signal<string | null>(null);
+  /** Cart items with a quantity/remove request in flight — one entry per
+   * item, so finishing one item's request never re-enables another item's
+   * buttons while that one is still saving. */
+  readonly pendingItems = signal<ReadonlySet<string>>(new Set());
+
+  isPending(item: CartItem): boolean {
+    return this.pendingItems().has(item.uuid);
+  }
+
+  private setPending(item: CartItem, pending: boolean): void {
+    this.pendingItems.update((set) => {
+      const next = new Set(set);
+      if (pending) next.add(item.uuid);
+      else next.delete(item.uuid);
+      return next;
+    });
+  }
 
   /** Cart item uuids whose resolved thumbnail 404d — see
    * ProductCardComponent's `thumbnailBroken` for why this falls back to the
@@ -80,7 +96,11 @@ export class CartComponent implements OnInit {
   );
   readonly selectedCount = computed(() => this.selectedItems().length);
   readonly stockIssueCount = computed(() => this.cart().items.filter((item) => this.hasStockIssue(item)).length);
-  readonly selectedSubtotal = computed(() => this.selectedItems().reduce((sum, item) => sum + (item.lineTotal || 0), 0));
+  // Summed in whole paise: adding rupee decimals directly drifts
+  // (798.68 + 1856.92 = 2655.6000000000004).
+  readonly selectedSubtotal = computed(
+    () => this.selectedItems().reduce((paise, item) => paise + Math.round((item.lineTotal || 0) * 100), 0) / 100,
+  );
   readonly allSelected = computed(() => {
     const items = this.cart().items;
     return items.length > 0 && items.every((item) => this.hasStockIssue(item) || !this.deselectedUuids().has(item.uuid));
@@ -137,26 +157,27 @@ export class CartComponent implements OnInit {
   }
 
   updateQuantity(item: CartItem, quantity: number): void {
-    if (quantity < 1 || quantity > item.quantityAvailable) return;
-    this.pendingItem.set(item.uuid);
+    if (this.isPending(item) || quantity < 1 || quantity > item.quantityAvailable) return;
+    this.setPending(item, true);
     this.error.set(null);
     this.cartService.updateItemQuantity(item.uuid, quantity).subscribe({
-      next: () => this.pendingItem.set(null),
+      next: () => this.setPending(item, false),
       error: (err) => {
         this.error.set(err?.message || 'Could not update that item.');
-        this.pendingItem.set(null);
+        this.setPending(item, false);
       },
     });
   }
 
   removeItem(item: CartItem): void {
-    this.pendingItem.set(item.uuid);
+    if (this.isPending(item)) return;
+    this.setPending(item, true);
     this.error.set(null);
     this.cartService.removeItem(item.uuid).subscribe({
-      next: () => this.pendingItem.set(null),
+      next: () => this.setPending(item, false),
       error: (err) => {
         this.error.set(err?.message || 'Could not remove that item.');
-        this.pendingItem.set(null);
+        this.setPending(item, false);
       },
     });
   }

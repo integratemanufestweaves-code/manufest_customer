@@ -2,7 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideRouter } from '@angular/router';
-import { of, throwError } from 'rxjs';
+import { NEVER, of, throwError } from 'rxjs';
 
 import { AccountComponent } from './account.component';
 import { AuthService } from '../../core/services/auth.service';
@@ -147,6 +147,52 @@ describe('AccountComponent', () => {
       expect(component.emailError()).toBe('This email address is already linked to another account.');
       expect(component.profileError()).toBeNull();
       expect(component.profileSaving()).toBeFalse();
+    });
+  });
+
+  describe('verify mobile: OTP auto-verify', () => {
+    // setup() injects a fresh CustomerService — spy on it only after this.
+    async function openVerifyStep(): Promise<void> {
+      setup(makeProfile());
+      component.mobileNumber = '9876543210';
+      component.profileMode.set('verify-mobile');
+      fixture.detectChanges();
+      // ngModel inside a <form> hooks up to its control a tick after render.
+      await fixture.whenStable();
+      fixture.detectChanges();
+    }
+
+    function autofill(code: string): void {
+      const box = fixture.nativeElement.querySelector('app-otp-input input') as HTMLInputElement;
+      box.value = code;
+      box.dispatchEvent(new Event('input'));
+      fixture.detectChanges();
+    }
+
+    it('verifies as soon as an autofilled code fills all six boxes', async () => {
+      await openVerifyStep();
+      const verifySpy = spyOn(customerService, 'verifyMobileOtp').and.returnValue(NEVER);
+
+      autofill('123456');
+
+      expect(verifySpy).toHaveBeenCalledOnceWith('9876543210', '123456');
+    });
+
+    it('ignores a second autofill while the first check is still running', async () => {
+      await openVerifyStep();
+      const verifySpy = spyOn(customerService, 'verifyMobileOtp').and.returnValue(NEVER);
+
+      autofill('123456');
+      autofill('654321');
+
+      expect(verifySpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not verify a partial autofill', async () => {
+      await openVerifyStep();
+      const verifySpy = spyOn(customerService, 'verifyMobileOtp');
+      autofill('12');
+      expect(verifySpy).not.toHaveBeenCalled();
     });
   });
 

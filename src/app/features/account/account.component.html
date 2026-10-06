@@ -209,7 +209,7 @@
 
             <div class="auth__field">
               <span>Enter the 6-digit code</span>
-              <app-otp-input name="mobileOtp" [(ngModel)]="otpCode" [autofocus]="true" label="6-digit code" />
+              <app-otp-input name="mobileOtp" [(ngModel)]="otpCode" [autofocus]="true" label="6-digit code" (completed)="!verifying() && verifyMobile()" />
             </div>
             <app-otp-timer [expiresInSeconds]="otpExpiresIn()" [issuedAt]="otpIssuedAt()" />
 
@@ -275,13 +275,19 @@
               </label>
               <label class="auth__field">
                 <span>Recipient name</span>
-                <input type="text" name="recipientName" [(ngModel)]="addressForm.recipientName" required />
+                <input type="text" name="recipientName" [(ngModel)]="addressForm.recipientName" required [attr.aria-invalid]="addressFieldErrors().recipientName ? true : null" [attr.aria-describedby]="addressFieldErrors().recipientName ? 'addr-recipientName-error' : null" />
+                @if (addressFieldErrors().recipientName) {
+                  <small id="addr-recipientName-error" class="auth__field-error">{{ addressFieldErrors().recipientName }}</small>
+                }
               </label>
             </div>
             <div class="account-form__row">
               <label class="auth__field">
                 <span>Phone</span>
-                <input type="tel" name="addrPhone" [(ngModel)]="addressForm.phone" required />
+                <input type="tel" name="addrPhone" [(ngModel)]="addressForm.phone" required [attr.aria-invalid]="addressFieldErrors().phone ? true : null" [attr.aria-describedby]="addressFieldErrors().phone ? 'addr-phone-error' : null" autocomplete="tel-national" inputmode="numeric" maxlength="15" />
+                @if (addressFieldErrors().phone) {
+                  <small id="addr-phone-error" class="auth__field-error">{{ addressFieldErrors().phone }}</small>
+                }
               </label>
               <label class="auth__field">
                 <span>Country</span>
@@ -290,7 +296,10 @@
             </div>
             <label class="auth__field">
               <span>Address line 1</span>
-              <input type="text" name="line1" [(ngModel)]="addressForm.line1" required />
+              <input type="text" name="line1" [(ngModel)]="addressForm.line1" required [attr.aria-invalid]="addressFieldErrors().line1 ? true : null" [attr.aria-describedby]="addressFieldErrors().line1 ? 'addr-line1-error' : null" />
+              @if (addressFieldErrors().line1) {
+                <small id="addr-line1-error" class="auth__field-error">{{ addressFieldErrors().line1 }}</small>
+              }
             </label>
             <label class="auth__field">
               <span>Address line 2 <span class="auth__optional">(optional)</span></span>
@@ -299,7 +308,10 @@
             <div class="account-form__row">
               <label class="auth__field">
                 <span>City</span>
-                <input type="text" name="city" [(ngModel)]="addressForm.city" required />
+                <input type="text" name="city" [(ngModel)]="addressForm.city" required [attr.aria-invalid]="addressFieldErrors().city ? true : null" [attr.aria-describedby]="addressFieldErrors().city ? 'addr-city-error' : null" />
+                @if (addressFieldErrors().city) {
+                  <small id="addr-city-error" class="auth__field-error">{{ addressFieldErrors().city }}</small>
+                }
               </label>
               <label class="auth__field">
                 <span>State <span class="auth__optional">(optional)</span></span>
@@ -307,8 +319,11 @@
               </label>
             </div>
             <label class="auth__field">
-              <span>Postal code</span>
-              <input type="text" name="postalCode" [(ngModel)]="addressForm.postalCode" required />
+              <span>PIN code</span>
+              <input type="text" name="postalCode" [(ngModel)]="addressForm.postalCode" required [attr.aria-invalid]="addressFieldErrors().postalCode ? true : null" [attr.aria-describedby]="addressFieldErrors().postalCode ? 'addr-postalCode-error' : null" inputmode="numeric" autocomplete="postal-code" maxlength="6" />
+              @if (addressFieldErrors().postalCode) {
+                <small id="addr-postalCode-error" class="auth__field-error">{{ addressFieldErrors().postalCode }}</small>
+              }
             </label>
             <label class="account-form__checkbox">
               <input type="checkbox" name="isDefault" [(ngModel)]="addressForm.isDefault" />

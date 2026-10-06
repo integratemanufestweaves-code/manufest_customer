@@ -44,6 +44,150 @@
   }
 }
 
+.card__variants {
+  margin: 0 12px 12px;
+  padding: 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.card__variants-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.card__variants-close {
+  border: none;
+  background: none;
+  padding: 0 4px;
+  font-size: 1rem;
+  line-height: 1;
+  color: var(--color-text-muted);
+  cursor: pointer;
+
+  &:hover {
+    color: var(--color-text);
+  }
+}
+
+.card__swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.card__swatch {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1px solid var(--color-border);
+  box-shadow: inset 0 0 0 2px var(--color-white);
+  cursor: pointer;
+  transition: transform 0.1s ease;
+
+  &:hover {
+    transform: scale(1.12);
+    border-color: var(--color-primary);
+  }
+}
+
+.card__swatch-chip {
+  padding: 3px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-white);
+  font-size: 0.72rem;
+  color: var(--color-text);
+  cursor: pointer;
+
+  &:hover {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+  }
+}
+
+.card__swatch--out {
+  opacity: 0.45;
+}
+
+.card__add--in-cart {
+  // Same logo-ribbon look as the global .btn--go-cart.
+  background: linear-gradient(135deg, var(--color-logo-magenta), var(--color-primary));
+  border-color: var(--color-accent);
+  color: var(--color-white);
+
+  &:hover:not(:disabled) {
+    background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
+    border-color: var(--color-accent);
+    color: var(--color-white);
+  }
+}
+
+// Out of stock: the photo stays recognisable (lightly muted), a frosted
+// band along the bottom of the image says so, price muted, plain disabled
+// button — reads as "sold out for now", not as an error or a broken card.
+.card--out {
+  .card__media img,
+  .card__media video {
+    filter: grayscale(0.35) brightness(0.97);
+    opacity: 0.85;
+  }
+
+  .card__price {
+    color: var(--color-text-muted);
+  }
+
+  &:hover {
+    transform: none;
+  }
+}
+
+.card__stock-badge {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  border-top: 1px solid rgba(90, 29, 64, 0.12);
+  color: var(--color-primary);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  pointer-events: none;
+
+  // Thin rules either side of the text.
+  &::before,
+  &::after {
+    content: '';
+    width: 18px;
+    height: 1px;
+    background: currentColor;
+    opacity: 0.45;
+  }
+}
+
+.card__add--out:disabled {
+  opacity: 1;
+  background: #f3f3f4;
+  border-color: #f3f3f4;
+  color: var(--color-text-muted);
+  font-weight: 500;
+}
+
 .card__add-error {
   margin: -6px 12px 10px;
   font-size: 0.72rem;

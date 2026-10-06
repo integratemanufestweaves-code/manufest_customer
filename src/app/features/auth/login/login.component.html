@@ -12,7 +12,7 @@
         <div class="auth__head">
           <p class="auth__eyebrow">Welcome</p>
           <h1 class="auth__title">Sign in or create an account</h1>
-          <p class="auth__sub">Use your mobile number. We'll text you a code to verify it.</p>
+          <p class="auth__sub">Use your mobile number.</p>
         </div>
       }
     }
@@ -39,7 +39,9 @@
               maxlength="10"
               required
               placeholder="10-digit mobile number"
+              aria-describedby="mobileNumberHint"
             />
+            <small id="mobileNumberHint" class="auth__hint">We'll send an OTP to this number to verify it.</small>
           </label>
           <app-captcha (answerChange)="captcha.set($event)" />
           <button type="submit" class="btn btn--primary btn--full" [disabled]="submitting() || !captcha()">
@@ -53,7 +55,7 @@
           <p class="auth__sub">Code sent to {{ maskedMobile() || 'your mobile number' }}.</p>
           <div class="auth__field">
             <span>Enter the 6-digit code</span>
-            <app-otp-input name="otpCode" [(ngModel)]="otpCode" [autofocus]="true" label="6-digit code" />
+            <app-otp-input name="otpCode" [(ngModel)]="otpCode" [autofocus]="true" label="6-digit code" (completed)="!submitting() && verifyOtp()" />
           </div>
           <app-otp-timer [expiresInSeconds]="otpExpiresIn()" [issuedAt]="otpIssuedAt()" />
           <button type="submit" class="btn btn--primary btn--full" [disabled]="submitting()">

@@ -50,4 +50,11 @@ describe('HeaderComponent', () => {
     expect(priceColumn.links.map((l) => l.label)).toEqual(PRICE_BANDS.map((b) => b.label));
     expect(priceColumn.links.map((l) => l.queryParams)).toEqual([{ priceMax: 299 }, { priceMax: 1000 }, { priceMax: 2000 }, { priceMin: 3000 }]);
   });
+
+  it('announcement bar says free shipping with no order minimum', () => {
+    fixture.detectChanges();
+    const text = (fixture.nativeElement.querySelector('.announcement') as HTMLElement).textContent!.replace(/\s+/g, ' ').trim();
+    expect(text).toBe('Free shipping · Secure payments via UPI, cards & net banking');
+    expect(text).not.toContain('above');
+  });
 });

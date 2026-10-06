@@ -42,6 +42,10 @@
      same gold already used ad hoc in home.component.scss's placeholder
      gradients rather than introducing a fresh, unvalidated hue. */
   --color-accent: #c9a15a;
+  /* The logo ribbon's lighter magenta-maroon (sampled from
+     public/assets/logo/Logo-light-without-title.png) — paired with
+     --color-primary for the "Go to cart" gradient. */
+  --color-logo-magenta: #8e3b5f;
   --color-accent-dark: #8a6a35;
 
   --font-display: Georgia, 'Times New Roman', serif;
@@ -166,6 +170,22 @@ input[type='radio'] {
   &:hover {
     background: var(--color-primary-dark);
     border-color: var(--color-primary-dark);
+    color: var(--color-white);
+  }
+}
+
+/* "Go to cart" — shown in place of "Add to cart" once the item is already
+   in the cart. The logo's ribbon (magenta into maroon, gold edge), so it
+   reads as a different action from the flat-maroon "Add to cart". */
+.btn--go-cart {
+  background: linear-gradient(135deg, var(--color-logo-magenta), var(--color-primary));
+  border-color: var(--color-accent);
+  color: var(--color-white);
+  font-weight: 600;
+
+  &:hover {
+    background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
+    border-color: var(--color-accent);
     color: var(--color-white);
   }
 }

@@ -40,7 +40,7 @@ function makeDetail(variants: ProductVariant[]): ProductDetail {
     productApproval: 'approved',
     lifecycleStatus: 'active',
     isActive: true,
-    attributes: { washCare: null, material: null, fabricPurity: null, color: null, zariType: null, zariColor: null, borderType: null, occasions: [], blouseIncluded: false, sareeLength: null, blouseLength: null, hasSale: false, saleEndDate: null },
+    attributes: { washCare: null, material: null, fabricPurity: null, color: null, zariType: null, zariColor: null, borderType: null, occasions: [], fabrics: [], weaves: [], blouseIncluded: false, sareeLength: null, blouseLength: null, hasSale: false, saleEndDate: null },
     variants,
     media: [],
     createdAt: new Date().toISOString(),
@@ -56,7 +56,7 @@ describe('ProductDetailComponent', () => {
   let router: Router;
   let paramMap$: BehaviorSubject<ParamMap>;
 
-  function setup(productUuid: string | null = 'prod-1') {
+  function setup(productUuid: string | null = 'prod-1', queryParams: Record<string, string> = {}) {
     TestBed.configureTestingModule({
       imports: [ProductDetailComponent],
       providers: [
@@ -65,7 +65,10 @@ describe('ProductDetailComponent', () => {
         provideRouter([]),
         {
           provide: ActivatedRoute,
-          useValue: { paramMap: (paramMap$ = new BehaviorSubject<ParamMap>(convertToParamMap(productUuid ? { productUuid } : {}))) },
+          useValue: {
+            paramMap: (paramMap$ = new BehaviorSubject<ParamMap>(convertToParamMap(productUuid ? { productUuid } : {}))),
+            snapshot: { queryParamMap: convertToParamMap(queryParams) },
+          },
         },
       ],
     });
@@ -94,6 +97,22 @@ describe('ProductDetailComponent', () => {
     expect(component.product()?.uuid).toBe('prod-1');
     expect(component.selectedVariant()?.uuid).toBe('v1');
     expect(component.loading()).toBeFalse();
+  });
+
+  it('opens on the variant named in ?variant= (a product-card colour swatch)', () => {
+    setup('prod-1', { variant: 'v2' });
+    spyOn(productService, 'getProductDetail').and.returnValue(of(makeDetail([makeVariant({ uuid: 'v1' }), makeVariant({ uuid: 'v2' })])));
+    fixture.detectChanges();
+
+    expect(component.selectedVariant()?.uuid).toBe('v2');
+  });
+
+  it('falls back to the first variant when ?variant= is unknown', () => {
+    setup('prod-1', { variant: 'nope' });
+    spyOn(productService, 'getProductDetail').and.returnValue(of(makeDetail([makeVariant({ uuid: 'v1' }), makeVariant({ uuid: 'v2' })])));
+    fixture.detectChanges();
+
+    expect(component.selectedVariant()?.uuid).toBe('v1');
   });
 
   it('loads the new product when the route moves to another one on the same page (e.g. a "You may also like" card)', () => {
@@ -283,6 +302,108 @@ describe('ProductDetailComponent', () => {
       fixture.detectChanges();
 
       expect(fixture.debugElement.query(By.css('.pd__price-strike'))).toBeNull();
+    });
+  });
+
+  describe('product details list', () => {
+    const rows = () =>
+      fixture.debugElement
+        .queryAll(By.css('.pd__attrs > div'))
+        .map((d) => d.queryAll(By.css('span')).map((sp) => sp.nativeElement.textContent.trim()).join(' '));
+
+    it('shows every filled-in attribute, joining multi-value ones', () => {
+      setup('prod-1');
+      const detail = makeDetail([makeVariant({ uuid: 'v1' })]);
+      detail.attributes = {
+        ...detail.attributes,
+        color: { uuid: 'c', name: 'Teal' },
+        zariColor: { uuid: 'z', name: 'Gold' },
+        occasions: [{ uuid: 'o1', name: 'Wedding' }, { uuid: 'o2', name: 'Festive' }],
+        fabrics: [{ uuid: 'f1', name: 'Silk' }],
+        weaves: [{ uuid: 'w1', name: 'Kanjivaram' }],
+        blouseIncluded: true,
+        sareeLength: '6',
+        blouseLength: '0.8 metres',
+      };
+      spyOn(productService, 'getProductDetail').and.returnValue(of(detail));
+      fixture.detectChanges();
+
+      expect(rows()).toEqual(jasmine.arrayContaining([
+        'Colour Teal',
+        'Fabric Silk',
+        'Weave Kanjivaram',
+        'Zari colour Gold',
+        'Saree length 6 m',
+        'Blouse Included',
+        'Blouse length 0.8 metres',
+        'Occasion Wedding, Festive',
+      ]));
+    });
+
+    it('says "Not included" for a saree without a blouse', () => {
+      setup('prod-1');
+      spyOn(productService, 'getProductDetail').and.returnValue(of(makeDetail([makeVariant({ uuid: 'v1' })])));
+      fixture.detectChanges();
+
+      expect(rows()).toContain('Blouse Not included');
+    });
+
+    it('shows the selected colour name next to the swatches', () => {
+      setup('prod-1');
+      spyOn(productService, 'getProductDetail').and.returnValue(
+        of(makeDetail([makeVariant({ uuid: 'v1', variantName: 'Teal' }), makeVariant({ uuid: 'v2', variantName: 'Maroon' })])),
+      );
+      fixture.detectChanges();
+      component.selectVariant(component.product()!.variants[1]);
+      fixture.detectChanges();
+
+      expect(fixture.debugElement.query(By.css('.pd__variants-name')).nativeElement.textContent.trim()).toBe('Maroon');
+    });
+
+    it('adds the sub-category to the breadcrumb', () => {
+      setup('prod-1');
+      const detail = { ...makeDetail([makeVariant({ uuid: 'v1' })]), subCategory: { uuid: 'sc', name: 'Silk Sarees' } };
+      spyOn(productService, 'getProductDetail').and.returnValue(of(detail));
+      fixture.detectChanges();
+
+      expect(fixture.debugElement.query(By.css('.pd__crumbs')).nativeElement.textContent).toContain('Silk Sarees');
+    });
+  });
+
+  describe('"Go to cart" once the colour is in the cart', () => {
+    it('shows "Go to cart" for a variant already in the cart, and it opens /cart', () => {
+      setup('prod-1');
+      spyOn(productService, 'getProductDetail').and.returnValue(of(makeDetail([makeVariant({ uuid: 'v1' }), makeVariant({ uuid: 'v2' })])));
+      spyOn(cartService, 'isVariantInCart').and.callFake((uuid: string) => uuid === 'v1');
+      fixture.detectChanges();
+
+      const goBtn = fixture.debugElement.query(By.css('.btn--go-cart'));
+      expect(goBtn.nativeElement.textContent.trim()).toBe('Go to cart');
+      goBtn.nativeElement.click();
+      expect(router.navigate).toHaveBeenCalledWith(['/cart']);
+    });
+
+    it('shows "Add to cart" again after switching to a colour not in the cart', () => {
+      setup('prod-1');
+      spyOn(productService, 'getProductDetail').and.returnValue(of(makeDetail([makeVariant({ uuid: 'v1' }), makeVariant({ uuid: 'v2' })])));
+      spyOn(cartService, 'isVariantInCart').and.callFake((uuid: string) => uuid === 'v1');
+      fixture.detectChanges();
+
+      component.selectVariant(component.product()!.variants[1]);
+      fixture.detectChanges();
+
+      expect(fixture.debugElement.query(By.css('.btn--go-cart'))).toBeNull();
+      expect(fixture.debugElement.query(By.css('.pd__actions .btn--primary')).nativeElement.textContent.trim()).toBe('Add to cart');
+    });
+  });
+
+  describe('lengthLabel', () => {
+    it('adds metres to a bare number and keeps text that already has a unit', () => {
+      setup('prod-1');
+      expect(component.lengthLabel('6')).toBe('6 m');
+      expect(component.lengthLabel(' 5.5 ')).toBe('5.5 m');
+      expect(component.lengthLabel('0.8 metres')).toBe('0.8 metres');
+      expect(component.lengthLabel('6 yards')).toBe('6 yards');
     });
   });
 });

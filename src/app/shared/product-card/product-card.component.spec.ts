@@ -32,7 +32,7 @@ function makeVariant(overrides: any = {}) {
     variantName: overrides.variantName ?? 'Red',
     size: null,
     variantSkuPrefix: 'v',
-    colorHex: '#f00',
+    colorHex: overrides.colorHex === undefined ? '#f00' : overrides.colorHex,
     isActive: overrides.isActive ?? true,
     pricing: null,
     inventory: overrides.inventory ?? { quantityAvailable: 5, quantityReserved: 0, quantitySold: 0, quantityDamaged: 0, quantityReturned: 0, lowStockThreshold: 2, isInStock: true },
@@ -108,6 +108,76 @@ describe('ProductCardComponent', () => {
     it('omits paise for whole-rupee prices', () => {
       component.product = makeSummary({ pricing: { from: 2000, to: 2000 } });
       expect(component.priceLabel).toBe('₹2,000');
+    });
+  });
+
+  describe('out of stock up front', () => {
+    it('shows the badge, greys the card and disables the button when inStock is false', () => {
+      component.product = { ...makeSummary(), inStock: false };
+      const detailSpy = spyOn(productService, 'getProductDetail');
+      fixture.detectChanges();
+
+      expect(fixture.nativeElement.querySelector('.card__stock-badge').textContent.trim()).toBe('Out of stock');
+      const btn = fixture.nativeElement.querySelector('.card__add--out') as HTMLButtonElement;
+      expect(btn.disabled).toBeTrue();
+      expect(btn.textContent?.trim()).toBe('Currently unavailable');
+      expect(fixture.nativeElement.querySelector('.card').classList).toContain('card--out');
+      component.addToCart(new Event('click'));
+      expect(detailSpy).not.toHaveBeenCalled();
+    });
+
+    it('still shows "Go to cart" for an out-of-stock product that is already in the cart', () => {
+      component.product = { ...makeSummary(), inStock: false };
+      spyOn(cartService, 'isProductInCart').and.returnValue(true);
+      fixture.detectChanges();
+
+      expect(fixture.nativeElement.querySelector('.card__add--in-cart')).not.toBeNull();
+      expect(fixture.nativeElement.querySelector('.card__add--out')).toBeNull();
+    });
+
+    it('keeps "+ Add to cart" when the flag is missing (older backend) or true', () => {
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelector('.card__stock-badge')).toBeNull();
+      expect(fixture.nativeElement.querySelector('.card__add').textContent.trim()).toBe('+ Add to cart');
+    });
+  });
+
+  describe('"Go to cart" once the product is in the cart', () => {
+    it('swaps "+ Add to cart" for "Go to cart", which opens /cart', () => {
+      spyOn(cartService, 'isProductInCart').and.returnValue(true);
+      fixture.detectChanges();
+
+      const btn = fixture.nativeElement.querySelector('.card__add--in-cart');
+      expect(btn.textContent.trim()).toBe('Go to cart');
+      btn.click();
+      expect(router.navigate).toHaveBeenCalledWith(['/cart']);
+    });
+
+    it('shows "+ Add to cart" when the product is not in the cart', () => {
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelector('.card__add--in-cart')).toBeNull();
+      expect(fixture.nativeElement.querySelector('.card__add').textContent.trim()).toBe('+ Add to cart');
+    });
+  });
+
+  describe('sellerLabel', () => {
+    it("shows the seller's brand name", () => {
+      component.product = { ...makeSummary(), seller: { uuid: 's1', name: 'Ravi Kumar', brandName: 'Kukkumam' } };
+      fixture.detectChanges();
+      expect(component.sellerLabel).toBe('Kukkumam');
+      expect(fixture.nativeElement.querySelector('.card__seller').textContent.trim()).toBe('Kukkumam');
+    });
+
+    it("falls back to the seller's name when there is no brand", () => {
+      component.product = { ...makeSummary(), seller: { uuid: 's1', name: 'Ravi Kumar', brandName: null } };
+      expect(component.sellerLabel).toBe('Ravi Kumar');
+    });
+
+    it('falls back to "Manufest Weaves" when no seller info came back', () => {
+      component.product = makeSummary();
+      fixture.detectChanges();
+      expect(component.sellerLabel).toBe('Manufest Weaves');
+      expect(fixture.nativeElement.querySelector('.card__seller').textContent.trim()).toBe('Manufest Weaves');
     });
   });
 
@@ -200,18 +270,59 @@ describe('ProductCardComponent', () => {
       expect(addSpy).toHaveBeenCalledWith({ variantUuid: 'v-active' });
     });
 
-    it('more than one active variant navigates to the product detail page instead of guessing', () => {
+    it('more than one active variant shows colour swatches instead of guessing or navigating', () => {
       (authService as any).currentUserSignal.set({ id: 'u1', email: 'a@b.com', fullName: 'A' });
       spyOn(productService, 'getProductDetail').and.returnValue(
-        of(makeDetail([makeVariant({ uuid: 'v1' }), makeVariant({ uuid: 'v2' })])),
+        of(makeDetail([makeVariant({ uuid: 'v1', colorHex: '#f00' }), makeVariant({ uuid: 'v2', colorHex: '#0a0' }), makeVariant({ uuid: 'v3', isActive: false })])),
       );
       const addSpy = spyOn(cartService, 'addItem');
 
       component.addToCart(new Event('click'));
+      fixture.detectChanges();
 
       expect(addSpy).not.toHaveBeenCalled();
-      expect(router.navigate).toHaveBeenCalledWith(['/product', 'prod-1']);
+      expect(router.navigate).not.toHaveBeenCalled();
       expect(component.addingToCart()).toBeFalse();
+      expect(component.variantChoices()?.map((v) => v.uuid)).toEqual(['v1', 'v2']);
+      const swatches = fixture.nativeElement.querySelectorAll('.card__swatch');
+      expect(swatches.length).toBe(2);
+      expect(fixture.nativeElement.querySelector('.card__add')).toBeNull();
+    });
+
+    it('a variant without a colour shows a name chip', () => {
+      (authService as any).currentUserSignal.set({ id: 'u1', email: 'a@b.com', fullName: 'A' });
+      spyOn(productService, 'getProductDetail').and.returnValue(
+        of(makeDetail([makeVariant({ uuid: 'v1' }), makeVariant({ uuid: 'v2', colorHex: null, variantName: 'Plain' })])),
+      );
+
+      component.addToCart(new Event('click'));
+      fixture.detectChanges();
+
+      expect(fixture.nativeElement.querySelector('.card__swatch-chip').textContent.trim()).toBe('Plain');
+    });
+
+    it('clicking a swatch opens the detail page on that variant', () => {
+      (authService as any).currentUserSignal.set({ id: 'u1', email: 'a@b.com', fullName: 'A' });
+      spyOn(productService, 'getProductDetail').and.returnValue(
+        of(makeDetail([makeVariant({ uuid: 'v1' }), makeVariant({ uuid: 'v2', colorHex: '#0a0' })])),
+      );
+      component.addToCart(new Event('click'));
+      fixture.detectChanges();
+
+      fixture.nativeElement.querySelectorAll('.card__swatch')[1].click();
+
+      expect(router.navigate).toHaveBeenCalledWith(['/product', 'prod-1'], { queryParams: { variant: 'v2' } });
+    });
+
+    it('closing the swatches brings the Add to cart button back', () => {
+      component.variantChoices.set([makeVariant({ uuid: 'v1' }) as any, makeVariant({ uuid: 'v2' }) as any]);
+      fixture.detectChanges();
+
+      fixture.nativeElement.querySelector('.card__variants-close').click();
+      fixture.detectChanges();
+
+      expect(component.variantChoices()).toBeNull();
+      expect(fixture.nativeElement.querySelector('.card__add')).not.toBeNull();
     });
 
     it('surfaces an error message when getProductDetail fails', () => {

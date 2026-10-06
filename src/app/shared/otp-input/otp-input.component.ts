@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, OnInit, ElementRef, QueryList, ViewChildren, forwardRef, input, signal } from '@angular/core';
+import { AfterViewInit, Component, OnInit, ElementRef, QueryList, ViewChildren, forwardRef, input, output, signal } from '@angular/core';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 
 /**
@@ -11,6 +11,10 @@ import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
  * box, Backspace on an empty box steps back, and a pasted or SMS-autofilled
  * code (`autocomplete="one-time-code"` on the first box) is spread across
  * the boxes from wherever it lands.
+ *
+ * `(completed)` fires with the full code when an autofill or paste fills the
+ * last box, so callers can submit without waiting for a Verify click. A code
+ * typed digit by digit does not fire it.
  */
 @Component({
   selector: 'app-otp-input',
@@ -24,6 +28,7 @@ export class OtpInputComponent implements ControlValueAccessor, OnInit, AfterVie
   readonly autofocus = input(false);
   readonly invalid = input(false);
   readonly label = input('One-time code');
+  readonly completed = output<string>();
 
   @ViewChildren('box') private boxes!: QueryList<ElementRef<HTMLInputElement>>;
 
@@ -120,8 +125,10 @@ export class OtpInputComponent implements ControlValueAccessor, OnInit, AfterVie
     // The DOM value of the box that received the input still holds every
     // typed/pasted character until change detection re-renders it — sync now.
     this.boxes?.forEach((box, j) => (box.nativeElement.value = next[j]));
-    this.onChange(next.join(''));
+    const code = next.join('');
+    this.onChange(code);
     this.focusBox(Math.min(i, this.length() - 1));
+    if (value.length > 1 && code.length === this.length()) this.completed.emit(code);
   }
 
   private setDigit(index: number, value: string): void {

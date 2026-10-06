@@ -34,7 +34,7 @@ not Home — not used here (that page is out of scope, see below).
 rating/review-count field at all (no reviews module exists), and its
 `pricing` is a `{from, to}` **range** across variants — not a discounted-vs-
 original pair like the design mock shows. `shared/product-card/` renders
-only what's real: thumbnail, name, seller name, price range. See that
+only what's real: thumbnail, name, seller brand (2026-10-06), cheapest price, and stock state (`inStock`, 2026-10-06). See that
 component's own header comment.
 
 ## The `thumbnail` field

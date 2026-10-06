@@ -161,6 +161,11 @@
   margin: 0 0 8px;
 }
 
+.pd__variants-name {
+  font-weight: 400;
+  color: var(--color-text-muted);
+}
+
 .pd__swatches {
   display: flex;
   gap: 8px;
@@ -217,30 +222,56 @@
   line-height: 1.6;
 }
 
+// Two columns: labels sized to the longest one, values left-aligned in a
+// shared column right after it. Each row's <div> is `display: contents` so
+// its two spans sit directly in the grid and every value lines up.
 .pd__attrs {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  column-gap: 24px;
+  row-gap: 8px;
   border-top: 1px solid var(--color-border);
   padding-top: 16px;
+  font-size: 0.85rem;
 
   div {
-    display: flex;
-    justify-content: space-between;
-    gap: 16px;
-    font-size: 0.85rem;
+    display: contents;
 
     // Label never wraps; a long value (e.g. wash-care instructions) wraps
-    // within its own column and stays right-aligned like the short ones.
+    // within its own column.
     span:first-child {
       color: var(--color-text-muted);
-      flex-shrink: 0;
       white-space: nowrap;
     }
 
     span:last-child {
       font-weight: 500;
-      text-align: right;
+      text-align: left;
+      overflow-wrap: anywhere;
+    }
+  }
+
+  // Desktop (gallery and info side by side): the info column is too wide
+  // for one short list — show a two-column spec grid, label above value.
+  @media (min-width: 901px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 32px;
+    row-gap: 0;
+
+    div {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--color-border);
+
+      span:first-child {
+        font-size: 0.78rem;
+      }
+
+      span:last-child {
+        font-size: 0.9rem;
+      }
     }
   }
 }

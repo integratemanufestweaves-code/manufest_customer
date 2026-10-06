@@ -14,6 +14,7 @@ import { Address, AddressRequest } from '../../core/models/customer.models';
 import { OrderDetail, PaymentMethod } from '../../core/models/order.models';
 import { CartItem } from '../../core/models/cart.models';
 import { formatPrice } from '../../core/utils/format-price';
+import { AddressFieldErrors, trimAddressForm, validateAddressForm } from '../../core/utils/address-validation';
 
 /**
  * `POST /customer/orders/checkout` (`orders.api.js`) — by default converts
@@ -61,6 +62,12 @@ export class CheckoutComponent implements OnInit {
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);
 
+  /** "Good to know" points under Place order — add a line here to show
+   * another point. */
+  readonly orderNotes: string[] = [
+    'Please record a video while opening the parcel — it speeds up any return/replacement request.',
+  ];
+
   /** `null` = checking out the whole cart; otherwise the exact uuids to
    * send as `cartItemUuids`. Snapshotted once in `ngOnInit`. */
   private selectedUuids: string[] | null = null;
@@ -72,7 +79,10 @@ export class CheckoutComponent implements OnInit {
     return items.filter((item) => set.has(item.uuid));
   });
   readonly checkoutItemCount = computed(() => this.checkoutItems().length);
-  readonly checkoutSubtotal = computed(() => this.checkoutItems().reduce((sum, item) => sum + (item.lineTotal || 0), 0));
+  // Whole paise, same as the cart page's selectedSubtotal.
+  readonly checkoutSubtotal = computed(
+    () => this.checkoutItems().reduce((paise, item) => paise + Math.round((item.lineTotal || 0) * 100), 0) / 100,
+  );
 
   /** Same check the server makes on `POST /customer/orders/checkout`
    * (`INSUFFICIENT_STOCK`) — checked here too so "Place order" refuses to
@@ -105,6 +115,7 @@ export class CheckoutComponent implements OnInit {
   addressForm: AddressRequest = this.blankAddressForm();
   readonly addressSaving = signal(false);
   readonly addressFormError = signal<string | null>(null);
+  readonly addressFieldErrors = signal<AddressFieldErrors>({});
 
   /** COD and bank transfer are switched off for launch (2026-09-29) —
    * online payment via Razorpay only. The backend still accepts both, so
@@ -144,16 +155,18 @@ export class CheckoutComponent implements OnInit {
   }
 
   /** The receiver's phone starts as the customer's own verified mobile
-   * number (they can overwrite it when the parcel goes to someone else). */
+   * number (they can overwrite it when the parcel goes to someone else).
+   * The label starts as "Home"; the customer can change it to Work etc. */
   private blankAddressForm(): AddressRequest {
     const phone = this.auth.currentUser()?.mobileNumber || '';
-    return { label: '', recipientName: '', phone, line1: '', line2: '', city: '', state: '', postalCode: '', countryCode: 'IN', isDefault: false };
+    return { label: 'Home', recipientName: '', phone, line1: '', line2: '', city: '', state: '', postalCode: '', countryCode: 'IN', isDefault: false };
   }
 
   startAddAddress(): void {
     this.addressForm = this.blankAddressForm();
     this.editingAddressUuid.set(null);
     this.addressFormError.set(null);
+    this.addressFieldErrors.set({});
     this.showAddressForm.set(true);
   }
 
@@ -173,6 +186,7 @@ export class CheckoutComponent implements OnInit {
     };
     this.editingAddressUuid.set(address.uuid);
     this.addressFormError.set(null);
+    this.addressFieldErrors.set({});
     this.showAddressForm.set(true);
   }
 
@@ -182,9 +196,12 @@ export class CheckoutComponent implements OnInit {
   }
 
   saveNewAddress(): void {
-    const f = this.addressForm;
-    if (!f.recipientName || !f.phone || !f.line1 || !f.city || !f.postalCode || f.countryCode.length !== 2) {
-      this.addressFormError.set('Fill in recipient, phone, address line 1, city, postal code, and a 2-letter country code.');
+    const f = trimAddressForm(this.addressForm);
+    this.addressForm = f;
+    const fieldErrors = validateAddressForm(f);
+    this.addressFieldErrors.set(fieldErrors);
+    if (Object.keys(fieldErrors).length > 0) {
+      this.addressFormError.set('Please fix the highlighted fields.');
       return;
     }
     this.addressFormError.set(null);

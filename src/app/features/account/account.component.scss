@@ -355,10 +355,6 @@
   color: var(--color-danger);
 }
 
-.auth__field input[aria-invalid='true'] {
-  border-color: var(--color-danger);
-}
-
 // -- profile, read-only view (the form above only shows after "Edit") --
 .profile-view {
   max-width: 560px;

@@ -6,7 +6,11 @@
   @if (product(); as p) {
     <div class="container pd">
       <nav class="pd__crumbs" aria-label="Breadcrumb">
-        <a routerLink="/">Home</a> / <span>{{ p.category.name }}</span> / <span>{{ p.productName }}</span>
+        <a routerLink="/">Home</a> / <span>{{ p.category.name }}</span> /
+        @if (p.subCategory) {
+          <span>{{ p.subCategory.name }}</span> /
+        }
+        <span>{{ p.productName }}</span>
       </nav>
 
       <div class="pd__layout">
@@ -58,7 +62,12 @@
 
           @if (p.variants.length > 1) {
             <div class="pd__variants">
-              <p class="pd__variants-label">Colour</p>
+              <p class="pd__variants-label">
+                Colour
+                @if (selectedVariant()?.variantName; as name) {
+                  : <span class="pd__variants-name">{{ name }}</span>
+                }
+              </p>
               <div class="pd__swatches">
                 @for (v of p.variants; track v.uuid) {
                   <button
@@ -67,6 +76,7 @@
                     [class.pd__swatch--active]="v.uuid === selectedVariant()?.uuid"
                     [style.background]="v.colorHex || '#ccc'"
                     [attr.aria-label]="v.variantName || v.colorHex"
+                    [title]="v.variantName || v.colorHex || ''"
                     (click)="selectVariant(v)"
                   ></button>
                 }
@@ -75,14 +85,19 @@
           }
 
           <div class="pd__actions">
-            <button
-              type="button"
-              class="btn btn--primary btn--full"
-              (click)="addToCart()"
-              [disabled]="addingToCart() || !selectedVariant() || !selectedVariant()?.inventory?.isInStock"
-            >
-              {{ addingToCart() ? 'Adding…' : addedToCart() ? 'Added ✓' : 'Add to cart' }}
-            </button>
+            @if (selectedVariantInCart()) {
+              <!-- Quantity changes happen in the cart only. -->
+              <button type="button" class="btn btn--go-cart btn--full" (click)="goToCart()">Go to cart</button>
+            } @else {
+              <button
+                type="button"
+                class="btn btn--primary btn--full"
+                (click)="addToCart()"
+                [disabled]="addingToCart() || !selectedVariant() || !selectedVariant()?.inventory?.isInStock"
+              >
+                {{ addingToCart() ? 'Adding…' : 'Add to cart' }}
+              </button>
+            }
             <button
               type="button"
               class="btn btn--outline pd__wishlist-btn"
@@ -105,20 +120,41 @@
           }
 
           <div class="pd__attrs">
+            @if (p.attributes.color) {
+              <div><span>Colour</span><span>{{ p.attributes.color.name }}</span></div>
+            }
             @if (p.attributes.material) {
               <div><span>Material</span><span>{{ p.attributes.material.name }}</span></div>
             }
             @if (p.attributes.fabricPurity) {
               <div><span>Fabric purity</span><span>{{ p.attributes.fabricPurity.name }}</span></div>
             }
+            @if (p.attributes.fabrics.length) {
+              <div><span>Fabric</span><span>{{ names(p.attributes.fabrics) }}</span></div>
+            }
+            @if (p.attributes.weaves.length) {
+              <div><span>Weave</span><span>{{ names(p.attributes.weaves) }}</span></div>
+            }
             @if (p.attributes.zariType) {
               <div><span>Zari type</span><span>{{ p.attributes.zariType.name }}</span></div>
+            }
+            @if (p.attributes.zariColor) {
+              <div><span>Zari colour</span><span>{{ p.attributes.zariColor.name }}</span></div>
             }
             @if (p.attributes.borderType) {
               <div><span>Border</span><span>{{ p.attributes.borderType.name }}</span></div>
             }
             @if (p.attributes.sareeLength) {
-              <div><span>Saree length</span><span>{{ p.attributes.sareeLength }}</span></div>
+              <div><span>Saree length</span><span>{{ lengthLabel(p.attributes.sareeLength) }}</span></div>
+            }
+            @if (p.productType === 'SAREE') {
+              <div><span>Blouse</span><span>{{ p.attributes.blouseIncluded ? 'Included' : 'Not included' }}</span></div>
+            }
+            @if (p.attributes.blouseLength) {
+              <div><span>Blouse length</span><span>{{ lengthLabel(p.attributes.blouseLength) }}</span></div>
+            }
+            @if (p.attributes.occasions.length) {
+              <div><span>Occasion</span><span>{{ names(p.attributes.occasions) }}</span></div>
             }
             @if (p.attributes.washCare) {
               <div><span>Wash care</span><span>{{ p.attributes.washCare }}</span></div>

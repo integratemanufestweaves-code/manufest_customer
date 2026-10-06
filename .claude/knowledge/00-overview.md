@@ -41,7 +41,7 @@ Razorpay charged. The cart deliberately shows no "Price changed since you
 added this (was ₹…)" notice. The user asked for it to be removed, so don't
 add it back.
 
-## App-wide behaviours worth knowing (2026-10-05)
+## App-wide behaviours worth knowing (updated 2026-10-06)
 - **Scroll on navigation:** `core/scroll/scroll-restoration.ts`
   (`provideScrollRestoration()`, wired in `app.config.ts` with the Router's
   own `scrollPositionRestoration: 'disabled'`). New navigation → top;
@@ -61,11 +61,27 @@ add it back.
   variant. Price filter bands: see 02-product-listing.md.
 - **Origin** (seller district) is hidden from the header and the listing
   sidebar for now; see 02-product-listing.md.
+- **Cart state (2026-10-06):** every cart mutation returns the whole cart.
+  `CartService` applies a response only if no later-started mutation has
+  already been applied (`mutationSeq`/`appliedSeq`) — keep that for any new
+  mutation method. Components gate per item (`pendingItems`), and money
+  totals are summed in whole paise. `isProductInCart` / `isVariantInCart`
+  drive the "Go to cart" buttons; quantity is changed only on the cart page.
+- **Stock on cards:** `ProductCardSummary.inStock` comes from manufest_be's
+  public list routes and recently viewed; only an explicit `false` means
+  out of stock (older payloads lack it).
+- **OTP inputs:** use `app-otp-input`'s `(completed)` to auto-submit an
+  autofilled code, guarded by the page's own in-flight flag.
+- **Template-driven form tests:** `ngModel` inside a `<form>` binds a tick
+  after the first render — `await fixture.whenStable()` before typing
+  (see `login.component.spec.ts`).
 - **iOS Safari pitfalls hit so far** (fixed; avoid reintroducing): empty
   flex children in a `<button>` collapse to 0 width (header burger needs
   explicit `width`); `<input type="date">` loses its arrow once styled
   (custom chevron in `_auth-shared.scss`); `aspect-ratio` + `height: 100%`
-  img inside a grid mis-sizes the row (cart thumbnail uses fixed px sizes).
+  img inside a grid mis-sizes the row (cart thumbnail uses fixed px sizes);
+  quick double taps on a button zoom the page unless it has
+  `touch-action: manipulation` (cart +/-).
 
 ## What's real vs. "coming soon" (updated 2026-09-12)
 **Ten** routes call a live `manufest_be` API:

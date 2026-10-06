@@ -25,6 +25,9 @@ export interface CartItem {
    * has none uploaded yet. Resolve through `ProductService.mediaSrc()`. */
   variant: { uuid: string; variantName: string | null; colorHex: string | null; thumbnail: ProductThumbnail };
   product: { uuid: string; productName: string };
+  /** The seller's brand, or their name when they have none (manufest_be's
+   * sellerBrandNameSql). Optional — older backends don't send it. */
+  seller?: { brandName: string | null };
 }
 
 export interface CartView {

@@ -24,6 +24,33 @@ export class CartService {
   readonly cart = this.cartSignal.asReadonly();
   readonly itemCount = computed(() => this.cartSignal().itemCount);
 
+  /** Lets "Add to cart" buttons switch to "Go to cart" once the product
+   * (card) or the exact variant (detail page) is already in the cart. */
+  private readonly variantUuidsInCart = computed(() => new Set(this.cartSignal().items.map((item) => item.variant.uuid)));
+  private readonly productUuidsInCart = computed(() => new Set(this.cartSignal().items.map((item) => item.product.uuid)));
+
+  isVariantInCart(variantUuid: string): boolean {
+    return this.variantUuidsInCart().has(variantUuid);
+  }
+
+  isProductInCart(productUuid: string): boolean {
+    return this.productUuidsInCart().has(productUuid);
+  }
+
+  /** Every mutation returns the whole cart. Each request takes a number,
+   * and a response is applied only if no later-started request has
+   * already been applied — otherwise a slow response for an earlier +/−
+   * tap (common on mobile data) would overwrite the newer cart and show
+   * a stale quantity/total. */
+  private mutationSeq = 0;
+  private appliedSeq = 0;
+
+  private applyMutation(seq: number, cart: CartView): void {
+    if (seq < this.appliedSeq) return;
+    this.appliedSeq = seq;
+    this.cartSignal.set(cart);
+  }
+
   /** Which `cart_items.uuid`s the cart page's checkbox selection had
    * checked when "Proceed to checkout" was clicked — read by
    * `CheckoutComponent` so a partial selection carries across the
@@ -65,32 +92,36 @@ export class CartService {
   }
 
   addItem(payload: AddCartItemRequest): Observable<CartView> {
+    const seq = ++this.mutationSeq;
     return this.http.post<ApiSuccess<CartView>>(`${this.base}/items`, payload).pipe(
-      tap((res) => this.cartSignal.set(res.data)),
+      tap((res) => this.applyMutation(seq, res.data)),
       map((res) => res.data),
       catchError((err) => rethrowApiError(err)),
     );
   }
 
   updateItemQuantity(cartItemUuid: string, quantity: number): Observable<CartView> {
+    const seq = ++this.mutationSeq;
     return this.http.put<ApiSuccess<CartView>>(`${this.base}/items/${cartItemUuid}`, { quantity }).pipe(
-      tap((res) => this.cartSignal.set(res.data)),
+      tap((res) => this.applyMutation(seq, res.data)),
       map((res) => res.data),
       catchError((err) => rethrowApiError(err)),
     );
   }
 
   removeItem(cartItemUuid: string): Observable<CartView> {
+    const seq = ++this.mutationSeq;
     return this.http.delete<ApiSuccess<CartView>>(`${this.base}/items/${cartItemUuid}`).pipe(
-      tap((res) => this.cartSignal.set(res.data)),
+      tap((res) => this.applyMutation(seq, res.data)),
       map((res) => res.data),
       catchError((err) => rethrowApiError(err)),
     );
   }
 
   clear(): Observable<{ status: string }> {
+    const seq = ++this.mutationSeq;
     return this.http.delete<ApiSuccess<{ status: string }>>(this.base).pipe(
-      tap(() => this.cartSignal.set(EMPTY_CART)),
+      tap(() => this.applyMutation(seq, EMPTY_CART)),
       map((res) => res.data),
       catchError((err) => rethrowApiError(err)),
     );

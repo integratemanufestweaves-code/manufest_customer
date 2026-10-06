@@ -134,6 +134,37 @@ describe('CheckoutComponent', () => {
     });
   });
 
+  describe('"Good to know" notes under Place order', () => {
+    const notes = () => fixture.debugElement.queryAll(By.css('.checkout-notes__list li')).map((li) => li.nativeElement.textContent.trim());
+
+    it('renders one bullet per entry in orderNotes, under a "Good to know" heading', () => {
+      initWith([makeItem()]);
+      expect(fixture.debugElement.query(By.css('.checkout-notes__title')).nativeElement.textContent.trim()).toBe('Good to know');
+      expect(notes()).toEqual(component.orderNotes);
+      expect(notes()[0]).toContain('record a video while opening the parcel');
+    });
+
+    it('adding a point to orderNotes shows it as another bullet', () => {
+      (component as any).orderNotes = [...component.orderNotes, 'Delivery in 5–7 working days.'];
+      initWith([makeItem()]);
+      expect(notes().length).toBe(2);
+      expect(notes()[1]).toBe('Delivery in 5–7 working days.');
+    });
+
+    it('hides the box entirely when there are no notes', () => {
+      (component as any).orderNotes = [];
+      initWith([makeItem()]);
+      expect(fixture.debugElement.query(By.css('.checkout-notes'))).toBeNull();
+    });
+  });
+
+  describe('checkoutSubtotal precision', () => {
+    it('adds line totals in whole paise, without floating-point drift', () => {
+      initWith([makeItem({ uuid: 'a', lineTotal: 798.68 }), makeItem({ uuid: 'b', lineTotal: 1856.92 })]);
+      expect(component.checkoutSubtotal()).toBe(2655.6);
+    });
+  });
+
   describe('placeOrder — missing address branch and disabled-button interplay', () => {
     it('setting placeOrderError for a missing address IS reachable by calling placeOrder() directly (component-level guard exists)', () => {
       initWith([makeItem()], []); // no addresses at all -> selectedAddressUuid stays null
@@ -278,6 +309,30 @@ describe('CheckoutComponent', () => {
     });
   });
 
+  describe('new address: label', () => {
+    it('defaults to "Home"', () => {
+      initWith([makeItem()]);
+      component.startAddAddress();
+      expect(component.addressForm.label).toBe('Home');
+    });
+
+    it('stays editable: a changed label is what gets sent', () => {
+      initWith([makeItem()]);
+      component.startAddAddress();
+      component.addressForm = { ...component.addressForm, recipientName: 'Jane', line1: 'Street 1', city: 'Chennai', state: 'Tamil Nadu', postalCode: '600001', phone: '9999999999', label: 'Work' };
+      const createSpy = spyOn(customerService, 'createAddress').and.returnValue(of({ id: 'new-addr' } as any));
+      component.saveNewAddress();
+      expect(createSpy.calls.mostRecent().args[0].label).toBe('Work');
+    });
+
+    it('keeps the saved label when editing an existing address', () => {
+      const addr = makeAddress({ label: 'Mom' });
+      initWith([makeItem()], [addr]);
+      component.startEditAddress(addr);
+      expect(component.addressForm.label).toBe('Mom');
+    });
+  });
+
   describe("new address: receiver's phone", () => {
     it("pre-fills the signed-in customer's mobile number", () => {
       (TestBed.inject(AuthService) as any).currentUserSignal.set({ mobileNumber: '7871487161' });
@@ -362,33 +417,77 @@ describe('CheckoutComponent', () => {
   });
 
   describe('saveNewAddress validation', () => {
+    const validForm = () => ({
+      label: '',
+      recipientName: 'Jane',
+      phone: '9999999999',
+      line1: 'Street 1',
+      line2: '',
+      city: 'Chennai',
+      state: '',
+      postalCode: '600001',
+      countryCode: 'IN',
+      isDefault: false,
+    });
+
     it('rejects an incomplete form without calling the backend', () => {
       initWith([makeItem()], []);
       const createSpy = spyOn(customerService, 'createAddress');
-      component.addressForm = { ...component.addressForm, recipientName: '' };
+      component.addressForm = { ...validForm(), recipientName: '' };
       component.saveNewAddress();
 
       expect(createSpy).not.toHaveBeenCalled();
-      expect(component.addressFormError()).toContain('Fill in');
+      expect(component.addressFormError()).toBeTruthy();
+      expect(component.addressFieldErrors().recipientName).toBeTruthy();
     });
 
-    it('rejects a country code that is not exactly 2 characters', () => {
+    it('treats fields of only spaces as empty', () => {
       initWith([makeItem()], []);
       const createSpy = spyOn(customerService, 'createAddress');
-      component.addressForm = {
-        label: '',
-        recipientName: 'Jane',
-        phone: '999',
-        line1: 'Street 1',
-        line2: '',
-        city: 'Chennai',
-        state: '',
-        postalCode: '600001',
-        countryCode: 'IND',
-        isDefault: false,
-      };
+      component.addressForm = { ...validForm(), line1: '   ', city: ' ' };
       component.saveNewAddress();
+
       expect(createSpy).not.toHaveBeenCalled();
+      expect(component.addressFieldErrors().line1).toBeTruthy();
+      expect(component.addressFieldErrors().city).toBeTruthy();
+    });
+
+    it('rejects a phone number that is not a 10-digit mobile number', () => {
+      initWith([makeItem()], []);
+      const createSpy = spyOn(customerService, 'createAddress');
+      component.addressForm = { ...validForm(), phone: '999' };
+      component.saveNewAddress();
+
+      expect(createSpy).not.toHaveBeenCalled();
+      expect(component.addressFieldErrors().phone).toContain('10-digit');
+    });
+
+    it('accepts a phone number written with +91 and spaces', () => {
+      initWith([makeItem()], []);
+      component.addressForm = { ...validForm(), phone: '+91 98765 43210' };
+      const createSpy = spyOn(customerService, 'createAddress').and.returnValue(of({ id: 'new-addr' } as any));
+      component.saveNewAddress();
+
+      expect(createSpy).toHaveBeenCalled();
+    });
+
+    it('rejects a PIN code that is not 6 digits', () => {
+      initWith([makeItem()], []);
+      const createSpy = spyOn(customerService, 'createAddress');
+      component.addressForm = { ...validForm(), postalCode: '6000a' };
+      component.saveNewAddress();
+
+      expect(createSpy).not.toHaveBeenCalled();
+      expect(component.addressFieldErrors().postalCode).toContain('6-digit');
+    });
+
+    it('trims spaces before saving', () => {
+      initWith([makeItem()], []);
+      component.addressForm = { ...validForm(), recipientName: '  Jane  ' };
+      const createSpy = spyOn(customerService, 'createAddress').and.returnValue(of({ id: 'new-addr' } as any));
+      component.saveNewAddress();
+
+      expect(createSpy.calls.mostRecent().args[0].recipientName).toBe('Jane');
     });
 
     it('saves and reloads addresses, preferring the newly-created one, on success', () => {

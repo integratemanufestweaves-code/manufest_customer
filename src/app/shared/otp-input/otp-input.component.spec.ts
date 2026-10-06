@@ -7,10 +7,11 @@ import { OtpInputComponent } from './otp-input.component';
 @Component({
   standalone: true,
   imports: [FormsModule, OtpInputComponent],
-  template: `<app-otp-input name="code" [(ngModel)]="code" />`,
+  template: `<app-otp-input name="code" [(ngModel)]="code" (completed)="completed.push($event)" />`,
 })
 class HostComponent {
   code = '';
+  completed: string[] = [];
 }
 
 describe('OtpInputComponent', () => {
@@ -52,6 +53,22 @@ describe('OtpInputComponent', () => {
     type(0, '4');
     expect(host.code).toBe('4');
     expect(document.activeElement).toBe(boxes()[1]);
+  });
+
+  it('emits completed when an autofilled code fills every box', () => {
+    type(0, '123456');
+    expect(host.completed).toEqual(['123456']);
+  });
+
+  it('does not emit completed for a partial autofill', () => {
+    type(0, '123');
+    expect(host.completed).toEqual([]);
+  });
+
+  it('does not emit completed when the code is typed digit by digit', () => {
+    '123456'.split('').forEach((d, i) => type(i, d));
+    expect(host.code).toBe('123456');
+    expect(host.completed).toEqual([]);
   });
 
   it('spreads a pasted/autofilled code across the boxes', () => {

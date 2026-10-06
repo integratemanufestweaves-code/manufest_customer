@@ -1,5 +1,60 @@
 # Changelog
 
+## 2026-10-06 — Cart, product cards, product page, checkout (user-directed)
+Uncommitted at time of writing; rebased onto main 3f5e169 ("added brand
+name to shows" — its card fallback "Manufest Weaves" was kept). Backup of
+the pre-pull state: `D:/manufest_code/backup_2026-10-06/` (CHANGES.md
+there lists every item). Needs manufest_be's same-day changes for the
+seller brand on cart lines and `inStock` on cards.
+
+- **Checkout address form:** a new address's Label starts as "Home"
+  (editable; editing an existing address keeps its own label).
+- **OTP auto-verify:** `app-otp-input` emits `(completed)` when an
+  autofill/paste (more than one digit at once) fills every box; typing digit
+  by digit never emits it. Login and the account's mobile verification
+  call their verify method on it, guarded by `submitting()`/`verifying()`
+  so a second autofill can't send twice.
+- **Product card:**
+  - seller brand under the name (`sellerLabel`: brand → seller name →
+    "Manufest Weaves");
+  - "+ Add to cart" on a product with several active variants shows that
+    product's colour swatches in the card (name chip when a variant has no
+    colour, × to close); a swatch opens `/product/:uuid?variant=<uuid>`;
+  - **Go to cart** (logo-ribbon gradient, `--color-logo-magenta`) once any
+    variant of the product is in the cart;
+  - **out of stock up front** when `inStock === false` (missing = in stock):
+    frosted "Out of stock" band at the bottom of the photo, photo lightly
+    muted, grey price, disabled "Currently unavailable" button. Go to cart
+    still wins when the product is already in the cart.
+- **Product page:** opens on `?variant=` when it names a variant (else the
+  first); "Colour: <name>" beside the swatches (+ `title` on each);
+  sub-category in the breadcrumb; details list adds Colour, Fabric, Weave,
+  Zari colour, Blouse (Included / Not included, sarees only), Blouse length,
+  Occasion (multi-values comma-joined via `names()`); `lengthLabel()` adds
+  " m" to a bare number. Details are label/value rows (values left-aligned)
+  on mobile and a two-column grid (label above value) above 900px.
+  "Add to cart" becomes **Go to cart** when the selected variant is in the
+  cart (`selectedVariantInCart`). `ProductAttributes` gained `fabrics` and
+  `weaves`.
+- **Cart:** "Select all" is a bordered bar with "N of M selected"
+  (out-of-stock items not counted), part-filled checkbox when only some are
+  selected, highlighted while anything is selected; 18px checkboxes. Each
+  line shows "by <brand>" (`CartItem.seller.brandName`).
+- **Cart quantity correctness** (wrong totals reported on iPhone):
+  `CartService` numbers each mutation and ignores a response older than
+  one already applied; busy state is per item (`pendingItems` set, not a
+  single uuid); cart and checkout subtotals are summed in whole paise;
+  +/- buttons have `touch-action: manipulation` (no iOS double-tap zoom)
+  and are 36px on phones.
+- **Checkout:** the parcel-video note is now a "Good to know" box under
+  Place order, rendered from the `orderNotes` array (add a string to add a
+  bullet; empty array hides the box).
+- **Header announcement:** "Free shipping · Secure payments via UPI, cards
+  & net banking" (no ₹2,999 minimum).
+- **Tests:** new `login.component.spec.ts` and `cart.service.spec.ts`;
+  additions in account, cart, checkout, header, otp-input, product-card and
+  product-detail specs (291 total, all passing).
+
 ## 2026-10-04 – 2026-10-05 — Storefront fixes and tweaks (user-directed)
 Uncommitted at time of writing. Grouped by area:
 

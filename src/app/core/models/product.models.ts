@@ -51,9 +51,13 @@ export interface ProductCardSummary {
   productName: string;
   pricing: ProductPriceRange;
   thumbnail: ProductThumbnail;
-  /** `brandName` (2026-10-05): the seller's registered brand, else their
-   * name — shown on the card under the product name. */
+  /** `brandName` is the seller's registered brand, or their name when they
+   * have none (manufest_be's sellerBrandNameSql). Recently-viewed rows
+   * carry only `brandName`. */
   seller?: { uuid?: string; name?: string; brandName?: string | null };
+  /** `false` when no active variant is in stock — the card shows "Out of
+   * stock" up front. Absent from older backends: treat as in stock. */
+  inStock?: boolean;
 }
 
 export interface ProductSummary extends ProductCardSummary {
@@ -129,6 +133,8 @@ export interface ProductAttributes {
   zariColor: AttributeLookup;
   borderType: AttributeLookup;
   occasions: Array<{ uuid: string; name: string }>;
+  fabrics: Array<{ uuid: string; name: string }>;
+  weaves: Array<{ uuid: string; name: string }>;
   blouseIncluded: boolean;
   sareeLength: string | null;
   blouseLength: string | null;

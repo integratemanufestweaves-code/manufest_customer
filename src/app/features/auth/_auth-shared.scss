@@ -132,6 +132,22 @@
   }
 }
 
+.auth__hint {
+  font-size: 0.78rem;
+  font-weight: 400;
+  color: var(--color-text-muted);
+}
+
+.auth__field-error {
+  font-size: 0.76rem;
+  font-weight: 400;
+  color: var(--color-danger);
+}
+
+.auth__field input[aria-invalid='true'] {
+  border-color: var(--color-danger);
+}
+
 .auth__field-row {
   display: grid;
   grid-template-columns: 1fr 1fr;

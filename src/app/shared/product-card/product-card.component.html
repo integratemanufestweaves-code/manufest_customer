@@ -1,4 +1,4 @@
-<div class="card">
+<div class="card" [class.card--out]="isOutOfStock">
   <a class="card__link" [routerLink]="['/product', product.uuid]">
     <div class="card__media">
       @if (thumbnailSrc) {
@@ -13,6 +13,10 @@
         </div>
       }
 
+      @if (isOutOfStock) {
+        <span class="card__stock-badge">Out of stock</span>
+      }
+
       <button type="button" class="card__wishlist" [class.card__wishlist--active]="isWishlisted" (click)="toggleWishlist($event)" [attr.aria-label]="isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'" [attr.aria-pressed]="isWishlisted">
         <svg viewBox="0 0 24 24" [attr.fill]="isWishlisted ? 'currentColor' : 'none'" width="16" height="16"><path d="M12 20s-7-4.35-9.5-8.5C.6 8 2 4.5 5.5 4a5 5 0 0 1 6.5 2 5 5 0 0 1 6.5-2C22 4.5 23.4 8 21.5 11.5 19 15.65 12 20 12 20Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
       </button>
@@ -20,7 +24,7 @@
 
     <div class="card__body">
       <p class="card__name">{{ product.productName }}</p>
-      <p class="card__seller">{{ product.seller?.brandName || product.seller?.name || 'Manufest Weaves' }}</p>
+      <p class="card__seller">{{ sellerLabel }}</p>
       @if (priceLabel) {
         <p class="card__price">{{ priceLabel }}</p>
       }
@@ -31,9 +35,42 @@
        valid markup and the two don't fight over clicks — see this
        component's header comment for why a listing-grid "quick add" needs
        an extra product-detail call to resolve a variant first. -->
-  <button type="button" class="card__add" (click)="addToCart($event)" [disabled]="addingToCart()">
-    {{ addingToCart() ? 'Adding…' : '+ Add to cart' }}
-  </button>
+  @if (variantChoices(); as variants) {
+    <div class="card__variants" role="group" aria-label="Choose a colour">
+      <div class="card__variants-head">
+        <span>Choose a colour</span>
+        <button type="button" class="card__variants-close" (click)="closeVariantChoices()" aria-label="Close colour choices">×</button>
+      </div>
+      <div class="card__swatches">
+        @for (variant of variants; track variant.uuid) {
+          @if (variant.colorHex) {
+            <button
+              type="button"
+              class="card__swatch"
+              [style.background]="variant.colorHex"
+              [class.card__swatch--out]="!variant.inventory.isInStock"
+              (click)="openVariant(variant)"
+              [attr.aria-label]="(variant.variantName || variant.colorHex) + (variant.inventory.isInStock ? '' : ' (out of stock)')"
+              [title]="variant.variantName || variant.colorHex"
+            ></button>
+          } @else {
+            <button type="button" class="card__swatch-chip" [class.card__swatch--out]="!variant.inventory.isInStock" (click)="openVariant(variant)">
+              {{ variant.variantName || variant.size || 'Option' }}
+            </button>
+          }
+        }
+      </div>
+    </div>
+  } @else if (isInCart) {
+    <!-- Quantity changes happen in the cart only. -->
+    <button type="button" class="card__add card__add--in-cart" (click)="goToCart($event)">Go to cart</button>
+  } @else if (isOutOfStock) {
+    <button type="button" class="card__add card__add--out" disabled>Currently unavailable</button>
+  } @else {
+    <button type="button" class="card__add" (click)="addToCart($event)" [disabled]="addingToCart()">
+      {{ addingToCart() ? 'Adding…' : '+ Add to cart' }}
+    </button>
+  }
   @if (addToCartError()) {
     <p class="card__add-error">{{ addToCartError() }}</p>
   }

@@ -1,4 +1,4 @@
-import { Component, DestroyRef, OnInit, inject, signal } from '@angular/core';
+import { Component, computed, DestroyRef, OnInit, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Subscription } from 'rxjs';
@@ -59,6 +59,12 @@ export class ProductDetailComponent implements OnInit {
   readonly addingToCart = signal(false);
   readonly addToCartError = signal<string | null>(null);
   readonly addedToCart = signal(false);
+  /** Once this colour is in the cart the button becomes "Go to cart" —
+   * quantity is changed in the cart, not by adding again here. */
+  readonly selectedVariantInCart = computed(() => {
+    const variant = this.selectedVariant();
+    return !!variant && this.cartService.isVariantInCart(variant.uuid);
+  });
 
   /** Watches the route, not a one-off snapshot: clicking a "You may also
    * like" card goes from /product/A to /product/B, and the Router reuses
@@ -87,8 +93,11 @@ export class ProductDetailComponent implements OnInit {
     this.loadSubs.add(this.productService.getProductDetail(productUuid).subscribe({
       next: (product) => {
         this.product.set(product);
-        const firstVariant = product.variants[0] ?? null;
-        this.selectVariant(firstVariant);
+        // `?variant=` comes from a colour swatch on a product card — open on
+        // that colour; anything unknown falls back to the first variant.
+        const requested = this.route.snapshot.queryParamMap.get('variant');
+        const initialVariant = product.variants.find((v) => v.uuid === requested) ?? product.variants[0] ?? null;
+        this.selectVariant(initialVariant);
         this.loading.set(false);
       },
       error: (err) => {
@@ -135,6 +144,18 @@ export class ProductDetailComponent implements OnInit {
     return formatPrice(n);
   }
 
+  /** Multi-value attributes (occasions, fabrics, weaves) as one line. */
+  names(items: Array<{ name: string }> | null | undefined): string {
+    return (items ?? []).map((i) => i.name).join(', ');
+  }
+
+  /** Saree/blouse lengths are free text from the seller — a bare number
+   * ("6", "0.8") gets metres added; anything with its own unit is kept. */
+  lengthLabel(value: string): string {
+    const trimmed = value.trim();
+    return /^\d+(\.\d+)?$/.test(trimmed) ? `${trimmed} m` : trimmed;
+  }
+
   get isWishlisted(): boolean {
     const p = this.product();
     return p ? this.wishlistService.isWishlisted(p.uuid) : false;
@@ -148,6 +169,10 @@ export class ProductDetailComponent implements OnInit {
       return;
     }
     this.wishlistService.toggle(p.uuid).subscribe();
+  }
+
+  goToCart(): void {
+    this.router.navigate(['/cart']);
   }
 
   addToCart(): void {

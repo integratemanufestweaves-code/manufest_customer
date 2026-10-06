@@ -8,6 +8,7 @@ import { CustomerService } from '../../core/services/customer.service';
 import { CartService } from '../../core/services/cart.service';
 import { WishlistService } from '../../core/services/wishlist.service';
 import { Address, AddressRequest } from '../../core/models/customer.models';
+import { AddressFieldErrors, trimAddressForm, validateAddressForm } from '../../core/utils/address-validation';
 import { OtpInputComponent } from '../../shared/otp-input/otp-input.component';
 import { OtpTimerComponent } from '../../shared/otp-timer/otp-timer.component';
 
@@ -82,6 +83,7 @@ export class AccountComponent implements OnInit, OnDestroy {
   addressForm: AddressRequest = this.blankAddressForm();
   readonly addressSaving = signal(false);
   readonly addressFormError = signal<string | null>(null);
+  readonly addressFieldErrors = signal<AddressFieldErrors>({});
 
   ngOnInit(): void {
     this.resetProfileForm();
@@ -360,6 +362,7 @@ export class AccountComponent implements OnInit, OnDestroy {
   startAddAddress(): void {
     this.addressForm = this.blankAddressForm();
     this.addressFormError.set(null);
+    this.addressFieldErrors.set({});
     this.editingAddress.set('new');
   }
 
@@ -378,6 +381,7 @@ export class AccountComponent implements OnInit, OnDestroy {
       isDefault: address.isDefault,
     };
     this.addressFormError.set(null);
+    this.addressFieldErrors.set({});
     this.editingAddress.set(address);
   }
 
@@ -386,9 +390,12 @@ export class AccountComponent implements OnInit, OnDestroy {
   }
 
   saveAddress(): void {
-    const f = this.addressForm;
-    if (!f.recipientName || !f.phone || !f.line1 || !f.city || !f.postalCode || f.countryCode.length !== 2) {
-      this.addressFormError.set('Fill in recipient, phone, address line 1, city, postal code, and a 2-letter country code.');
+    const f = trimAddressForm(this.addressForm);
+    this.addressForm = f;
+    const fieldErrors = validateAddressForm(f);
+    this.addressFieldErrors.set(fieldErrors);
+    if (Object.keys(fieldErrors).length > 0) {
+      this.addressFormError.set('Please fix the highlighted fields.');
       return;
     }
     this.addressFormError.set(null);

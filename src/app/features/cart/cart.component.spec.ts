@@ -3,7 +3,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting, HttpTestingController } from '@angular/common/http/testing';
 import { Router, provideRouter } from '@angular/router';
 import { By } from '@angular/platform-browser';
-import { of, throwError } from 'rxjs';
+import { Subject, of, throwError } from 'rxjs';
 
 import { CartComponent } from './cart.component';
 import { CartService } from '../../core/services/cart.service';
@@ -263,21 +263,21 @@ describe('CartComponent', () => {
       expect(updateSpy).not.toHaveBeenCalled();
     });
 
-    it('surfaces the error message and clears pendingItem when updateItemQuantity fails', () => {
+    it('surfaces the error message and clears the pending state when updateItemQuantity fails', () => {
       fixture.detectChanges();
       const item = makeItem({ uuid: 'a', quantity: 1, quantityAvailable: 3 });
       spyOn(cartService, 'updateItemQuantity').and.returnValue(throwError(() => ({ message: 'Out of stock now' })));
       component.updateQuantity(item, 2);
       expect(component.error()).toBe('Out of stock now');
-      expect(component.pendingItem()).toBeNull();
+      expect(component.pendingItems().size).toBe(0);
     });
 
-    it('removeItem clears the error and pendingItem on success', () => {
+    it('removeItem clears the error and pending state on success', () => {
       fixture.detectChanges();
       const item = makeItem({ uuid: 'a' });
       spyOn(cartService, 'removeItem').and.returnValue(of(makeCart([])));
       component.removeItem(item);
-      expect(component.pendingItem()).toBeNull();
+      expect(component.pendingItems().size).toBe(0);
       expect(component.error()).toBeNull();
     });
 
@@ -304,6 +304,98 @@ describe('CartComponent', () => {
       const item = makeItem({ uuid: 'x' });
       component.onThumbnailError(item);
       expect(component.thumbnailSrc(item)).toBeNull();
+    });
+  });
+
+  describe('"Select all" bar', () => {
+    const selectAll = () => fixture.debugElement.query(By.css('.cart-page__select-all input')).nativeElement as HTMLInputElement;
+    const count = () => fixture.debugElement.query(By.css('.cart-page__select-count')).nativeElement.textContent.trim();
+    const bar = () => fixture.debugElement.query(By.css('.cart-page__select-bar')).nativeElement as HTMLElement;
+
+    it('shows "N of M selected", ticked and highlighted when everything is selected', () => {
+      fixture.detectChanges();
+      setCart([makeItem({ uuid: 'a' }), makeItem({ uuid: 'b' })]);
+      fixture.detectChanges();
+
+      expect(count()).toBe('2 of 2 selected');
+      expect(selectAll().checked).toBeTrue();
+      expect(selectAll().indeterminate).toBeFalse();
+      expect(bar().classList).toContain('cart-page__select-bar--active');
+    });
+
+    it('shows the part-filled state when only some items are selected', () => {
+      fixture.detectChanges();
+      const a = makeItem({ uuid: 'a' });
+      setCart([a, makeItem({ uuid: 'b' })]);
+      component.toggleItem(a);
+      fixture.detectChanges();
+
+      expect(count()).toBe('1 of 2 selected');
+      expect(selectAll().checked).toBeFalse();
+      expect(selectAll().indeterminate).toBeTrue();
+    });
+
+    it('drops the highlight when nothing is selected', () => {
+      fixture.detectChanges();
+      setCart([makeItem({ uuid: 'a' })]);
+      component.toggleAll();
+      fixture.detectChanges();
+
+      expect(count()).toBe('0 of 1 selected');
+      expect(bar().classList).not.toContain('cart-page__select-bar--active');
+    });
+
+    it('leaves out-of-stock items out of the count', () => {
+      fixture.detectChanges();
+      setCart([makeItem({ uuid: 'a' }), makeItem({ uuid: 'b', quantity: 1, quantityAvailable: 0 })]);
+      fixture.detectChanges();
+
+      expect(count()).toBe('1 of 1 selected');
+    });
+  });
+
+  describe('subtotal and per-item pending state', () => {
+    it('adds line totals without floating-point drift', () => {
+      setCart([makeItem({ uuid: 'a', lineTotal: 798.68 }), makeItem({ uuid: 'b', lineTotal: 1856.92 })]);
+      expect(component.selectedSubtotal()).toBe(2655.6);
+    });
+
+    it("finishing one item's request does not unlock another item that is still saving", () => {
+      const a = makeItem({ uuid: 'a', quantity: 1 });
+      const b = makeItem({ uuid: 'b', quantity: 1 });
+      setCart([a, b]);
+      const subjects: Record<string, Subject<CartView>> = { a: new Subject(), b: new Subject() };
+      const updateSpy = spyOn(cartService, 'updateItemQuantity').and.callFake((uuid: string) => subjects[uuid].asObservable());
+
+      component.updateQuantity(a, 2);
+      component.updateQuantity(b, 2);
+      subjects['a'].next(makeCart([a, b]));
+      subjects['a'].complete();
+
+      expect(component.isPending(a)).toBeFalse();
+      expect(component.isPending(b)).toBeTrue();
+      // A second tap on b while it is still saving is ignored, not sent with a stale quantity.
+      component.updateQuantity(b, 2);
+      expect(updateSpy).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe('seller brand', () => {
+    it('shows "by <brand>" under the product name', () => {
+      fixture.detectChanges();
+      setCart([makeItem({ seller: { brandName: 'Kukkumam' } })]);
+      fixture.detectChanges();
+
+      const seller = fixture.debugElement.query(By.css('.cart-item__seller'));
+      expect(seller.nativeElement.textContent.trim()).toBe('by Kukkumam');
+    });
+
+    it('hides the line when the backend sent no brand', () => {
+      fixture.detectChanges();
+      setCart([makeItem()]);
+      fixture.detectChanges();
+
+      expect(fixture.debugElement.query(By.css('.cart-item__seller'))).toBeNull();
     });
   });
 
