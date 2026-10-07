@@ -28,14 +28,17 @@ not Home — not used here (that page is out of scope, see below).
 | "Trusted by customers" reviews (named reviewer, 5-star ratings, repeated photo) | **Dropped** | Same reasoning, and no reviews module exists in `manufest_be` to eventually back it either — this is a clean "coming soon" case per the user's own instruction, not a design deviation of convenience. |
 | Footer | Static shell | `shared/footer/`. Every link routes to "coming soon". |
 
-## Why product cards don't show a rating, review count, or "before/after" price
-`GET /public/products/list`'s summary (`toPublicProductSummary()` in
-`manufest_be/src/modules/products/products.api.js`) has no
-rating/review-count field at all (no reviews module exists), and its
-`pricing` is a `{from, to}` **range** across variants — not a discounted-vs-
-original pair like the design mock shows. `shared/product-card/` renders
-only what's real: thumbnail, name, seller brand (2026-10-06), cheapest price, and stock state (`inStock`, 2026-10-06). See that
-component's own header comment.
+## Why product cards don't show a "before/after" price
+**Rating (2026-10-07):** cards now show `4.3 ★ (12)` from the summary's
+`rating: {average, count}` (customers' active reviews, `manufest_be`
+product-reviews). No stars when `count` is 0 or `rating` is missing
+(wishlist / recently-viewed rows don't carry it). Before this date there was
+no reviews module and the card showed no rating at all.
+`GET /public/products/list`'s `pricing` is a `{from, to}` **range** across
+variants — not a discounted-vs-original pair like the design mock shows.
+`shared/product-card/` renders only what's real: thumbnail, name, seller
+brand (2026-10-06), cheapest price, stock state (`inStock`, 2026-10-06) and
+rating (2026-10-07). See that component's own header comment.
 
 ## The `thumbnail` field
 `GET /public/products/list` never returned a list-view image before this

@@ -135,6 +135,14 @@
                       }
                       @if (item.itemStatus === 'delivered') {
                         <button type="button" (click)="openReplacementForm(item)">Replacement</button>
+                        @if (item.review || reviewedItemUuids().has(item.uuid)) {
+                          <span class="order-item__reviewed">
+                            Reviewed
+                            @if (item.review) { <span aria-hidden="true">{{ '★'.repeat(item.review.rating) }}</span> }
+                          </span>
+                        } @else if (reviewItemUuid() !== item.uuid) {
+                          <button type="button" (click)="openReviewForm(item)">Rate this product</button>
+                        }
                       }
                       @if (canTrackPackage(item)) {
                         <button type="button" (click)="toggleTracking(item)">
@@ -197,6 +205,40 @@
                         </div>
                       </div>
                     }
+                  }
+
+                  @if (reviewItemUuid() === item.uuid) {
+                    <div class="order-item__action-form">
+                      <div class="review-stars" role="radiogroup" aria-label="Your rating">
+                        @for (n of ratingOptions; track n) {
+                          <button
+                            type="button"
+                            role="radio"
+                            class="review-stars__star"
+                            [class.review-stars__star--on]="n <= reviewRating()"
+                            [attr.aria-checked]="n === reviewRating()"
+                            [attr.aria-label]="n + (n === 1 ? ' star' : ' stars')"
+                            (click)="reviewRating.set(n)"
+                          >★</button>
+                        }
+                      </div>
+                      <textarea
+                        rows="3"
+                        placeholder="What did you like or dislike? (optional)"
+                        [maxlength]="reviewMaxLength"
+                        [(ngModel)]="reviewText"
+                        [name]="'review-text-' + item.uuid"
+                      ></textarea>
+                      @if (reviewError()) {
+                        <p class="state-message state-message--error">{{ reviewError() }}</p>
+                      }
+                      <div class="order-item__action-form-buttons">
+                        <button type="button" class="btn btn--primary" [disabled]="reviewSubmitting()" (click)="submitReview()">
+                          {{ reviewSubmitting() ? 'Submitting…' : 'Submit review' }}
+                        </button>
+                        <button type="button" class="btn btn--outline" [disabled]="reviewSubmitting()" (click)="closeReviewForm()">Cancel</button>
+                      </div>
+                    </div>
                   }
 
                   @if (replacementItemUuid() === item.uuid) {

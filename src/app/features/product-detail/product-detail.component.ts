@@ -8,7 +8,9 @@ import { CartService } from '../../core/services/cart.service';
 import { WishlistService } from '../../core/services/wishlist.service';
 import { AuthService } from '../../core/services/auth.service';
 import { RecentlyViewedService } from '../../core/services/recently-viewed.service';
+import { ReviewService } from '../../core/services/review.service';
 import { ProductDetail, ProductVariant, RelatedProduct } from '../../core/models/product.models';
+import { ProductReview } from '../../core/models/review.models';
 import { formatPrice } from '../../core/utils/format-price';
 
 /**
@@ -27,6 +29,13 @@ import { formatPrice } from '../../core/utils/format-price';
  * .../related`, public, no auth needed) — both render nothing at all if
  * there's nothing to show, same "no empty section" rule as the home
  * page's Recently Viewed ribbon.
+ *
+ * Customer reviews (added 2026-10-07) come from `GET /public/product-reviews
+ * /products/:productUuid/reviews` — active reviews only (an admin can hide
+ * one; there's no approval step), newest first,
+ * paged. The average shown under the title and above the list is the
+ * backend's `rating` (over every active review), not an average of the
+ * loaded page.
  */
 @Component({
   selector: 'app-product-detail',
@@ -43,6 +52,7 @@ export class ProductDetailComponent implements OnInit {
   private readonly wishlistService = inject(WishlistService);
   private readonly auth = inject(AuthService);
   private readonly recentlyViewedService = inject(RecentlyViewedService);
+  private readonly reviewService = inject(ReviewService);
   private readonly destroyRef = inject(DestroyRef);
   /** In-flight requests for the product being shown; cancelled when the
    * shopper moves to another product before they finish. */
@@ -55,6 +65,13 @@ export class ProductDetailComponent implements OnInit {
   readonly selectedMediaUrl = signal<string | null>(null);
 
   readonly relatedProducts = signal<RelatedProduct[]>([]);
+
+  readonly reviews = signal<ProductReview[]>([]);
+  readonly reviewTotal = signal(0);
+  private reviewPage = 1;
+  readonly reviewsLoading = signal(false);
+  readonly reviewsError = signal<string | null>(null);
+  readonly hasMoreReviews = computed(() => this.reviews().length < this.reviewTotal());
 
   readonly addingToCart = signal(false);
   readonly addToCartError = signal<string | null>(null);
@@ -118,6 +135,51 @@ export class ProductDetailComponent implements OnInit {
       // page's Recently Viewed section.
       error: () => this.relatedProducts.set([]),
     }));
+
+    this.loadReviews(productUuid, 1);
+  }
+
+  private loadReviews(productUuid: string, page: number): void {
+    if (page === 1) {
+      this.reviews.set([]);
+      this.reviewTotal.set(0);
+    }
+    this.reviewPage = page;
+    this.reviewsLoading.set(true);
+    this.reviewsError.set(null);
+    this.loadSubs.add(this.reviewService.listForProduct(productUuid, page).subscribe({
+      next: ({ items, meta }) => {
+        this.reviews.update((existing) => (page === 1 ? items : [...existing, ...items]));
+        this.reviewTotal.set(meta?.totalCount ?? items.length);
+        this.reviewsLoading.set(false);
+      },
+      error: (err) => {
+        this.reviewsError.set(err?.message || 'Could not load reviews right now.');
+        this.reviewsLoading.set(false);
+      },
+    }));
+  }
+
+  loadMoreReviews(): void {
+    const p = this.product();
+    if (p && !this.reviewsLoading()) this.loadReviews(p.uuid, this.reviewPage + 1);
+  }
+
+  formatReviewDate(iso: string): string {
+    return new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+  }
+
+  roundStars(average: number): number {
+    return Math.min(5, Math.max(0, Math.round(average)));
+  }
+
+  scrollToReviews(event: Event): void {
+    event.preventDefault();
+    document.getElementById('pd-reviews-title')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  stars(rating: number): string {
+    return '★'.repeat(rating) + '☆'.repeat(5 - rating);
   }
 
   selectVariant(variant: ProductVariant | null): void {

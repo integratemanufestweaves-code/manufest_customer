@@ -1,5 +1,25 @@
 # Changelog
 
+## 2026-10-07 — Product reviews and ratings
+Needs manufest_be's same-day changes (reviews go live without approval,
+migration 0085; `rating` on public product routes; `review` per order item).
+- **Order detail:** a delivered item shows "Rate this product" → inline
+  form (1–5 stars, optional text up to 1000 chars) posting to
+  `POST /customer/product-reviews` via `ReviewService`. Afterwards (or when
+  the order detail already has `item.review`) it shows "Reviewed ★★★★".
+  `ALREADY_REVIEWED` from the API counts as done, not as an error.
+- **Product page:** rating badge under the title (scrolls to the reviews)
+  and a "Customer reviews" section: average from the backend's `rating`
+  (all active reviews, not just the loaded page), newest first, 10 a page
+  with "Show more", "No reviews yet." when there are none, and an inline
+  message if reviews fail to load (the rest of the page still works).
+- **Product card:** `4.3 ★ (12)` when the product has reviews.
+- **Tests (2026-10-08):** `core/services/review.service.spec.ts` (new);
+  "rate this product" block in `order-detail.component.spec.ts`; "customer
+  reviews" block in `product-detail.component.spec.ts`; "star rating" block
+  in `product-card.component.spec.ts`. Suite: 311 passing
+  (`npx ng test --watch=false --browsers=ChromeHeadless`).
+
 ## 2026-10-06 — Cart, product cards, product page, checkout (user-directed)
 Uncommitted at time of writing; rebased onto main 3f5e169 ("added brand
 name to shows" — its card fallback "Manufest Weaves" was kept). Backup of

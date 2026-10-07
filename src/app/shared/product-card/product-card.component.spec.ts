@@ -111,6 +111,33 @@ describe('ProductCardComponent', () => {
     });
   });
 
+  describe('star rating', () => {
+    it('shows the average to one decimal and the review count', () => {
+      component.product = { ...makeSummary(), rating: { average: 4.66, count: 23 } };
+      fixture.detectChanges();
+      const rating = fixture.nativeElement.querySelector('.card__rating');
+      expect(rating.querySelector('.card__rating-score').textContent.trim()).toBe('4.7 ★');
+      expect(rating.querySelector('.card__rating-count').textContent.trim()).toBe('(23)');
+      expect(rating.getAttribute('aria-label')).toBe('Rated 4.66 out of 5 from 23 reviews');
+    });
+
+    it('uses the singular for one review', () => {
+      component.product = { ...makeSummary(), rating: { average: 5, count: 1 } };
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelector('.card__rating').getAttribute('aria-label')).toBe('Rated 5 out of 5 from 1 review');
+    });
+
+    it('shows no stars when nobody has reviewed it, or the row has no rating (wishlist/recently viewed)', () => {
+      component.product = { ...makeSummary(), rating: { average: null, count: 0 } };
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelector('.card__rating')).toBeNull();
+
+      component.product = makeSummary();
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelector('.card__rating')).toBeNull();
+    });
+  });
+
   describe('out of stock up front', () => {
     it('shows the badge, greys the card and disables the button when inStock is false', () => {
       component.product = { ...makeSummary(), inStock: false };

@@ -25,6 +25,12 @@
     <div class="card__body">
       <p class="card__name">{{ product.productName }}</p>
       <p class="card__seller">{{ sellerLabel }}</p>
+      @if (product.rating?.count && product.rating?.average; as average) {
+        <p class="card__rating" [attr.aria-label]="'Rated ' + average + ' out of 5 from ' + product.rating!.count + (product.rating!.count === 1 ? ' review' : ' reviews')">
+          <span class="card__rating-score" aria-hidden="true">{{ average.toFixed(1) }} ★</span>
+          <span class="card__rating-count" aria-hidden="true">({{ product.rating!.count }})</span>
+        </p>
+      }
       @if (priceLabel) {
         <p class="card__price">{{ priceLabel }}</p>
       }

@@ -129,7 +129,7 @@
 }
 
 // Out of stock: the photo stays recognisable (lightly muted), a frosted
-// band along the bottom of the image says so, price muted, plain disabled
+// band across the middle of the image says so, price muted, plain disabled
 // button — reads as "sold out for now", not as an error or a broken card.
 .card--out {
   .card__media img,
@@ -151,7 +151,8 @@
   position: absolute;
   left: 0;
   right: 0;
-  bottom: 0;
+  top: 50%;
+  transform: translateY(-50%);
   z-index: 1;
   display: flex;
   align-items: center;
@@ -161,7 +162,7 @@
   background: rgba(255, 255, 255, 0.82);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
-  border-top: 1px solid rgba(90, 29, 64, 0.12);
+  border-block: 1px solid rgba(90, 29, 64, 0.12);
   color: var(--color-primary);
   font-size: 0.72rem;
   font-weight: 700;
@@ -265,6 +266,26 @@
 .card__seller {
   margin: 0;
   font-size: 0.78rem;
+  color: var(--color-text-muted);
+}
+
+.card__rating {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 4px 0 0;
+  font-size: 0.75rem;
+}
+
+.card__rating-score {
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--color-success);
+  color: var(--color-white);
+  font-weight: 700;
+}
+
+.card__rating-count {
   color: var(--color-text-muted);
 }
 

@@ -171,8 +171,15 @@ not a saved checkout payment method. Either scope this tab down to "bank
 details for refunds" (rename to match what's actually backed) or flag to
 backend as a new ask before building it as designed.
 
-### 4d. Purchase and Reviews tab — [BE missing]
-No reviews/ratings module exists anywhere in the schema. See §8.
+### 4d. Purchase and Reviews tab — [BE partial]
+Update 2026-10-07: manufest_be now has a `product-reviews` module
+(rating + text + image URLs; no video, no customer upload endpoint).
+Wired so far: "Rate this product" on delivered items in order detail,
+and a reviews list on the product page (`ReviewService`). Reviews go
+live immediately; admins can set one inactive (no approval step). This
+tab still isn't built: `GET /customer/product-reviews/mine` returns no
+product or order-item info, so it can't say which product each review is
+for. Also missing from BE: an average rating/count per product.
 
 **To build:**
 - `CustomerService` (profile GET/PATCH, photo upload).
@@ -371,7 +378,8 @@ gaps that didn't show up in the module-by-module walkthrough above:
   actually configured. Low risk today (no public forms besides
   register/login, which already have rate-limiting + lockout), but worth
   knowing before assuming bot protection exists anywhere.
-- **No product reviews/ratings module at all** — explains why the current
+- **No product reviews/ratings module at all** (superseded 2026-10-07 —
+  a BE module now exists, see §4d) — explains why the current
   product cards show no stars/review count (already documented in this
   app's own `01-home-page.md`), and blocks the Account page's "Purchase
   and Reviews" tab and the Orders page's "Rate this product" action.

@@ -13,9 +13,10 @@ import { formatPrice } from '../../core/utils/format-price';
  * /public/products/list` actually returns — see product.models.ts's header
  * comment. The design mock
  * (`design-reference/user/home/home-01-desktop.png`) also shows a star
- * rating, review count, a strikethrough "original" price next to a
- * discounted one, and a "Limited Stock" label — none of that exists on the
- * public list API today (no reviews/ratings module exists at all; list
+ * rating and review count — shown since 2026-10-07 from `product.rating`
+ * (active customer reviews; hidden when there are none) — plus a
+ * strikethrough "original" price next to a discounted one, and a "Limited
+ * Stock" label, neither of which exists on the public list API today (list
  * summaries carry a `pricing: {from, to}` *range*, not an original-vs-
  * discounted pair; and list summaries carry no per-variant stock data).
  * Rather than invent plausible-looking numbers, this card only renders

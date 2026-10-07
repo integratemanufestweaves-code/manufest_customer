@@ -114,6 +114,9 @@ export interface OrderItem {
   cancelledAt: string | null;
   deliveredAt: string | null;
   returnedAt: string | null;
+  /** The customer's own review of this item (one per order item), or
+   * `null` if not reviewed yet — order detail only (added 2026-10-07). */
+  review: { rating: number } | null;
 }
 
 export interface OrderSellerGroup {

@@ -5,10 +5,10 @@
  * `toPublicPricing`). See manufest_be/.claude/knowledge/02-api-reference.md's
  * `products` section for the full route table this was built against.
  *
- * Only fields the public routes actually return are modeled here — no
- * rating/review-count/discount-badge fields exist on the backend today, so
- * none are declared here either (see ProductCardComponent's header comment
- * for why the UI doesn't fabricate any of that).
+ * Only fields the public routes actually return are modeled here. `rating`
+ * (average + count of active customer reviews) was added 2026-10-07; there's
+ * still no discount-badge field (see ProductCardComponent's header comment
+ * for why the UI doesn't fabricate one).
  */
 
 export interface MediaItem {
@@ -58,6 +58,17 @@ export interface ProductCardSummary {
   /** `false` when no active variant is in stock — the card shows "Out of
    * stock" up front. Absent from older backends: treat as in stock. */
   inStock?: boolean;
+  /** Active customer reviews (public list/related routes and the detail
+   * route). Absent on recently-viewed/wishlist rows — the card then shows
+   * no stars. */
+  rating?: ProductRating;
+}
+
+/** Star rating from customers' active reviews — `average` is null (and
+ * `count` 0) when nobody has reviewed the product yet. */
+export interface ProductRating {
+  average: number | null;
+  count: number;
 }
 
 export interface ProductSummary extends ProductCardSummary {
@@ -158,5 +169,7 @@ export interface ProductDetail {
   attributes: ProductAttributes;
   variants: ProductVariant[];
   media: MediaItem[];
+  /** Public detail route only. */
+  rating?: ProductRating;
   createdAt: string;
 }

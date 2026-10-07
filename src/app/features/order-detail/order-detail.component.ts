@@ -7,6 +7,7 @@ import { PaymentService } from '../../core/services/payment.service';
 import { RazorpayCheckoutService } from '../../core/services/razorpay-checkout.service';
 import { ProductService } from '../../core/services/product.service';
 import { ShipmentService } from '../../core/services/shipment.service';
+import { ReviewService } from '../../core/services/review.service';
 import { OrderDetail, OrderItem, Shipment } from '../../core/models/order.models';
 import { formatPrice } from '../../core/utils/format-price';
 
@@ -39,6 +40,12 @@ const RETURN_WINDOW_DAYS = 7;
  * form: clicking "Cancel order" opens a confirmation panel requiring a
  * reason (mirrors `orders.validation.js`'s now-required `reason` on
  * `POST /:orderUuid/cancel`) before the request actually fires.
+ *
+ * "Rate this product" (added 2026-10-07) posts to `product-reviews`
+ * (`POST /customer/product-reviews`) for a `delivered` item — star rating
+ * plus optional text. Each item's `review` (from the order detail) says
+ * whether it's already reviewed; `reviewedItemUuids` covers reviews posted
+ * during this visit, and an `ALREADY_REVIEWED` reply flips the item too.
  */
 @Component({
   selector: 'app-order-detail',
@@ -54,6 +61,7 @@ export class OrderDetailComponent implements OnInit {
   private readonly razorpayCheckout = inject(RazorpayCheckoutService);
   private readonly productService = inject(ProductService);
   private readonly shipmentService = inject(ShipmentService);
+  private readonly reviewService = inject(ReviewService);
 
   readonly order = signal<OrderDetail | null>(null);
   readonly loading = signal(true);
@@ -84,6 +92,17 @@ export class OrderDetailComponent implements OnInit {
   replacementReason = '';
   readonly replacementSubmitting = signal(false);
   readonly replacementError = signal<string | null>(null);
+
+  /** `orderItemUuid` whose inline review form is open — `null` when none. */
+  readonly reviewItemUuid = signal<string | null>(null);
+  readonly reviewRating = signal(0);
+  reviewText = '';
+  readonly reviewSubmitting = signal(false);
+  readonly reviewError = signal<string | null>(null);
+  /** Items reviewed during this visit (or found to be already reviewed). */
+  readonly reviewedItemUuids = signal<ReadonlySet<string>>(new Set());
+  readonly ratingOptions = [1, 2, 3, 4, 5];
+  readonly reviewMaxLength = 1000;
 
   private readonly brokenThumbnails = signal<ReadonlySet<string>>(new Set());
 
@@ -371,6 +390,50 @@ export class OrderDetailComponent implements OnInit {
         this.replacementSubmitting.set(false);
       },
     });
+  }
+
+  openReviewForm(item: OrderItem): void {
+    this.reviewItemUuid.set(item.uuid);
+    this.reviewRating.set(0);
+    this.reviewText = '';
+    this.reviewError.set(null);
+  }
+
+  closeReviewForm(): void {
+    this.reviewItemUuid.set(null);
+  }
+
+  submitReview(): void {
+    const orderItemUuid = this.reviewItemUuid();
+    if (!orderItemUuid) return;
+    if (!this.reviewRating()) {
+      this.reviewError.set('Pick a star rating.');
+      return;
+    }
+    this.reviewError.set(null);
+    this.reviewSubmitting.set(true);
+
+    const review = this.reviewText.trim();
+    this.reviewService.create({ orderItemUuid, rating: this.reviewRating(), review: review || undefined }).subscribe({
+      next: () => {
+        this.reviewSubmitting.set(false);
+        this.reviewItemUuid.set(null);
+        this.markReviewed(orderItemUuid);
+      },
+      error: (err) => {
+        this.reviewSubmitting.set(false);
+        if (err?.code === 'ALREADY_REVIEWED') {
+          this.reviewItemUuid.set(null);
+          this.markReviewed(orderItemUuid);
+          return;
+        }
+        this.reviewError.set(err?.message || 'Could not submit your review.');
+      },
+    });
+  }
+
+  private markReviewed(orderItemUuid: string): void {
+    this.reviewedItemUuids.update((set) => new Set(set).add(orderItemUuid));
   }
 
   /** A shipment only ever exists for an item a seller has actually

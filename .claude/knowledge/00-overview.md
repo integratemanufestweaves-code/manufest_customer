@@ -111,8 +111,10 @@ add it back.
   profile`/`/profile/photo`/`/addresses*`. Only the Profile and Manage
   Address tabs from the design are built — "Manage Payment details" (no
   saved-card storage anywhere in the schema) and "Purchase and Reviews"
-  (no reviews module at all) are left out rather than built against
-  nothing. All three of `account`/`cart`/`wishlist` are gated by
+  (no reviews module at the time) are left out rather than built against
+  nothing. (2026-10-07: reviews now exist; customers rate delivered items
+  from order detail, and product pages and cards show them. See CHANGELOG.
+  The account "Purchase and Reviews" tab is still not built.) All three of `account`/`cart`/`wishlist` are gated by
   `customerAuthGuard` (redirects to `/login?redirectTo=`).
 - `faq` (2026-09-12) — `FaqService`, against `/api/v1/public/faq/*`.
 

@@ -11,6 +11,8 @@ import { ProductService } from '../../core/services/product.service';
 import { CartService } from '../../core/services/cart.service';
 import { AuthService } from '../../core/services/auth.service';
 import { ProductDetail, ProductVariant } from '../../core/models/product.models';
+import { ReviewService } from '../../core/services/review.service';
+import { ProductReview } from '../../core/models/review.models';
 
 function makeVariant(overrides: Partial<ProductVariant> = {}): ProductVariant {
   return {
@@ -404,6 +406,88 @@ describe('ProductDetailComponent', () => {
       expect(component.lengthLabel(' 5.5 ')).toBe('5.5 m');
       expect(component.lengthLabel('0.8 metres')).toBe('0.8 metres');
       expect(component.lengthLabel('6 yards')).toBe('6 yards');
+    });
+  });
+
+  describe('customer reviews', () => {
+    const reviewItem = (uuid: string, rating = 5): ProductReview => ({ uuid, rating, review: `Review ${uuid}`, images: [], status: 'active', createdAt: '2026-10-07T10:00:00Z' });
+    let reviewService: ReviewService;
+
+    function load(detail: ProductDetail = makeDetail([makeVariant()])) {
+      reviewService = TestBed.inject(ReviewService);
+      spyOn(productService, 'getProductDetail').and.returnValue(of(detail));
+      spyOn(productService, 'getRelatedProducts').and.returnValue(of([]));
+    }
+
+    it('loads the first page of active reviews with the product and knows there are more', () => {
+      setup('prod-1');
+      load();
+      const listSpy = spyOn(reviewService, 'listForProduct').and.returnValue(
+        of({ items: [reviewItem('r1'), reviewItem('r2')], meta: { page: 1, limit: 10, totalCount: 3, totalPages: 1 } as never }),
+      );
+      fixture.detectChanges();
+
+      expect(listSpy).toHaveBeenCalledWith('prod-1', 1);
+      expect(component.reviews().map((r) => r.uuid)).toEqual(['r1', 'r2']);
+      expect(component.reviewTotal()).toBe(3);
+      expect(component.hasMoreReviews()).toBeTrue();
+      expect(fixture.nativeElement.querySelectorAll('.pd-review').length).toBe(2);
+    });
+
+    it('"Show more" appends the next page', () => {
+      setup('prod-1');
+      load();
+      const listSpy = spyOn(reviewService, 'listForProduct').and.returnValues(
+        of({ items: [reviewItem('r1')], meta: { totalCount: 2 } as never }),
+        of({ items: [reviewItem('r2')], meta: { totalCount: 2 } as never }),
+      );
+      fixture.detectChanges();
+
+      component.loadMoreReviews();
+
+      expect(listSpy.calls.mostRecent().args).toEqual(['prod-1', 2]);
+      expect(component.reviews().map((r) => r.uuid)).toEqual(['r1', 'r2']);
+      expect(component.hasMoreReviews()).toBeFalse();
+    });
+
+    it('says "No reviews yet." when there are none', () => {
+      setup('prod-1');
+      load();
+      spyOn(reviewService, 'listForProduct').and.returnValue(of({ items: [], meta: { totalCount: 0 } as never }));
+      fixture.detectChanges();
+
+      expect(fixture.nativeElement.querySelector('.pd-reviews__empty').textContent.trim()).toBe('No reviews yet.');
+      expect(fixture.nativeElement.querySelector('.pd__rating')).toBeNull();
+    });
+
+    it('shows a message when reviews fail to load, without breaking the page', () => {
+      setup('prod-1');
+      load();
+      spyOn(reviewService, 'listForProduct').and.returnValue(throwError(() => ({ code: 'X', message: 'Reviews are down' })));
+      fixture.detectChanges();
+
+      expect(component.reviewsError()).toBe('Reviews are down');
+      expect(component.reviewsLoading()).toBeFalse();
+      expect(component.product()?.uuid).toBe('prod-1');
+    });
+
+    it("shows the product's average rating and review count from the backend", () => {
+      setup('prod-1');
+      load({ ...makeDetail([makeVariant()]), rating: { average: 4.25, count: 12 } });
+      spyOn(reviewService, 'listForProduct').and.returnValue(of({ items: [reviewItem('r1', 4)], meta: { totalCount: 12 } as never }));
+      fixture.detectChanges();
+
+      const badge = fixture.nativeElement.querySelector('.pd__rating').textContent.replace(/\s+/g, ' ').trim();
+      expect(badge).toMatch(/^4\.3 ★\s*12 reviews$/);
+      expect(fixture.nativeElement.querySelector('.pd-reviews__summary').textContent).toContain('4.3 out of 5');
+    });
+
+    it('star helpers round and clamp', () => {
+      setup('prod-1');
+      expect(component.stars(3)).toBe('★★★☆☆');
+      expect(component.roundStars(4.5)).toBe(5);
+      expect(component.roundStars(7)).toBe(5);
+      expect(component.roundStars(-1)).toBe(0);
     });
   });
 });

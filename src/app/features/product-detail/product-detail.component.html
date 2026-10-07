@@ -43,6 +43,12 @@
                manufest_be's products.api.js) — the name is only present on
                the list endpoints' summaries. Showing a made-up label here
                instead of the real name would be worse than showing nothing. -->
+          @if (p.rating?.count && p.rating?.average; as average) {
+            <a class="pd__rating" href="#pd-reviews-title" (click)="scrollToReviews($event)">
+              <span class="pd__rating-score">{{ average.toFixed(1) }} ★</span>
+              <span>{{ p.rating!.count }} {{ p.rating!.count === 1 ? 'review' : 'reviews' }}</span>
+            </a>
+          }
 
           @if (selectedVariant()?.pricing; as pricing) {
             <div class="pd__price-row">
@@ -163,6 +169,56 @@
         </div>
       </div>
     </div>
+
+    <section class="container pd-reviews" aria-labelledby="pd-reviews-title">
+      <h2 id="pd-reviews-title" class="pd-reviews__title">
+        Customer reviews
+        @if (reviewTotal() > 0) {
+          <span class="pd-reviews__count">({{ reviewTotal() }})</span>
+        }
+      </h2>
+      @if (p.rating?.count && p.rating?.average; as average) {
+        <p class="pd-reviews__summary">
+          <span class="pd-review__stars" aria-hidden="true">{{ stars(roundStars(average)) }}</span>
+          <strong>{{ average.toFixed(1) }} out of 5</strong>
+        </p>
+      }
+
+      @if (reviews().length) {
+        <ul class="pd-reviews__list">
+          @for (r of reviews(); track r.uuid) {
+            <li class="pd-review">
+              <div class="pd-review__head">
+                <span class="pd-review__stars" [attr.aria-label]="r.rating + ' out of 5 stars'">{{ stars(r.rating) }}</span>
+                <span class="pd-review__badge">Verified purchase</span>
+                <span class="pd-review__date">{{ formatReviewDate(r.createdAt) }}</span>
+              </div>
+              @if (r.review) {
+                <p class="pd-review__text">{{ r.review }}</p>
+              }
+              @if (r.images.length) {
+                <div class="pd-review__images">
+                  @for (src of r.images; track src) {
+                    <img [src]="src" alt="Photo from customer review" loading="lazy" width="72" height="72" />
+                  }
+                </div>
+              }
+            </li>
+          }
+        </ul>
+      } @else if (!reviewsLoading() && !reviewsError()) {
+        <p class="pd-reviews__empty">No reviews yet.</p>
+      }
+
+      @if (reviewsError()) {
+        <p class="pd-reviews__empty">{{ reviewsError() }}</p>
+      }
+      @if (reviewsLoading()) {
+        <p class="pd-reviews__empty">Loading reviews…</p>
+      } @else if (hasMoreReviews()) {
+        <button type="button" class="btn btn--outline" (click)="loadMoreReviews()">Show more reviews</button>
+      }
+    </section>
 
     @if (relatedProducts().length > 0) {
       <section class="section container">
