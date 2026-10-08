@@ -1,5 +1,6 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { environment } from '../../../environments/environment';
 import { ProductCardComponent } from '../../shared/product-card/product-card.component';
 import { ResponsiveBannerComponent } from '../../shared/responsive-banner/responsive-banner.component';
 import { ProductService } from '../../core/services/product.service';
@@ -176,9 +177,12 @@ export class HomeComponent implements OnInit {
     { value: '18+', label: 'Weaving Regions Across India' },
   ];
 
-  /** Static placeholder — see this class's header comment. Links to the
-   * same `/sell-on-manufest` route the footer's "Sell on Manufest" link
-   * uses (still "coming soon" — manufacturer sign-up lives in the separate
+  /** "Start selling" links out to the separate manufest_seller app — same
+   * destination as the footer's "Sell on Manufest Weaves" link. */
+  readonly sellerAppUrl = environment.sellerAppUrl;
+
+  /** Static placeholder — see this class's header comment. The CTA under
+   * these points goes to `sellerAppUrl` (manufacturer sign-up lives in the separate
    * `manufest_seller` app). */
   readonly growBusinessPoints: GrowBusinessPoint[] = [
     { title: 'Direct-to-customer distribution', desc: 'Sell straight to buyers — no middlemen taking a cut.' },

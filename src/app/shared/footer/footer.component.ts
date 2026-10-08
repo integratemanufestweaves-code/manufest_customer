@@ -2,10 +2,14 @@ import { Component } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
 import { BRAND_ASSETS } from '../../core/constants/brand-assets';
+import { environment } from '../../../environments/environment';
 
 interface FooterLink {
   label: string;
-  path: string;
+  /** In-app route; ignored when `href` is set. */
+  path?: string;
+  /** Absolute URL to another site/app (e.g. the seller app). */
+  href?: string;
 }
 
 interface FooterColumn {
@@ -30,7 +34,8 @@ interface SocialLink {
  *   `background-image` comment for exactly where to drop the real photo)
  *   holding the Shop/Sell/Help columns, with social icons placed directly
  *   under the Help column's links — not a separate full-width bottom bar,
- *   which the design doesn't have at all. Every link routes to the shared
+ *   which the design doesn't have at all. Every link except "Sell on
+ *   Manufest Weaves" (an `href` to the seller app) routes to the shared
  *   "coming soon" page — none of these are backed by a real API/page yet
  *   (see app.routes.ts).
  */
@@ -57,7 +62,7 @@ export class FooterComponent {
     {
       title: 'Sell',
       links: [
-        { label: 'Sell on Manufest Weaves', path: '/sell-on-manufest' },
+        { label: 'Sell on Manufest Weaves', href: environment.sellerAppUrl },
         { label: 'Our Manufacturers', path: '/manufacturers' },
         { label: 'Affiliates & Creators', path: '/affiliates' },
       ],

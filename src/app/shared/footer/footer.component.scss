@@ -88,11 +88,10 @@
 }
 
 /* ---- "Shop / Sell / Help" panel — photo-backed, per the design. ----
-   TODO(design swap): drop the real photo at
-   `public/assets/footer/footer-background.jpg` (any name works — just
-   update the `url(...)` below to match) and this layer picks it up
-   automatically; until then the `url()` 404s silently and the gradient
-   underneath it keeps rendering the panel's tone. */
+   `footer-background.jpg` is the saree-boutique interior photo from the
+   design (2026-10-08), tinted maroon by the gradient layer above it so the
+   white link text stays readable; `background-color` is the fallback tone
+   while it loads. */
 .footer__links {
   flex: 1;
   min-width: 0;

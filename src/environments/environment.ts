@@ -38,4 +38,6 @@ export const environment = {
   // first-party Site Analytics beacons still run. GA only ever loads after
   // the visitor accepts analytics cookies (core/services/analytics.service.ts).
   gaMeasurementId: '',
+  /** Manufacturer-facing manufest_seller app — every "Sell on Manufest" entry point links out here. */
+  sellerAppUrl: 'https://seller.manufestweaves.in',
 };

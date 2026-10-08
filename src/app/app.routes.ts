@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { customerAuthGuard } from './core/guards/customer-auth.guard';
+import { environment } from '../environments/environment';
 
 /**
  * Route map for the customer-facing storefront.
@@ -142,12 +143,18 @@ export const routes: Routes = [
 
   // ---- footer ----
   {
+    // The footer/home links now point straight at the seller app
+    // (environment.sellerAppUrl); this route only remains so old
+    // bookmarks/shared links to /sell-on-manufest still land there.
+    // `redirectTo` can't target another origin, hence the guard.
     path: 'sell-on-manufest',
-    loadComponent: () => import('./shared/coming-soon/coming-soon.component').then((m) => m.ComingSoonComponent),
-    data: {
-      pageTitle: 'Sell on Manufest Weaves',
-      description: 'Manufacturer sign-up lives in a separate app (manufest_seller) — a link here is coming soon.',
-    },
+    canActivate: [
+      () => {
+        window.location.href = environment.sellerAppUrl;
+        return false;
+      },
+    ],
+    children: [],
   },
   {
     path: 'manufacturers',

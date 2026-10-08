@@ -29,7 +29,13 @@
           <h3>{{ col.title }}</h3>
           <ul>
             @for (link of col.links; track link.label) {
-              <li><a [routerLink]="link.path">{{ link.label }}</a></li>
+              <li>
+                @if (link.href) {
+                  <a [href]="link.href">{{ link.label }}</a>
+                } @else {
+                  <a [routerLink]="link.path">{{ link.label }}</a>
+                }
+              </li>
             }
           </ul>
 
