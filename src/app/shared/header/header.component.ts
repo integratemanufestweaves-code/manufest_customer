@@ -1,7 +1,7 @@
 import { Component, DestroyRef, HostListener, OnInit, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
-import { NavigationEnd, Router, RouterLink } from '@angular/router';
+import { NavigationEnd, Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { Subject, catchError, debounceTime, distinctUntilChanged, filter, map, of, switchMap } from 'rxjs';
 
 import { BRAND_ASSETS } from '../../core/constants/brand-assets';
@@ -58,6 +58,26 @@ const SUGGESTION_PRODUCT_LIMIT = 5;
 const VIEW_ALL: NavMenu['viewAll'] = { label: 'View all products', commands: ['/shop'] };
 const NEW_ARRIVALS_VIEW_ALL: NavMenu['viewAll'] = { label: 'See all new arrivals', commands: ['/new-arrivals'] };
 
+/** Which nav menu's filters (see `menus`) the product-list query params
+ * belong to, checked in nav order. */
+const NAV_FACETS: Array<[NavKey, FacetKey[]]> = [
+  ['origin', ['origin']],
+  ['fabric', ['fabric', 'material', 'purity']],
+  ['weave', ['weave', 'zariType', 'zariColor', 'border']],
+  ['occasion', ['occasion', 'color']],
+];
+
+/** The nav item a URL belongs to: New Arrivals for `/new-arrivals` and
+ * category pages (its Categories column), otherwise the menu whose filter
+ * the product list has set. */
+function navKeyForUrl(url: string, router: Router): NavKey | null {
+  const tree = router.parseUrl(url);
+  const path = tree.root.children['primary']?.segments[0]?.path;
+  if (path === 'new-arrivals' || path === 'category') return 'new-arrivals';
+  if (path !== 'shop') return null;
+  return NAV_FACETS.find(([, facets]) => facets.some((f) => tree.queryParams[f]))?.[0] ?? null;
+}
+
 /**
  * Storefront header — announcement bar + logo/nav/search/account row.
  * Matches `ui_design/Home Page.png` (desktop nav: New Arrivals / Origin /
@@ -95,7 +115,7 @@ const NEW_ARRIVALS_VIEW_ALL: NavMenu['viewAll'] = { label: 'See all new arrivals
 @Component({
   selector: 'app-header',
   standalone: true,
-  imports: [RouterLink, FormsModule],
+  imports: [RouterLink, RouterLinkActive, FormsModule],
   templateUrl: './header.component.html',
   styleUrl: './header.component.scss',
 })
@@ -109,6 +129,7 @@ export class HeaderComponent implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
 
   readonly logoMark = BRAND_ASSETS.logoMark;
+  readonly logoMarkSrcset = BRAND_ASSETS.logoMarkSrcset;
   readonly currentUser = this.auth.currentUser;
   readonly cartItemCount = this.cartService.itemCount;
   readonly wishlistItemCount = this.wishlistService.itemCount;
@@ -124,6 +145,8 @@ export class HeaderComponent implements OnInit {
   ];
 
   readonly mobileMenuOpen = signal(false);
+  /** The nav item the current page belongs to, kept highlighted. */
+  readonly currentNav = signal<NavKey | null>(null);
 
   // --- mega menu -------------------------------------------------------------
   private readonly filters = signal<ProductFilters | null>(null);
@@ -247,9 +270,11 @@ export class HeaderComponent implements OnInit {
         const tree = this.router.parseUrl(this.router.url);
         const onSearch = tree.root.children['primary']?.segments[0]?.path === 'search';
         this.searchText = onSearch ? (tree.queryParams['q'] ?? '') : '';
+        this.currentNav.set(navKeyForUrl(this.router.url, this.router));
         this.closeSuggestions();
         this.closeMenuNow();
       });
+    this.currentNav.set(navKeyForUrl(this.router.url, this.router));
   }
 
   toggleMobileMenu(): void {

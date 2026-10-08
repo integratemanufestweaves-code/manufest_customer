@@ -386,3 +386,30 @@
   margin: -6px 0 16px;
   font-size: 0.9rem;
 }
+
+/* "You may also like": one row, swiped/scrolled left to right, card widths
+   matching the global `.grid`'s 5 / 3 / 2 columns with the next card
+   peeking in below desktop so the row reads as scrollable. */
+.related-row {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: calc((100% - 4 * 16px) / 5);
+  gap: 16px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  overscroll-behavior-x: contain;
+  padding-bottom: 8px;
+
+  > * {
+    scroll-snap-align: start;
+  }
+
+  @media (max-width: 1023px) {
+    grid-auto-columns: 30%;
+  }
+
+  @media (max-width: 640px) {
+    grid-auto-columns: 44%;
+    gap: 12px;
+  }
+}

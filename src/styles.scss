@@ -70,6 +70,14 @@
   --header-height: 64px;
 }
 
+/* Phones stack the search bar under the logo row (header.component.scss),
+   so the sticky header is taller there: 8 + 40 + 8 + 44 + 10. */
+@media (max-width: 767px) {
+  :root {
+    --header-height: 110px;
+  }
+}
+
 * {
   box-sizing: border-box;
 }
@@ -142,6 +150,20 @@ textarea {
 input[type='checkbox'],
 input[type='radio'] {
   accent-color: var(--color-primary);
+}
+
+/* iOS Safari zooms the page in when a field under 16px gets focus and
+   never zooms back out, so typing in search left the page magnified until
+   the customer pinched it back. On touch screens every text field is at
+   least 16px. `!important` because component styles set smaller sizes with
+   more specific selectors. (Not `maximum-scale=1` in the viewport meta —
+   that also blocks pinch-zoom on Android.) */
+@media (pointer: coarse) {
+  input:not([type='checkbox']):not([type='radio']):not([type='range']),
+  select,
+  textarea {
+    font-size: max(16px, 1em) !important;
+  }
 }
 
 .container {

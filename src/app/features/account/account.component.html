@@ -30,6 +30,7 @@
         <a routerLink="/orders" class="account-nav__link">Orders</a>
         <a routerLink="/wishlist" class="account-nav__link">Wishlist @if (wishlistItemCount() > 0) { <span class="account-nav__badge">{{ wishlistItemCount() }}</span> }</a>
         <a routerLink="/cart" class="account-nav__link">Cart @if (cartItemCount() > 0) { <span class="account-nav__badge">{{ cartItemCount() }}</span> }</a>
+        <a routerLink="/help-center" class="account-nav__link">Help center</a>
         <button type="button" class="account-nav__link account-nav__signout" (click)="logout()">Sign out</button>
       </nav>
     </aside>

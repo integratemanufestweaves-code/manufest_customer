@@ -82,13 +82,12 @@ export interface ProductSummary extends ProductCardSummary {
   createdAt: string;
 }
 
-/** `GET /public/products/detail/:productUuid/related` — added 2026-09-24,
- * same shape as `ProductSummary` (`toPublicProductSummary()` reused
- * as-is) plus the ranking score that produced this ordering. Category is
- * a hard boundary (every result shares it with the viewed product); the
- * score itself isn't shown anywhere, just used to order the grid the
- * backend already returned in relevance order. */
+/** `GET /public/products/detail/:productUuid/related` — same shape as
+ * `ProductSummary` plus which tier matched it. Category is a hard boundary;
+ * the backend returns name matches first, then similar-price ones, then
+ * the rest of the category, deduped and already in display order. */
 export interface RelatedProduct extends ProductSummary {
+  matchType: 'NAME' | 'PRICE' | 'CATEGORY';
   relevanceScore: number;
 }
 

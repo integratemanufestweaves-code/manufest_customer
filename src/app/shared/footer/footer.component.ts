@@ -2,6 +2,7 @@ import { Component } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
 import { BRAND_ASSETS } from '../../core/constants/brand-assets';
+import { CUSTOMER_SUPPORT } from '../../core/constants/customer-support';
 import { environment } from '../../../environments/environment';
 
 interface FooterLink {
@@ -48,6 +49,8 @@ interface SocialLink {
 })
 export class FooterComponent {
   readonly logoMark = BRAND_ASSETS.logoMark;
+  readonly logoMarkSrcset = BRAND_ASSETS.logoMarkSrcset;
+  readonly support = CUSTOMER_SUPPORT;
 
   readonly columns: FooterColumn[] = [
     {

@@ -38,6 +38,18 @@ import { formatPrice } from '../../core/utils/format-price';
  * backend's `rating` (over every active review), not an average of the
  * loaded page.
  */
+
+/** The lowest-priced variant (unpriced ones last), ties keeping list order. */
+function cheapestVariant(variants: ProductVariant[]): ProductVariant | null {
+  let best: ProductVariant | null = null;
+  for (const variant of variants) {
+    const price = variant.pricing?.sellingPrice;
+    const bestPrice = best?.pricing?.sellingPrice;
+    if (!best || (price != null && (bestPrice == null || price < bestPrice))) best = variant;
+  }
+  return best;
+}
+
 @Component({
   selector: 'app-product-detail',
   standalone: true,
@@ -113,9 +125,10 @@ export class ProductDetailComponent implements OnInit {
       next: (product) => {
         this.product.set(product);
         // `?variant=` comes from a colour swatch on a product card — open on
-        // that colour; anything unknown falls back to the first variant.
+        // that colour; anything unknown falls back to the cheapest variant,
+        // the one whose price ("from ₹X") the card showed.
         const requested = this.route.snapshot.queryParamMap.get('variant');
-        const initialVariant = product.variants.find((v) => v.uuid === requested) ?? product.variants[0] ?? null;
+        const initialVariant = product.variants.find((v) => v.uuid === requested) ?? cheapestVariant(product.variants);
         this.selectVariant(initialVariant);
         this.loading.set(false);
         this.analytics.productView({
@@ -238,7 +251,11 @@ export class ProductDetailComponent implements OnInit {
       this.router.navigate(['/login'], { queryParams: { redirectTo: this.router.url } });
       return;
     }
-    this.wishlistService.toggle(p.uuid).subscribe();
+    this.addToCartError.set(null);
+    this.wishlistService.toggle(p.uuid).subscribe({
+      // e.g. the 35-item wishlist cap.
+      error: (err) => this.addToCartError.set(err?.message || 'Could not update your wishlist.'),
+    });
   }
 
   goToCart(): void {

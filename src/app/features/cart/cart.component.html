@@ -87,7 +87,7 @@
                 </div>
               }
               <p class="cart-item__line-total">{{ item.lineTotal != null ? formatPrice(item.lineTotal) : '—' }}</p>
-              <button type="button" class="cart-item__remove" (click)="removeItem(item)" [disabled]="isPending(item)">Remove</button>
+              <button type="button" class="cart-item__remove" (click)="moveToWishlist(item)" [disabled]="isPending(item)">Move to wishlist</button>
             </div>
           </div>
         }

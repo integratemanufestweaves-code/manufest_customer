@@ -173,8 +173,8 @@ export const routes: Routes = [
   },
   {
     path: 'help-center',
-    loadComponent: () => import('./shared/coming-soon/coming-soon.component').then((m) => m.ComingSoonComponent),
-    data: { pageTitle: 'Help center', description: 'Our help center is coming soon.' },
+    loadComponent: () => import('./features/help-center/help-center.component').then((m) => m.HelpCenterComponent),
+    title: 'Manufest Weaves — Help center',
   },
   // Cookie settings, offers opt-in and what we collect (2026-10-08) — the
   // footer's "Privacy Settings" and the sign-in screen's Privacy Policy link.

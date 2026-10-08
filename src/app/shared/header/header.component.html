@@ -13,7 +13,7 @@
     </button>
 
     <a routerLink="/" class="header__logo" (click)="closeMobileMenu()">
-      <img class="header__logo-mark" [src]="logoMark" alt="Manufest Weaves" />
+      <img class="header__logo-mark" [src]="logoMark" [attr.srcset]="logoMarkSrcset" sizes="30px" width="30" height="30" alt="Manufest Weaves" />
       <span class="header__logo-word">Manufest Weaves</span>
     </a>
 
@@ -31,6 +31,8 @@
             type="button"
             class="header__nav-link"
             [class.header__nav-link--open]="activeMenu()?.key === link.icon"
+            [class.header__nav-link--current]="currentNav() === link.icon"
+            [attr.aria-current]="currentNav() === link.icon ? 'page' : null"
             [attr.aria-expanded]="activeMenu()?.key === link.icon"
             [attr.aria-controls]="'nav-menu-' + link.icon"
             (click)="toggleMenu(link.icon)"
@@ -128,9 +130,6 @@
     </form>
 
     <div class="header__actions">
-      <a routerLink="/search" class="header__icon-btn header__icon-btn--search-mobile" aria-label="Search">
-        <svg viewBox="0 0 20 20" fill="none" width="18" height="18"><path d="M9 17a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm9 1-4.35-4.35" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-      </a>
       @if (currentUser()) {
         <a routerLink="/notifications" class="header__icon-btn">
           <span class="header__icon-wrap">
@@ -190,7 +189,7 @@
 <aside class="header__drawer" [class.header__drawer--open]="mobileMenuOpen()">
   <div class="header__drawer-head">
     <a routerLink="/" class="header__drawer-brand" (click)="closeMobileMenu()">
-      <img [src]="logoMark" alt="" />
+      <img [src]="logoMark" [attr.srcset]="logoMarkSrcset" sizes="28px" width="28" height="28" alt="" />
       <span>Manufest Weaves</span>
     </a>
     <button type="button" class="header__drawer-close" (click)="closeMobileMenu()" aria-label="Close menu">&times;</button>
@@ -203,6 +202,7 @@
           type="button"
           class="header__drawer-link header__drawer-toggle"
           [class.header__drawer-toggle--open]="drawerSection() === link.icon"
+          [class.header__drawer-link--current]="currentNav() === link.icon"
           [attr.aria-expanded]="drawerSection() === link.icon"
           [attr.aria-controls]="'drawer-menu-' + link.icon"
           (click)="toggleDrawerSection(link.icon)"
@@ -256,18 +256,22 @@
 
   <div class="header__drawer-foot">
     @if (currentUser()) {
-      <a routerLink="/orders" class="header__drawer-link" (click)="closeMobileMenu()">
+      <a routerLink="/orders" routerLinkActive="active" class="header__drawer-link" (click)="closeMobileMenu()">
         <span class="header__drawer-icon"><svg viewBox="0 0 24 24" fill="none"><rect x="4" y="7" width="16" height="13" rx="1.5" stroke="currentColor" stroke-width="1.5"/><path d="M8 7V5.5A2.5 2.5 0 0 1 10.5 3h3A2.5 2.5 0 0 1 16 5.5V7" stroke="currentColor" stroke-width="1.5"/></svg></span>
         <span>Orders</span>
       </a>
     }
-    <a routerLink="/wishlist" class="header__drawer-link" (click)="closeMobileMenu()">
+    <a routerLink="/wishlist" routerLinkActive="active" class="header__drawer-link" (click)="closeMobileMenu()">
       <span class="header__drawer-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M12 20s-7-4.35-9.5-8.5C.6 8 2 4.5 5.5 4a5 5 0 0 1 6.5 2 5 5 0 0 1 6.5-2C22 4.5 23.4 8 21.5 11.5 19 15.65 12 20 12 20Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg></span>
       <span>Wishlist</span>
     </a>
-    <a [routerLink]="currentUser() ? '/account' : '/login'" class="header__drawer-link" (click)="closeMobileMenu()">
+    <a [routerLink]="currentUser() ? '/account' : '/login'" routerLinkActive="active" class="header__drawer-link" (click)="closeMobileMenu()">
       <span class="header__drawer-icon"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="3.5" stroke="currentColor" stroke-width="1.5"/><path d="M4.5 20c1.4-3.6 4.4-5.5 7.5-5.5s6.1 1.9 7.5 5.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span>
       <span>{{ currentUser() ? 'My account' : 'Sign in' }}</span>
+    </a>
+    <a routerLink="/help-center" routerLinkActive="active" class="header__drawer-link" (click)="closeMobileMenu()">
+      <span class="header__drawer-icon"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.5"/><path d="M9.6 9.5a2.5 2.5 0 1 1 3.4 2.3c-.6.3-1 .8-1 1.5v.4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="16.6" r=".9" fill="currentColor"/></svg></span>
+      <span>Help center</span>
     </a>
   </div>
 </aside>

@@ -5,8 +5,10 @@
   <title>Manufest Weaves — Direct from manufacturer</title>
   <base href="/">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <!-- Keep in sync with BRAND_ASSETS.favicon (core/constants/brand-assets.ts) — index.html loads before Angular bootstraps, so this path can't be bound to that constant and must be updated by hand if it ever changes. sizes="any" is the standard descriptor for a scalable SVG icon (it has no fixed raster size to declare). -->
-  <link rel="icon" type="image/svg+xml" sizes="any" href="assets/logo/Manufest-Weaves-icon-nobg.svg">
+  <!-- Keep in sync with BRAND_ASSETS.favicon (core/constants/brand-assets.ts) — index.html loads before Angular bootstraps, so this path can't be bound to that constant and must be updated by hand if it ever changes. PNGs rather than the old SVG, which was a 650 KB wrapper around a raster image and rendered blurry. -->
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/logo/manufest-weaves-mark-32.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="assets/logo/manufest-weaves-mark-192.png">
+  <link rel="apple-touch-icon" href="assets/logo/manufest-weaves-mark-192.png">
 
   <!--
     Defense-in-depth headers (2026-09-10). This app is the one manufest_*

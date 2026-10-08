@@ -8,8 +8,12 @@ import { RazorpayCheckoutService } from '../../core/services/razorpay-checkout.s
 import { ProductService } from '../../core/services/product.service';
 import { ShipmentService } from '../../core/services/shipment.service';
 import { ReviewService } from '../../core/services/review.service';
+import { InvoiceService } from '../../core/services/invoice.service';
+import { InvoiceSummary } from '../../core/models/invoice.models';
+import { saveBlob } from '../../core/utils/save-blob';
 import { OrderDetail, OrderItem, Shipment } from '../../core/models/order.models';
 import { formatPrice } from '../../core/utils/format-price';
+import { RETURN_GUIDELINE } from '../../core/constants/customer-support';
 
 /** Mirrors `RETURN_WINDOW_DAYS` (backend, `manufest_be/src/config/env.schema.js`,
  * default 7) — added 2026-09-22 alongside `RETURN_WINDOW_EXPIRED`. There's
@@ -62,6 +66,7 @@ export class OrderDetailComponent implements OnInit {
   private readonly productService = inject(ProductService);
   private readonly shipmentService = inject(ShipmentService);
   private readonly reviewService = inject(ReviewService);
+  private readonly invoiceService = inject(InvoiceService);
 
   readonly order = signal<OrderDetail | null>(null);
   readonly loading = signal(true);
@@ -82,6 +87,9 @@ export class OrderDetailComponent implements OnInit {
    * that requests every currently-`delivered` item in one bulk call. */
   readonly returnPanel = signal<{ mode: 'item'; orderItemUuid: string } | { mode: 'all' } | null>(null);
   returnReason = '';
+  /** The customer confirms the package came in a Manufest cover (RETURN_GUIDELINE). */
+  returnCoverConfirmed = false;
+  readonly returnGuideline = RETURN_GUIDELINE;
   readonly returnSubmitting = signal(false);
   readonly returnError = signal<string | null>(null);
 
@@ -122,6 +130,12 @@ export class OrderDetailComponent implements OnInit {
   readonly trackingError = signal<string | null>(null);
   readonly trackingData = signal<Shipment | null>(null);
 
+  /** Invoices / bills of supply / credit notes for this order — one per
+   * seller once their first item ships. Empty until then (card hidden). */
+  readonly invoices = signal<InvoiceSummary[]>([]);
+  readonly downloadingInvoiceUuid = signal<string | null>(null);
+  readonly invoiceError = signal<string | null>(null);
+
   ngOnInit(): void {
     const orderUuid = this.route.snapshot.paramMap.get('orderUuid');
     if (!orderUuid) {
@@ -139,10 +153,39 @@ export class OrderDetailComponent implements OnInit {
       next: (order) => {
         this.order.set(order);
         this.loading.set(false);
+        this.loadInvoices(orderUuid);
       },
       error: (err) => {
         this.error.set(err?.message || 'Could not load this order.');
         this.loading.set(false);
+      },
+    });
+  }
+
+  /** Best-effort: a failure here just leaves the invoices card hidden. */
+  private loadInvoices(orderUuid: string): void {
+    this.invoiceService.listForOrder(orderUuid).subscribe({
+      next: (invoices) => this.invoices.set(invoices),
+      error: () => this.invoices.set([]),
+    });
+  }
+
+  invoiceLabel(invoice: InvoiceSummary): string {
+    return { TAX_INVOICE: 'Tax invoice', BILL_OF_SUPPLY: 'Bill of supply', CREDIT_NOTE: 'Credit note' }[invoice.docType];
+  }
+
+  downloadInvoice(invoice: InvoiceSummary): void {
+    if (this.downloadingInvoiceUuid()) return;
+    this.downloadingInvoiceUuid.set(invoice.uuid);
+    this.invoiceError.set(null);
+    this.invoiceService.downloadPdf(invoice.uuid).subscribe({
+      next: (blob) => {
+        saveBlob(blob, `${invoice.invoiceNumber}.pdf`);
+        this.downloadingInvoiceUuid.set(null);
+      },
+      error: () => {
+        this.invoiceError.set('Could not download that document. Please try again.');
+        this.downloadingInvoiceUuid.set(null);
       },
     });
   }
@@ -319,12 +362,14 @@ export class OrderDetailComponent implements OnInit {
   openItemReturnForm(item: OrderItem): void {
     this.returnPanel.set({ mode: 'item', orderItemUuid: item.uuid });
     this.returnReason = '';
+    this.returnCoverConfirmed = false;
     this.returnError.set(null);
   }
 
   openOrderReturnForm(): void {
     this.returnPanel.set({ mode: 'all' });
     this.returnReason = '';
+    this.returnCoverConfirmed = false;
     this.returnError.set(null);
   }
 
@@ -338,6 +383,10 @@ export class OrderDetailComponent implements OnInit {
     if (!order || !panel) return;
     if (!this.returnReason.trim()) {
       this.returnError.set('Tell us why you\'re returning this.');
+      return;
+    }
+    if (!this.returnCoverConfirmed) {
+      this.returnError.set('Returns are accepted only for packages delivered in a Manufest cover. Please confirm yours was.');
       return;
     }
     this.returnError.set(null);

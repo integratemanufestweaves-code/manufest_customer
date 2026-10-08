@@ -7,6 +7,7 @@ import { Subject, of, throwError } from 'rxjs';
 
 import { CartComponent } from './cart.component';
 import { CartService } from '../../core/services/cart.service';
+import { WishlistService } from '../../core/services/wishlist.service';
 import { ProductService } from '../../core/services/product.service';
 import { CartItem, CartView } from '../../core/models/cart.models';
 
@@ -272,13 +273,26 @@ describe('CartComponent', () => {
       expect(component.pendingItems().size).toBe(0);
     });
 
-    it('removeItem clears the error and pending state on success', () => {
+    it('moveToWishlist clears the pending state and refreshes the wishlist on success', () => {
       fixture.detectChanges();
       const item = makeItem({ uuid: 'a' });
-      spyOn(cartService, 'removeItem').and.returnValue(of(makeCart([])));
-      component.removeItem(item);
+      const wishlistService = TestBed.inject(WishlistService);
+      const refreshSpy = spyOn(wishlistService, 'refresh');
+      spyOn(cartService, 'moveToWishlist').and.returnValue(of(makeCart([])));
+      component.moveToWishlist(item);
+      expect(cartService.moveToWishlist).toHaveBeenCalledWith('a');
+      expect(refreshSpy).toHaveBeenCalled();
       expect(component.pendingItems().size).toBe(0);
       expect(component.error()).toBeNull();
+    });
+
+    it('moveToWishlist surfaces an error and keeps the item on failure', () => {
+      fixture.detectChanges();
+      const item = makeItem({ uuid: 'a' });
+      spyOn(cartService, 'moveToWishlist').and.returnValue(throwError(() => ({ message: 'Nope' })));
+      component.moveToWishlist(item);
+      expect(component.error()).toBe('Nope');
+      expect(component.pendingItems().size).toBe(0);
     });
 
     it('clearCart surfaces an error message on failure', () => {

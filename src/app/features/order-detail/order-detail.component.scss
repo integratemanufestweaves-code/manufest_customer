@@ -54,6 +54,32 @@
   font-style: italic;
 }
 
+/* Return guideline note + its "came in a Manufest cover" confirmation, in
+   both the whole-order and the per-item return forms. */
+.return-guideline {
+  margin: 0 0 10px;
+  padding: 8px 10px;
+  border-left: 3px solid var(--color-accent);
+  background: var(--color-white);
+  border-radius: var(--radius-sm);
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.return-guideline__confirm {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 8px 0 10px;
+  font-size: 0.85rem;
+  cursor: pointer;
+
+  input {
+    margin-top: 2px;
+    flex-shrink: 0;
+  }
+}
+
 .cancel-confirm {
   margin-top: 4px;
   margin-bottom: 16px;
@@ -412,4 +438,61 @@
 
 .payment-notice__title {
   font-weight: 700;
+}
+
+.invoice-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.invoice-list__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+
+  & + & {
+    border-top: 1px solid var(--color-border);
+  }
+}
+
+.invoice-list__info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.invoice-list__type {
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+.invoice-list__meta {
+  font-size: 0.78rem;
+  overflow-wrap: anywhere;
+}
+
+.invoice-list__download {
+  flex-shrink: 0;
+  min-height: 36px;
+  padding: 6px 12px;
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-sm);
+  background: var(--color-white);
+  color: var(--color-primary);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    background: var(--color-primary);
+    color: var(--color-white);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: default;
+  }
 }

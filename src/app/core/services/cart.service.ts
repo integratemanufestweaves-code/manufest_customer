@@ -118,7 +118,19 @@ export class CartService {
     );
   }
 
-  clear(): Observable<{ status: string }> {
+  /** "Move to wishlist": the server wishlists the line's product and drops
+   * the line in one transaction, returning the updated cart. The caller
+   * refreshes WishlistService so the header badge picks it up. */
+  moveToWishlist(cartItemUuid: string): Observable<CartView> {
+    const seq = ++this.mutationSeq;
+    return this.http.post<ApiSuccess<CartView>>(`${this.base}/items/${cartItemUuid}/move-to-wishlist`, {}).pipe(
+      tap((res) => this.applyMutation(seq, res.data)),
+      map((res) => res.data),
+      catchError((err) => rethrowApiError(err)),
+    );
+  }
+
+    clear(): Observable<{ status: string }> {
     const seq = ++this.mutationSeq;
     return this.http.delete<ApiSuccess<{ status: string }>>(this.base).pipe(
       tap(() => this.applyMutation(seq, EMPTY_CART)),

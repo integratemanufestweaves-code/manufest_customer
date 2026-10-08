@@ -5,6 +5,7 @@ import { FooterComponent } from './shared/footer/footer.component';
 import { TestModeBannerComponent } from './shared/test-mode-banner/test-mode-banner.component';
 import { CookieConsentComponent } from './shared/cookie-consent/cookie-consent.component';
 import { AnalyticsService } from './core/services/analytics.service';
+import { MobileKeyboardService } from './core/services/mobile-keyboard.service';
 
 @Component({
   selector: 'app-root',
@@ -19,5 +20,7 @@ export class AppComponent {
   constructor() {
     // Page views + live presence; sends nothing until cookies are accepted.
     inject(AnalyticsService).start(inject(DestroyRef));
+    // Hide the phone keyboard once the customer is done typing.
+    inject(MobileKeyboardService).start();
   }
 }

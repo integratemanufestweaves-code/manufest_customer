@@ -121,7 +121,11 @@ export class ProductCardComponent {
       this.router.navigate(['/login'], { queryParams: { redirectTo: this.router.url } });
       return;
     }
-    this.wishlistService.toggle(this.product.uuid).subscribe();
+    this.addToCartError.set(null);
+    this.wishlistService.toggle(this.product.uuid).subscribe({
+      // e.g. the 35-item wishlist cap — shown in the card's message line.
+      error: (err) => this.addToCartError.set(err?.message || 'Could not update your wishlist.'),
+    });
   }
 
   addToCart(event: Event): void {

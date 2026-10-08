@@ -1,3 +1,13 @@
+/* `.header` is `position: sticky`, and a sticky box only sticks while its
+   parent is on screen. As a normal box, <app-header> is just the header's
+   own height, so the navbar scrolled away with it as soon as the page moved.
+   `display: contents` drops the host box, making <app-root> (the whole
+   page) the parent, so the navbar stays at the top all the way down. */
+:host {
+  display: contents;
+  --color-nav-highlight: color-mix(in srgb, var(--color-primary) 9%, var(--color-white));
+}
+
 .announcement {
   background: var(--color-bg-tint);
   color: var(--color-text);
@@ -74,7 +84,7 @@
   display: flex;
   align-items: stretch;
   align-self: stretch;
-  gap: 22px;
+  gap: 6px;
   font-size: 0.9rem;
   font-weight: 500;
   white-space: nowrap;
@@ -92,17 +102,26 @@
   background: none;
   border: none;
   border-bottom: 3px solid transparent;
-  padding-inline: 0;
+  padding-inline: 12px;
   font: inherit;
   color: var(--color-text);
   cursor: pointer;
   padding-top: 3px; // balances the border so the label stays centered
-  transition: color 0.15s ease, border-color 0.15s ease;
+  transition: color 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
 
+  /* Hover, an open menu, and the section the current page belongs to all
+     get a tinted background with the brand colour, not just an underline,
+     so the selected item is easy to spot. */
   &:hover,
-  &--open {
+  &--open,
+  &--current {
     color: var(--color-primary);
+    background: var(--color-nav-highlight);
     border-bottom-color: var(--color-primary);
+  }
+
+  &--current {
+    font-weight: 600;
   }
 
   &:focus-visible {
@@ -228,12 +247,22 @@
   display: flex;
   align-items: center;
   max-width: 420px;
-  border: 1px solid var(--color-border);
+  /* Tinted fill so the bar reads as a field at a glance; on focus it turns
+     white with a brand-colour ring. */
+  background: var(--color-bg-tint);
+  border: 1px solid #e7d9de;
   border-radius: var(--radius-sm);
   margin: 0;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+
+  &:hover {
+    border-color: var(--color-logo-magenta);
+  }
 
   &:focus-within {
+    background: var(--color-white);
     border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(90, 29, 64, 0.14);
   }
 
   input {
@@ -241,10 +270,27 @@
     border: none;
     outline: none;
     padding: 9px 12px;
+    /* 16px on touch screens: iOS Safari zooms the page into any input
+       under 16px on focus (overridden in the phone media query below). */
     font-size: 0.85rem;
+    color: var(--color-text);
     min-width: 0;
     background: transparent;
     border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+
+    &::placeholder {
+      color: var(--color-text-muted);
+    }
+
+    /* Native search-field chrome (WebKit's own clear "x" and rounded inset)
+       fights the custom styling on iOS/Android. */
+    -webkit-appearance: none;
+    appearance: none;
+
+    &::-webkit-search-decoration,
+    &::-webkit-search-cancel-button {
+      -webkit-appearance: none;
+    }
   }
 }
 
@@ -328,11 +374,9 @@
   gap: 18px;
   flex-shrink: 0;
   /* On desktop `.header__search`'s `flex: 1` already pushes this to the
-     far right; on mobile that search bar is `display: none` (see below),
-     so nothing fills the gap between it and the logo and this cluster
-     collapses to sit right next to the logo instead of anchored to the
-     row's end. `margin-left: auto` is redundant-but-harmless on desktop
-     and is what actually right-aligns it once the search bar is gone. */
+     far right; on phones the search bar wraps to its own row (see below),
+     so `margin-left: auto` is what keeps this cluster anchored to the
+     row's end there. */
   margin-left: auto;
 }
 
@@ -347,10 +391,6 @@
   &:hover {
     color: var(--color-primary);
   }
-}
-
-.header__icon-btn--search-mobile {
-  display: none;
 }
 
 .header__icon-label {
@@ -514,6 +554,15 @@
   &:hover {
     background: var(--color-bg-tint);
   }
+
+  /* Current page/section: same tint as the desktop nav, plus a brand bar. */
+  &--current,
+  &.active {
+    background: var(--color-nav-highlight);
+    color: var(--color-primary);
+    font-weight: 600;
+    box-shadow: inset 3px 0 0 var(--color-primary);
+  }
 }
 
 .header__drawer-toggle {
@@ -620,20 +669,35 @@
 }
 
 @media (max-width: 767px) {
-  .header__search {
-    display: none;
+  /* Phones get the full search bar too, as its own full-width second row
+     under the logo/icons (it used to be hidden behind a search icon). */
+  .header__row {
+    flex-wrap: wrap;
+    height: auto;
+    gap: 14px;
+    row-gap: 8px;
+    padding-top: 8px;
+    padding-bottom: 10px;
   }
 
-  .header__icon-btn--search-mobile {
-    display: flex;
+  .header__search {
+    order: 10;
+    flex: 1 0 100%;
+    max-width: none;
+
+    input {
+      font-size: 16px;
+      padding: 10px 12px;
+    }
+  }
+
+  .header__search-btn {
+    height: 42px;
+    width: 44px;
   }
 
   .header__icon-label {
     display: none;
-  }
-
-  .header__row {
-    gap: 14px;
   }
 
   .header__logo-word {

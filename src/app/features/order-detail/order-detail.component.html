@@ -76,6 +76,7 @@
     @if (returnPanel()?.mode === 'all') {
       <div class="cancel-confirm">
         <p class="cancel-confirm__title">Return this entire order?</p>
+        <p class="return-guideline"><strong>Return guidelines:</strong> {{ returnGuideline }}</p>
         @if (returnError()) {
           <p class="state-message state-message--error">{{ returnError() }}</p>
         }
@@ -85,6 +86,10 @@
           [(ngModel)]="returnReason"
           name="returnAllReason"
         ></textarea>
+        <label class="return-guideline__confirm">
+          <input type="checkbox" [(ngModel)]="returnCoverConfirmed" name="returnAllCover" />
+          My package was delivered in a Manufest cover
+        </label>
         <div class="cancel-confirm__actions">
           <button type="button" class="btn btn--primary" [disabled]="returnSubmitting()" (click)="confirmReturn()">
             {{ returnSubmitting() ? 'Submitting…' : 'Confirm return request' }}
@@ -193,7 +198,12 @@
                   @if (returnPanel(); as panel) {
                     @if (panel.mode === 'item' && panel.orderItemUuid === item.uuid) {
                       <div class="order-item__action-form">
+                        <p class="return-guideline"><strong>Return guidelines:</strong> {{ returnGuideline }}</p>
                         <textarea rows="2" placeholder="Reason (required)" [(ngModel)]="returnReason" [name]="'return-reason-' + item.uuid"></textarea>
+                        <label class="return-guideline__confirm">
+                          <input type="checkbox" [(ngModel)]="returnCoverConfirmed" [name]="'return-cover-' + item.uuid" />
+                          My package was delivered in a Manufest cover
+                        </label>
                         @if (returnError()) {
                           <p class="state-message state-message--error">{{ returnError() }}</p>
                         }
@@ -317,6 +327,37 @@
             <span>{{ formatPrice(orderDetail.totalAmount) }}</span>
           </div>
         </section>
+
+        @if (invoices().length > 0) {
+          <section class="order-detail-card">
+            <h2>Invoices</h2>
+            @if (invoiceError()) {
+              <p class="state-message state-message--error">{{ invoiceError() }}</p>
+            }
+            <ul class="invoice-list">
+              @for (invoice of invoices(); track invoice.uuid) {
+                <li class="invoice-list__item">
+                  <div class="invoice-list__info">
+                    <span class="invoice-list__type">{{ invoiceLabel(invoice) }}</span>
+                    <span class="invoice-list__meta">{{ invoice.invoiceNumber }} &middot; {{ invoice.sellerName }}</span>
+                    @if (invoice.docType === 'CREDIT_NOTE') {
+                      <span class="invoice-list__meta">Against {{ invoice.originalInvoiceNumber }} &middot; {{ formatPrice(invoice.totalAmount) }}</span>
+                    }
+                  </div>
+                  <button
+                    type="button"
+                    class="invoice-list__download"
+                    [disabled]="downloadingInvoiceUuid() === invoice.uuid"
+                    (click)="downloadInvoice(invoice)"
+                    [attr.aria-label]="'Download ' + invoiceLabel(invoice) + ' ' + invoice.invoiceNumber"
+                  >
+                    {{ downloadingInvoiceUuid() === invoice.uuid ? 'Downloading…' : 'Download' }}
+                  </button>
+                </li>
+              }
+            </ul>
+          </section>
+        }
       </aside>
     </div>
   }

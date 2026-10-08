@@ -227,7 +227,7 @@
             <h2 class="section__title">You may also like</h2>
           </div>
         </div>
-        <div class="grid">
+        <div class="related-row">
           @for (related of relatedProducts(); track related.uuid) {
             <app-product-card [product]="related" />
           }

@@ -2,6 +2,7 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 
 import { CartService } from '../../core/services/cart.service';
+import { WishlistService } from '../../core/services/wishlist.service';
 import { ProductService } from '../../core/services/product.service';
 import { CartItem } from '../../core/models/cart.models';
 import { formatPrice } from '../../core/utils/format-price';
@@ -34,6 +35,7 @@ import { formatPrice } from '../../core/utils/format-price';
 })
 export class CartComponent implements OnInit {
   private readonly cartService = inject(CartService);
+  private readonly wishlistService = inject(WishlistService);
   private readonly productService = inject(ProductService);
   private readonly router = inject(Router);
 
@@ -169,14 +171,19 @@ export class CartComponent implements OnInit {
     });
   }
 
-  removeItem(item: CartItem): void {
+  /** Replaces a plain Remove: the item leaves the cart and its product is
+   * saved to the wishlist instead of being lost. */
+  moveToWishlist(item: CartItem): void {
     if (this.isPending(item)) return;
     this.setPending(item, true);
     this.error.set(null);
-    this.cartService.removeItem(item.uuid).subscribe({
-      next: () => this.setPending(item, false),
+    this.cartService.moveToWishlist(item.uuid).subscribe({
+      next: () => {
+        this.setPending(item, false);
+        this.wishlistService.refresh();
+      },
       error: (err) => {
-        this.error.set(err?.message || 'Could not remove that item.');
+        this.error.set(err?.message || 'Could not move that item to your wishlist.');
         this.setPending(item, false);
       },
     });
