@@ -87,8 +87,17 @@ describe('ProductService', () => {
     it('sends only the params that were actually provided', () => {
       service.listProducts({ limit: 10 }).subscribe();
       const req = httpMock.expectOne((r) => r.url === `${base}/list`);
-      expect(req.request.params.keys().sort()).toEqual(['limit']);
+      // `seed` always rides along with the default (recommended) order so
+      // paging keeps the same shuffle.
+      expect(req.request.params.keys().sort()).toEqual(['limit', 'seed']);
       req.flush({ success: true, data: [], meta: { limit: 10, nextCursor: null, hasMore: false } });
+    });
+
+    it('sends no seed for an explicit non-recommended sort', () => {
+      service.listProducts({ sort: 'price_asc' }).subscribe();
+      const req = httpMock.expectOne((r) => r.url === `${base}/list`);
+      expect(req.request.params.has('seed')).toBeFalse();
+      req.flush({ success: true, data: [], meta: { limit: 20, nextCursor: null, hasMore: false } });
     });
 
     it('forwards categoryUuid/priceMin/priceMax/sort together (AND-combinable)', () => {

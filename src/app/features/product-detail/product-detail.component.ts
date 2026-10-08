@@ -9,6 +9,7 @@ import { WishlistService } from '../../core/services/wishlist.service';
 import { AuthService } from '../../core/services/auth.service';
 import { RecentlyViewedService } from '../../core/services/recently-viewed.service';
 import { ReviewService } from '../../core/services/review.service';
+import { AnalyticsService } from '../../core/services/analytics.service';
 import { ProductDetail, ProductVariant, RelatedProduct } from '../../core/models/product.models';
 import { ProductReview } from '../../core/models/review.models';
 import { formatPrice } from '../../core/utils/format-price';
@@ -53,6 +54,7 @@ export class ProductDetailComponent implements OnInit {
   private readonly auth = inject(AuthService);
   private readonly recentlyViewedService = inject(RecentlyViewedService);
   private readonly reviewService = inject(ReviewService);
+  private readonly analytics = inject(AnalyticsService);
   private readonly destroyRef = inject(DestroyRef);
   /** In-flight requests for the product being shown; cancelled when the
    * shopper moves to another product before they finish. */
@@ -116,6 +118,12 @@ export class ProductDetailComponent implements OnInit {
         const initialVariant = product.variants.find((v) => v.uuid === requested) ?? product.variants[0] ?? null;
         this.selectVariant(initialVariant);
         this.loading.set(false);
+        this.analytics.productView({
+          productUuid: product.uuid,
+          name: product.productName,
+          price: initialVariant?.pricing?.sellingPrice ?? null,
+          variant: initialVariant?.variantName ?? null,
+        });
       },
       error: (err) => {
         this.error.set(err?.message || 'Could not load this product right now.');
@@ -252,6 +260,15 @@ export class ProductDetailComponent implements OnInit {
       next: () => {
         this.addingToCart.set(false);
         this.addedToCart.set(true);
+        const product = this.product();
+        if (product) {
+          this.analytics.addToCart({
+            productUuid: product.uuid,
+            name: product.productName,
+            price: variant.pricing?.sellingPrice ?? null,
+            variant: variant.variantName,
+          });
+        }
       },
       error: (err) => {
         this.addToCartError.set(err?.message || 'Could not add this to your cart.');

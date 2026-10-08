@@ -6,6 +6,7 @@ import { NEVER, of, throwError } from 'rxjs';
 
 import { LoginComponent } from './login.component';
 import { AuthService } from '../../../core/services/auth.service';
+import { ConsentService } from '../../../core/services/consent.service';
 
 describe('LoginComponent — OTP auto-verify', () => {
   let fixture: ComponentFixture<LoginComponent>;
@@ -86,5 +87,56 @@ describe('LoginComponent — OTP auto-verify', () => {
     spyOn(auth, 'verifyOtp').and.returnValue(of({ status: 'name_required', signupToken: 'tok', expiresInSeconds: 600, maskedMobileNumber: '******7161' } as any));
     autofill('123456');
     expect(component.step()).toBe('enter-name');
+  });
+});
+
+describe('LoginComponent — sign-in consent', () => {
+  let fixture: ComponentFixture<LoginComponent>;
+  let component: LoginComponent;
+  let auth: AuthService;
+  let consent: ConsentService;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      imports: [LoginComponent],
+      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])],
+    });
+    auth = TestBed.inject(AuthService);
+    consent = TestBed.inject(ConsentService);
+    fixture = TestBed.createComponent(LoginComponent);
+    component = fixture.componentInstance;
+    fixture.detectChanges();
+  });
+
+  it('will not send a code until Terms and Privacy are accepted', () => {
+    const otpSpy = spyOn(auth, 'requestOtp').and.returnValue(NEVER);
+    component.mobileNumber = '9876543210';
+    component.captcha.set({ captchaId: 'c1', answer: 'abcd' } as any);
+
+    component.requestOtp();
+    expect(otpSpy).not.toHaveBeenCalled();
+    expect(component.error()).toContain('Terms of Use and Privacy Policy');
+
+    component.acceptTerms = true;
+    component.requestOtp();
+    expect(otpSpy).toHaveBeenCalled();
+  });
+
+  it('records terms, privacy and the offers choice once signed in, marked login or signup', () => {
+    const recordSpy = spyOn(consent, 'recordAccountConsents').and.returnValue(of(null));
+    spyOn(consent, 'syncCookiePreferences').and.returnValue(of(null));
+    component.marketingOptIn = true;
+    (component as any).challengeId = 'challenge-1';
+    component.otpCode = '123456';
+    spyOn(auth, 'verifyOtp').and.returnValue(of({ status: 'authenticated', customer: {} } as any));
+
+    component.verifyOtp();
+    expect(recordSpy).toHaveBeenCalledOnceWith(true, 'login');
+
+    (component as any).signupToken = 'tok';
+    component.fullName = 'Meena Raghavan';
+    spyOn(auth, 'completeSignup').and.returnValue(of({} as any));
+    component.completeSignup();
+    expect(recordSpy).toHaveBeenCalledWith(true, 'signup');
   });
 });

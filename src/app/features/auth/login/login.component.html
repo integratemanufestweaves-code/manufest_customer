@@ -44,6 +44,21 @@
             <small id="mobileNumberHint" class="auth__hint">We'll send an OTP to this number to verify it.</small>
           </label>
           <app-captcha (answerChange)="captcha.set($event)" />
+          <div class="auth__consent">
+            <label class="auth__check">
+              <input type="checkbox" name="acceptTerms" [(ngModel)]="acceptTerms" />
+              <span>
+                I agree to the
+                <a routerLink="/terms" target="_blank" rel="noopener">Terms of Use</a>
+                and
+                <a routerLink="/privacy" target="_blank" rel="noopener">Privacy Policy</a>.
+              </span>
+            </label>
+            <label class="auth__check">
+              <input type="checkbox" name="marketingOptIn" [(ngModel)]="marketingOptIn" />
+              <span>Send me offers and new arrivals by SMS and WhatsApp. <span class="auth__check-optional">Optional</span></span>
+            </label>
+          </div>
           <button type="submit" class="btn btn--primary btn--full" [disabled]="submitting() || !captcha()">
             {{ submitting() ? 'Sending code…' : 'Continue' }}
           </button>

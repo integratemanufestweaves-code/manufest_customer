@@ -34,4 +34,8 @@ export const environment = {
   // How often an open storefront tab re-checks the live banner set
   // (ResponsiveBannerComponent) — see environment.development.ts.
   bannerPollMs: 15 * 60 * 1000,
+  // Google Analytics 4 measurement ID (G-XXXXXXXXXX). Empty = GA off; the
+  // first-party Site Analytics beacons still run. GA only ever loads after
+  // the visitor accepts analytics cookies (core/services/analytics.service.ts).
+  gaMeasurementId: '',
 };

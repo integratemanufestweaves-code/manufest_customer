@@ -1,4 +1,4 @@
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { map } from 'rxjs';
@@ -10,6 +10,7 @@ import { OrderService } from '../../core/services/order.service';
 import { PaymentService } from '../../core/services/payment.service';
 import { RazorpayCheckoutService } from '../../core/services/razorpay-checkout.service';
 import { ProductService } from '../../core/services/product.service';
+import { AnalyticsItem, AnalyticsService } from '../../core/services/analytics.service';
 import { Address, AddressRequest } from '../../core/models/customer.models';
 import { OrderDetail, PaymentMethod } from '../../core/models/order.models';
 import { CartItem } from '../../core/models/cart.models';
@@ -42,6 +43,16 @@ import { AddressFieldErrors, trimAddressForm, validateAddressForm } from '../../
  * confirmation step — no separate "review" screen exists, matching how
  * little else this checkout flow has (single page, no wizard steps).
  */
+function toAnalyticsItem(item: CartItem): AnalyticsItem {
+  return {
+    productUuid: item.product.uuid,
+    name: item.product.productName,
+    price: item.currentPrice,
+    variant: item.variant.variantName,
+    quantity: item.quantity,
+  };
+}
+
 @Component({
   selector: 'app-checkout',
   standalone: true,
@@ -58,6 +69,18 @@ export class CheckoutComponent implements OnInit {
   private readonly razorpayCheckout = inject(RazorpayCheckoutService);
   private readonly productService = inject(ProductService);
   private readonly router = inject(Router);
+  private readonly analytics = inject(AnalyticsService);
+  /** begin_checkout fires once, when the cart lines first arrive. */
+  private checkoutTracked = false;
+
+  constructor() {
+    effect(() => {
+      const items = this.checkoutItems();
+      if (this.checkoutTracked || !items.length) return;
+      this.checkoutTracked = true;
+      this.analytics.beginCheckout(this.checkoutSubtotal(), items.map(toAnalyticsItem));
+    });
+  }
 
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);
@@ -296,6 +319,8 @@ export class CheckoutComponent implements OnInit {
   }
 
   private finishCheckout(order: OrderDetail): void {
+    // Before the cart refresh below drops the checked-out lines.
+    this.analytics.purchase(order.uuid, order.totalAmount, this.checkoutItems().map(toAnalyticsItem));
     this.placingOrder.set(false);
     this.processingPayment.set(false);
     // Only the checked-out lines were removed server-side — a partial

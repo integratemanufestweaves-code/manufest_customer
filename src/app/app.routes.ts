@@ -169,10 +169,19 @@ export const routes: Routes = [
     loadComponent: () => import('./shared/coming-soon/coming-soon.component').then((m) => m.ComingSoonComponent),
     data: { pageTitle: 'Help center', description: 'Our help center is coming soon.' },
   },
+  // Cookie settings, offers opt-in and what we collect (2026-10-08) — the
+  // footer's "Privacy Settings" and the sign-in screen's Privacy Policy link.
   {
     path: 'privacy',
+    loadComponent: () => import('./features/privacy/privacy.component').then((m) => m.PrivacyComponent),
+    title: 'Manufest Weaves — Privacy & cookies',
+  },
+  // Linked from the sign-in consent checkbox. The Terms of Use text itself
+  // hasn't been written yet.
+  {
+    path: 'terms',
     loadComponent: () => import('./shared/coming-soon/coming-soon.component').then((m) => m.ComingSoonComponent),
-    data: { pageTitle: 'Privacy settings', description: 'Privacy settings are coming soon.' },
+    data: { pageTitle: 'Terms of Use', description: 'Our Terms of Use will be published here.' },
   },
   {
     path: 'social',

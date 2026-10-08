@@ -40,8 +40,14 @@
     allows `api.razorpay.com` (payment status polling) and
     `lumberjack.razorpay.com` (Razorpay's own client-side analytics beacon
     — harmless if blocked, allowed here so it doesn't spam the console).
+
+    Google Analytics 4 (2026-10-08): script-src allows googletagmanager.com
+    for gtag.js, which AnalyticsService injects only after the visitor
+    accepts analytics cookies; connect-src allows the GA collection
+    endpoints (*.google-analytics.com / *.analytics.google.com). img-src
+    already allows https: for GA's pixel fallback.
   -->
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://checkout.razorpay.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: http://localhost:4000; font-src 'self' data:; frame-src https://api.razorpay.com https://checkout.razorpay.com; connect-src 'self' https://manufestweaves.in http://localhost:4000 https://api.razorpay.com https://lumberjack.razorpay.com; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://checkout.razorpay.com https://www.googletagmanager.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: http://localhost:4000; font-src 'self' data:; frame-src https://api.razorpay.com https://checkout.razorpay.com; connect-src 'self' https://manufestweaves.in http://localhost:4000 https://api.razorpay.com https://lumberjack.razorpay.com https://www.googletagmanager.com https://*.google-analytics.com https://*.analytics.google.com; object-src 'none'; base-uri 'self'; form-action 'self'">
   <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
   <!-- checkout.js is NOT loaded here (2026-09-15) — it used to be, eagerly,
        but Checkout.js pulls in its own large graph of per-payment-method

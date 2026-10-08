@@ -11,7 +11,10 @@ export interface ProductPage {
   meta: CursorMeta;
 }
 
-export type ProductSort = 'newest' | 'oldest' | 'price_asc' | 'price_desc';
+/** `recommended` (manufest_be's default since 2026-10-08) is the fair
+ * storefront order: seeded shuffle, sellers spread out so no one seller's
+ * uploads fill a page, the signed-in customer's own district last. */
+export type ProductSort = 'recommended' | 'newest' | 'oldest' | 'price_asc' | 'price_desc';
 
 export interface ListProductsOptions {
   cursor?: string | null;
@@ -59,6 +62,24 @@ const MULTI_VALUE_PARAMS = [
   'borderTypeUuids',
 ] as const;
 
+const FEED_SEED_KEY = 'mf_feed_seed';
+
+function loadFeedSeed(): string {
+  try {
+    const saved = sessionStorage.getItem(FEED_SEED_KEY);
+    if (saved && /^[A-Za-z0-9_-]{1,32}$/.test(saved)) return saved;
+  } catch {
+    // Storage blocked (private mode etc.) — a per-page-load seed still works.
+  }
+  const seed = Math.random().toString(36).slice(2, 12) || 'seed';
+  try {
+    sessionStorage.setItem(FEED_SEED_KEY, seed);
+  } catch {
+    // Ignore — see above.
+  }
+  return seed;
+}
+
 /**
  * Client for manufest_be's `GET /public/products/*` routes — see
  * manufest_be/.claude/knowledge/02-api-reference.md's `products` section.
@@ -74,6 +95,11 @@ const MULTI_VALUE_PARAMS = [
 export class ProductService {
   private readonly base = `${environment.apiBaseUrl}/public/products`;
 
+  /** Seeds the `recommended` shuffle: one per browser tab session, so
+   * paging and back-navigation keep the same order while a new visit
+   * gets a fresh one. */
+  private readonly feedSeed = loadFeedSeed();
+
   constructor(private readonly http: HttpClient) {}
 
   /**
@@ -82,7 +108,7 @@ export class ProductService {
    * `publicListProducts` validation, see
    * manufest_be/.claude/knowledge/02-api-reference.md's "Filterable public
    * listing" entry) — `categoryUuid`, `occasionUuid`, `priceMin`/`priceMax`,
-   * and `sort` ('newest' default | 'oldest'). `occasionUuid` is accepted
+   * and `sort` (now 'recommended' default, see `ProductSort`). `occasionUuid` is accepted
    * here for forward-compatibility even though nothing in this app can
    * populate an occasion picker yet — there is no public endpoint that
    * lists occasion values (`/seller/products/attributes-master` and
@@ -110,6 +136,7 @@ export class ProductService {
     if (opts.priceMin != null) params['priceMin'] = String(opts.priceMin);
     if (opts.priceMax != null) params['priceMax'] = String(opts.priceMax);
     if (opts.sort) params['sort'] = opts.sort;
+    if (!opts.sort || opts.sort === 'recommended') params['seed'] = this.feedSeed;
 
     return this.http.get<ApiSuccess<ProductSummary[]>>(`${this.base}/list`, { params }).pipe(
       map((res) => ({ items: res.data, meta: (res.meta as CursorMeta) ?? { limit: opts.limit ?? 20, nextCursor: null, hasMore: false } })),

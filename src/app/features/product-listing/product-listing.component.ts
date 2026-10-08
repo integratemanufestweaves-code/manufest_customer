@@ -5,6 +5,7 @@ import { Subject, combineLatest, takeUntil } from 'rxjs';
 import { ProductCardComponent } from '../../shared/product-card/product-card.component';
 import { ListProductsOptions, ProductService, ProductSort } from '../../core/services/product.service';
 import { CategoryService } from '../../core/services/category.service';
+import { AnalyticsService } from '../../core/services/analytics.service';
 import { ProductSummary } from '../../core/models/product.models';
 import { FACETS, FacetDefinition, FacetKey, FacetOption, PRICE_BANDS, PriceBand, ProductFilters, facetOptions, priceRangeLabel } from '../../core/models/product-filters.models';
 
@@ -35,7 +36,7 @@ type FacetSelection = Record<FacetKey, string[]>;
 
 const emptySelection = (): FacetSelection => Object.fromEntries(FACETS.map((f) => [f.facet, []])) as unknown as FacetSelection;
 
-const SORT_VALUES: ProductSort[] = ['newest', 'oldest', 'price_asc', 'price_desc'];
+const SORT_VALUES: ProductSort[] = ['recommended', 'newest', 'oldest', 'price_asc', 'price_desc'];
 
 /** Groups longer than this collapse behind a "+ N more" toggle. */
 const COLLAPSED_OPTION_LIMIT = 5;
@@ -43,7 +44,8 @@ const COLLAPSED_OPTION_LIMIT = 5;
 /**
  * Real, filterable product browsing page. Serves four routes that only
  * differ in their defaults: `/new-arrivals` (no category — "new arrivals"
- * is itself just `sort=newest`, the API's default), `/shop` (the general
+ * is itself just `sort=newest`; every other route defaults to the
+ * fair `recommended` order), `/shop` (the general
  * listing every header menu links into), `/search?q=`
  * (the header search) and `/category/:categoryUuid` (Home's "Shop by
  * Category" tiles, and the sidebar's Category group). `q` is honored on
@@ -78,11 +80,13 @@ export class ProductListingComponent implements OnInit, OnDestroy {
   private readonly router = inject(Router);
   private readonly productService = inject(ProductService);
   private readonly categoryService = inject(CategoryService);
+  private readonly analytics = inject(AnalyticsService);
   private readonly destroy$ = new Subject<void>();
 
   readonly priceOptions = PRICE_BANDS;
 
   readonly sortOptions: Array<{ value: ProductSort; label: string }> = [
+    { value: 'recommended', label: 'Recommended' },
     { value: 'newest', label: 'Newest' },
     { value: 'price_asc', label: 'Price: low to high' },
     { value: 'price_desc', label: 'Price: high to low' },
@@ -105,7 +109,10 @@ export class ProductListingComponent implements OnInit, OnDestroy {
   searchInput = '';
   readonly categoryUuid = signal<string | null>(null);
   readonly categoryName = signal<string | null>(null);
-  readonly sort = signal<ProductSort>('newest');
+  /** `/new-arrivals` is newest-first by definition; every other route
+   * defaults to the fair, seller-mixed `recommended` order. */
+  private readonly defaultSort: ProductSort = this.isNewArrivals ? 'newest' : 'recommended';
+  readonly sort = signal<ProductSort>(this.defaultSort);
   readonly priceMin = signal<number | null>(null);
   readonly priceMax = signal<number | null>(null);
   readonly blouse = signal<BlouseFilter | null>(null);
@@ -214,7 +221,7 @@ export class ProductListingComponent implements OnInit, OnDestroy {
   /** Excludes the search chip — "Clear all" keeps the search, so it
    * shouldn't count toward (or be the only reason to show) it. */
   readonly activeFilterCount = computed(() => this.activeChips().filter((c) => c.key !== 'q').length);
-  readonly hasActiveFilters = computed(() => this.activeFilterCount() > 0 || this.sort() !== 'newest');
+  readonly hasActiveFilters = computed(() => this.activeFilterCount() > 0 || this.sort() !== this.defaultSort);
 
   private requestToken = 0;
   private filtersLoadedFor: string | null | undefined = undefined;
@@ -228,11 +235,13 @@ export class ProductListingComponent implements OnInit, OnDestroy {
         this.categoryUuid.set(categoryUuid);
 
         const q = (query.get('q') ?? '').trim();
+        // One search event per new term (not per filter/sort change).
+        if (q && q !== this.searchQuery()) this.analytics.search(q);
         this.searchQuery.set(q || null);
         this.searchInput = q;
 
         const sort = query.get('sort') as ProductSort | null;
-        this.sort.set(sort && SORT_VALUES.includes(sort) ? sort : 'newest');
+        this.sort.set(sort && SORT_VALUES.includes(sort) ? sort : this.defaultSort);
         this.priceMin.set(toNumber(query.get('priceMin')));
         this.priceMax.set(toNumber(query.get('priceMax')));
         this.discountMin.set(toNumber(query.get('discount')));
@@ -308,7 +317,10 @@ export class ProductListingComponent implements OnInit, OnDestroy {
     this.productService.listProducts(opts).subscribe({
       next: (page) => {
         if (token !== this.requestToken) return;
-        this.products.set(append ? [...this.products(), ...page.items] : page.items);
+        // A product added/removed between pages can shift the recommended
+        // order by one — never show the same card twice.
+        const shown = new Set(append ? this.products().map((p) => p.uuid) : []);
+        this.products.set(append ? [...this.products(), ...page.items.filter((p) => !shown.has(p.uuid))] : page.items);
         this.nextCursor.set(page.meta.nextCursor);
         this.hasMore.set(page.meta.hasMore);
         this.loading.set(false);
@@ -343,7 +355,7 @@ export class ProductListingComponent implements OnInit, OnDestroy {
   }
 
   setSort(sort: ProductSort): void {
-    this.updateQuery({ sort: sort === 'newest' ? null : sort });
+    this.updateQuery({ sort: sort === this.defaultSort ? null : sort });
   }
 
   isSelected(facet: FacetKey, value: string): boolean {

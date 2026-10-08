@@ -1,0 +1,93 @@
+<section class="container privacy">
+  <nav class="privacy__crumbs" aria-label="Breadcrumb"><a routerLink="/">Home</a> / Privacy &amp; cookies</nav>
+  <h1 class="privacy__title">Privacy &amp; cookies</h1>
+  <p class="privacy__lead">What we collect, why, and the choices you have.</p>
+
+  <div class="privacy__grid">
+    <section class="privacy__panel" aria-labelledby="cookiesHeading">
+      <h2 id="cookiesHeading">Your cookie settings</h2>
+      @if (consent.decided()) {
+        <dl class="privacy__settings">
+          <div>
+            <dt>Essential</dt>
+            <dd class="privacy__on">Always on</dd>
+          </div>
+          <div>
+            <dt>Analytics</dt>
+            <dd [class.privacy__on]="consent.preferences().analytics">{{ consent.preferences().analytics ? 'On' : 'Off' }}</dd>
+          </div>
+          <div>
+            <dt>Advertising</dt>
+            <dd [class.privacy__on]="consent.preferences().ads">{{ consent.preferences().ads ? 'On' : 'Off' }}</dd>
+          </div>
+        </dl>
+      } @else {
+        <p class="privacy__muted">You haven't chosen yet. Only essential cookies are in use.</p>
+      }
+      <button type="button" class="btn btn--outline" (click)="openCookieSettings()">Change cookie settings</button>
+    </section>
+
+    <section class="privacy__panel" aria-labelledby="offersHeading">
+      <h2 id="offersHeading">Offers by SMS and WhatsApp</h2>
+      @if (!auth.isAuthenticated()) {
+        <p class="privacy__muted">
+          <a routerLink="/login" [queryParams]="{ redirectTo: '/privacy' }" class="privacy__link">Sign in</a> to choose whether we send you
+          offers and new arrivals.
+        </p>
+      } @else if (marketing() === null) {
+        <p class="privacy__muted" aria-live="polite">Loading your choice…</p>
+      } @else {
+        <label class="privacy__toggle">
+          <span>Send me offers and new arrivals</span>
+          <input
+            type="checkbox"
+            role="switch"
+            [checked]="marketing()"
+            [disabled]="marketingSaving()"
+            (change)="toggleMarketing($any($event.target).checked)"
+          />
+        </label>
+        <p class="privacy__muted">Order updates are always sent. This only covers promotional messages.</p>
+        @if (marketingError()) {
+          <p class="privacy__error" role="alert">{{ marketingError() }}</p>
+        }
+        @if (marketingSaved()) {
+          <p class="privacy__saved" role="status">Saved.</p>
+        }
+      }
+    </section>
+  </div>
+
+  <section class="privacy__policy" aria-labelledby="dataHeading">
+    <h2 id="dataHeading">How we use your data</h2>
+    <dl class="privacy__uses">
+      <div>
+        <dt>Your account</dt>
+        <dd>Your mobile number and name, to sign you in and to contact you about your orders.</dd>
+      </div>
+      <div>
+        <dt>Your orders</dt>
+        <dd>Delivery addresses and order history. The seller and the courier see only what they need to deliver your order.</dd>
+      </div>
+      <div>
+        <dt>Payments</dt>
+        <dd>Online payments are handled by Razorpay. We don't store your card or UPI details.</dd>
+      </div>
+      <div>
+        <dt>Your city</dt>
+        <dd>Read from your default address, so we can show you products from weavers across other districts first.</dd>
+      </div>
+      <div>
+        <dt>Site statistics</dt>
+        <dd>
+          Only if you allow analytics cookies: the pages you view, your device type and how you reached us (for example an Instagram link).
+          These use random ids, never your name or phone number.
+        </dd>
+      </div>
+    </dl>
+    <p class="privacy__contact">
+      To see, correct or delete your data, or to withdraw a consent, email
+      <a href="mailto:manufest@gmail.com" class="privacy__link">manufest&#64;gmail.com</a>.
+    </p>
+  </section>
+</section>

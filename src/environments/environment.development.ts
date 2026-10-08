@@ -26,4 +26,8 @@ export const environment = {
   // (ResponsiveBannerComponent) — same 15 minutes as production. Drop it
   // to e.g. 10 * 1000 temporarily to watch admin changes land quickly.
   bannerPollMs: 15 * 60 * 1000,
+  // Google Analytics 4 measurement ID (G-XXXXXXXXXX). Empty = GA off; the
+  // first-party Site Analytics beacons still run. GA only ever loads after
+  // the visitor accepts analytics cookies (core/services/analytics.service.ts).
+  gaMeasurementId: '',
 };

@@ -1,0 +1,58 @@
+@if (!consent.decided()) {
+  <section class="cookie-banner" role="region" aria-labelledby="cookieBannerTitle">
+    <div class="cookie-banner__inner container">
+      <div class="cookie-banner__text">
+        <h2 id="cookieBannerTitle" class="cookie-banner__title">Your privacy</h2>
+        <p>
+          We use essential cookies to keep you signed in and your cart working. With your permission, we'd also like to use analytics
+          cookies to see how people use Manufest Weaves, and advertising cookies to measure our ads.
+          <a routerLink="/privacy" class="cookie-banner__link">Privacy &amp; cookies</a>
+        </p>
+      </div>
+      <div class="cookie-banner__actions">
+        <button type="button" class="btn btn--outline" (click)="rejectOptional()">Reject optional</button>
+        <button type="button" class="btn btn--primary" (click)="acceptAll()">Accept all</button>
+        <button type="button" class="cookie-banner__customize" (click)="customize()">Customize</button>
+      </div>
+    </div>
+  </section>
+}
+
+<dialog #preferencesDialog class="cookie-dialog" aria-labelledby="cookieDialogTitle" (close)="onDialogClose()">
+  <form method="dialog" class="cookie-dialog__body" (ngSubmit)="saveChoices()">
+    <h2 id="cookieDialogTitle" class="cookie-dialog__title">Cookie settings</h2>
+    <p class="cookie-dialog__intro">Choose which cookies we can use. You can change this any time from Privacy settings in the footer.</p>
+
+    <div class="cookie-option">
+      <div class="cookie-option__text">
+        <span class="cookie-option__name">Essential</span>
+        <span class="cookie-option__desc">Sign-in, cart, checkout and security. The store can't work without these.</span>
+      </div>
+      <span class="cookie-option__always">Always on</span>
+    </div>
+
+    <label class="cookie-option">
+      <span class="cookie-option__text">
+        <span class="cookie-option__name">Analytics</span>
+        <span class="cookie-option__desc">
+          Counts visits and the pages people view (Google Analytics and our own statistics) so we can improve the store. Your name and
+          phone number are never shared.
+        </span>
+      </span>
+      <input type="checkbox" name="analytics" [(ngModel)]="analytics" class="cookie-option__switch" role="switch" />
+    </label>
+
+    <label class="cookie-option">
+      <span class="cookie-option__text">
+        <span class="cookie-option__name">Advertising</span>
+        <span class="cookie-option__desc">Lets Google measure whether our ads lead to visits and orders.</span>
+      </span>
+      <input type="checkbox" name="ads" [(ngModel)]="ads" class="cookie-option__switch" role="switch" />
+    </label>
+
+    <div class="cookie-dialog__actions">
+      <button type="submit" class="btn btn--outline">Save choices</button>
+      <button type="button" class="btn btn--primary" (click)="acceptAll()">Accept all</button>
+    </div>
+  </form>
+</dialog>

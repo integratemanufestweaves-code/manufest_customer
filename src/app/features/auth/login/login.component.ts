@@ -1,6 +1,6 @@
 import { Component, OnDestroy, OnInit, ViewChild, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router, ActivatedRoute } from '@angular/router';
+import { Router, ActivatedRoute, RouterLink } from '@angular/router';
 
 import { CaptchaAnswer } from '../../../core/models/auth.models';
 import { AuthService } from '../../../core/services/auth.service';
@@ -9,6 +9,7 @@ import { OtpInputComponent } from '../../../shared/otp-input/otp-input.component
 import { OtpTimerComponent } from '../../../shared/otp-timer/otp-timer.component';
 import { CartService } from '../../../core/services/cart.service';
 import { WishlistService } from '../../../core/services/wishlist.service';
+import { ConsentService } from '../../../core/services/consent.service';
 
 type Step = 'enter-number' | 'enter-code' | 'enter-name';
 
@@ -41,7 +42,7 @@ const RESTART_CODES = new Set(['SIGNUP_TOKEN_INVALID', 'SIGNUP_CONFLICT']);
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [FormsModule, OtpInputComponent, OtpTimerComponent, CaptchaComponent],
+  imports: [FormsModule, RouterLink, OtpInputComponent, OtpTimerComponent, CaptchaComponent],
   templateUrl: './login.component.html',
   styleUrl: './login.component.scss',
 })
@@ -49,6 +50,7 @@ export class LoginComponent implements OnInit, OnDestroy {
   private readonly auth = inject(AuthService);
   private readonly cart = inject(CartService);
   private readonly wishlist = inject(WishlistService);
+  private readonly consent = inject(ConsentService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
 
@@ -65,6 +67,10 @@ export class LoginComponent implements OnInit, OnDestroy {
   mobileNumber = '';
   otpCode = '';
   fullName = '';
+  /** Required: Terms of Use + Privacy Policy. Recorded server-side once
+   * signed in (ConsentService), together with the optional offers opt-in. */
+  acceptTerms = false;
+  marketingOptIn = false;
   private challengeId: string | null = null;
   private signupToken: string | null = null;
   readonly maskedMobile = signal<string | null>(null);
@@ -111,8 +117,12 @@ export class LoginComponent implements OnInit, OnDestroy {
     }, 1000);
   }
 
-  private redirectAfterSignIn(): void {
+  private redirectAfterSignIn(source: 'login' | 'signup'): void {
     this.signupToken = null;
+    // Fire and forget: a failed consent write never blocks sign-in.
+    this.consent.recordAccountConsents(this.marketingOptIn, source).subscribe();
+    // A cookie choice made as a guest goes on the customer's record too.
+    this.consent.syncCookiePreferences('cookie_banner').subscribe();
     this.cart.refresh();
     this.wishlist.refresh();
     const redirectTo = this.route.snapshot.queryParamMap.get('redirectTo');
@@ -141,6 +151,10 @@ export class LoginComponent implements OnInit, OnDestroy {
   requestOtp(): void {
     if (!MOBILE_PATTERN.test(this.mobileNumber)) {
       this.error.set('Enter a valid 10-digit mobile number.');
+      return;
+    }
+    if (!this.acceptTerms) {
+      this.error.set('Please agree to the Terms of Use and Privacy Policy to continue.');
       return;
     }
     const captcha = this.captcha();
@@ -184,7 +198,7 @@ export class LoginComponent implements OnInit, OnDestroy {
     this.auth.verifyOtp({ challengeId: this.challengeId, code: this.otpCode }).subscribe({
       next: (res) => {
         if (res.status === 'authenticated') {
-          this.redirectAfterSignIn();
+          this.redirectAfterSignIn('login');
           return;
         }
         this.clearOtpTimer();
@@ -221,7 +235,7 @@ export class LoginComponent implements OnInit, OnDestroy {
     this.error.set(null);
     this.submitting.set(true);
     this.auth.completeSignup({ signupToken: this.signupToken, fullName: name }).subscribe({
-      next: () => this.redirectAfterSignIn(),
+      next: () => this.redirectAfterSignIn('signup'),
       error: (err) => {
         if (RESTART_CODES.has(err?.code)) {
           this.restart(err?.message || 'Please verify your mobile number again.');
