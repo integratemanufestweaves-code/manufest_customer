@@ -207,13 +207,17 @@ export class AccountComponent implements OnInit, OnDestroy {
       .updateProfile({ fullName, firstName, lastName, dob: this.dob || undefined, ...(emailChanged ? { email } : {}) })
       .subscribe({
       next: () => {
-        this.auth.me().subscribe();
         if (!mobileChanged) {
-          this.profileSaving.set(false);
-          this.profileSaved.set('Profile updated.');
-          this.profileMode.set('view');
+          // The view card reads firstName/lastName/dob, so re-sync them from
+          // what the server actually stored (it sanitizes names, e.g. strips
+          // tags) before showing it — not the raw text that was typed.
+          this.auth.me().subscribe({
+            next: () => this.finishProfileSave(true),
+            error: () => this.finishProfileSave(false),
+          });
           return;
         }
+        this.auth.me().subscribe();
         this.sendMobileOtp();
       },
       error: (err) => {
@@ -225,6 +229,15 @@ export class AccountComponent implements OnInit, OnDestroy {
         this.profileSaving.set(false);
       },
     });
+  }
+
+  /** `resync` is false when the profile re-fetch failed — the save itself
+   * succeeded, so still leave edit mode, just without fresher values. */
+  private finishProfileSave(resync: boolean): void {
+    if (resync) this.resetProfileForm();
+    this.profileSaving.set(false);
+    this.profileSaved.set('Profile updated.');
+    this.profileMode.set('view');
   }
 
   /** Name/dob are already saved by this point — only the number is pending. */

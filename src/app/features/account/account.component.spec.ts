@@ -136,6 +136,28 @@ describe('AccountComponent', () => {
       expect(updateSpy).toHaveBeenCalledWith(jasmine.objectContaining({ email: '' }));
     });
 
+    it('after saving, shows the name the server stored (sanitized), not the raw text typed', () => {
+      setup(makeProfile());
+      spyOn(customerService, 'updateProfile').and.returnValue(of({ status: 'ok' }));
+      (auth.me as jasmine.Spy).and.callFake(() => {
+        const stored = makeProfile({ firstName: 'QA15', lastName: 'K', fullName: 'QA15 K' });
+        (auth as any).currentUserSignal.set(stored);
+        return of(stored);
+      });
+      component.startEditProfile();
+      component.firstName = '<b>QA15</b>';
+      component.saveProfile();
+      fixture.detectChanges();
+
+      expect(component.profileMode()).toBe('view');
+      expect(component.firstName).toBe('QA15');
+      const values = Array.from(fixture.nativeElement.querySelectorAll('.profile-view__item dd') as NodeListOf<HTMLElement>).map((el) =>
+        el.textContent!.trim(),
+      );
+      expect(values).toContain('QA15');
+      expect(values.join(' ')).not.toContain('<b>');
+    });
+
     it('shows EMAIL_TAKEN under the email field, not as a general error', () => {
       setup(makeProfile());
       spyOn(customerService, 'updateProfile').and.returnValue(
