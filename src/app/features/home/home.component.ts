@@ -165,7 +165,7 @@ export class HomeComponent implements OnInit {
     name: 'Annapoorna Handloom Works',
     location: 'Kanchipuram',
     quote:
-      "We have been weaving sarees for generations, carrying forward techniques passed down through our family. Every saree made in our unit is crafted with care, attention to detail, and respect for tradition. Partnering with Manufest Weaves allows us to bring our sarees directly to customers, ensuring authenticity, fair pricing, and uncompromised quality.",
+      "We have been weaving sarees for generations, carrying forward techniques passed down through our family. Every saree made in our unit is crafted with care, attention to detail, and respect for tradition. Partnering with Manufest Weave allows us to bring our sarees directly to customers, ensuring authenticity, fair pricing, and uncompromised quality.",
     author: 'Sai Kumar, Manager',
   };
 
@@ -178,7 +178,7 @@ export class HomeComponent implements OnInit {
   ];
 
   /** "Start selling" links out to the separate manufest_seller app — same
-   * destination as the footer's "Sell on Manufest Weaves" link. */
+   * destination as the footer's "Sell on Manufest Weave" link. */
   readonly sellerAppUrl = environment.sellerAppUrl;
 
   /** Static placeholder — see this class's header comment. The CTA under

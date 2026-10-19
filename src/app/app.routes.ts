@@ -32,22 +32,22 @@ export const routes: Routes = [
   {
     path: '',
     loadComponent: () => import('./features/home/home.component').then((m) => m.HomeComponent),
-    title: 'Manufest Weaves — Direct from manufacturer',
+    title: 'Manufest Weave — Direct from manufacturer',
   },
   {
     path: 'product/:productUuid',
     loadComponent: () => import('./features/product-detail/product-detail.component').then((m) => m.ProductDetailComponent),
-    title: 'Manufest Weaves — Product',
+    title: 'Manufest Weave — Product',
   },
   {
     path: 'new-arrivals',
     loadComponent: () => import('./features/product-listing/product-listing.component').then((m) => m.ProductListingComponent),
-    title: 'Manufest Weaves — New Arrivals',
+    title: 'Manufest Weave — New Arrivals',
   },
   {
     path: 'category/:categoryUuid',
     loadComponent: () => import('./features/product-listing/product-listing.component').then((m) => m.ProductListingComponent),
-    title: 'Manufest Weaves — Shop by Category',
+    title: 'Manufest Weave — Shop by Category',
   },
 
   // ---- account / auth ----
@@ -59,13 +59,13 @@ export const routes: Routes = [
   {
     path: 'login',
     loadComponent: () => import('./features/auth/login/login.component').then((m) => m.LoginComponent),
-    title: 'Manufest Weaves — Sign in',
+    title: 'Manufest Weave — Sign in',
   },
   { path: 'register', redirectTo: 'login', pathMatch: 'full' },
   {
     path: 'account',
     loadComponent: () => import('./features/account/account.component').then((m) => m.AccountComponent),
-    title: 'Manufest Weaves — My account',
+    title: 'Manufest Weave — My account',
     canActivate: [customerAuthGuard],
   },
 
@@ -76,13 +76,13 @@ export const routes: Routes = [
   {
     path: 'cart',
     loadComponent: () => import('./features/cart/cart.component').then((m) => m.CartComponent),
-    title: 'Manufest Weaves — Cart',
+    title: 'Manufest Weave — Cart',
     canActivate: [customerAuthGuard],
   },
   {
     path: 'wishlist',
     loadComponent: () => import('./features/wishlist/wishlist.component').then((m) => m.WishlistComponent),
-    title: 'Manufest Weaves — Wishlist',
+    title: 'Manufest Weave — Wishlist',
     canActivate: [customerAuthGuard],
   },
 
@@ -95,26 +95,26 @@ export const routes: Routes = [
   {
     path: 'checkout',
     loadComponent: () => import('./features/checkout/checkout.component').then((m) => m.CheckoutComponent),
-    title: 'Manufest Weaves — Checkout',
+    title: 'Manufest Weave — Checkout',
     canActivate: [customerAuthGuard],
   },
   {
     path: 'orders',
     loadComponent: () => import('./features/orders/orders.component').then((m) => m.OrdersComponent),
-    title: 'Manufest Weaves — Your orders',
+    title: 'Manufest Weave — Your orders',
     canActivate: [customerAuthGuard],
   },
   {
     path: 'orders/:orderUuid',
     loadComponent: () => import('./features/order-detail/order-detail.component').then((m) => m.OrderDetailComponent),
-    title: 'Manufest Weaves — Order detail',
+    title: 'Manufest Weave — Order detail',
     canActivate: [customerAuthGuard],
   },
 
   {
     path: 'notifications',
     loadComponent: () => import('./features/notifications/notifications.component').then((m) => m.NotificationsComponent),
-    title: 'Manufest Weaves — Notifications',
+    title: 'Manufest Weave — Notifications',
     canActivate: [customerAuthGuard],
   },
   // Search results are the regular listing page with `?q=` set (manufest_be
@@ -123,7 +123,7 @@ export const routes: Routes = [
   {
     path: 'search',
     loadComponent: () => import('./features/product-listing/product-listing.component').then((m) => m.ProductListingComponent),
-    title: 'Manufest Weaves — Search',
+    title: 'Manufest Weave — Search',
   },
 
   // ---- browse (nav bar) ----
@@ -134,7 +134,7 @@ export const routes: Routes = [
   {
     path: 'shop',
     loadComponent: () => import('./features/product-listing/product-listing.component').then((m) => m.ProductListingComponent),
-    title: 'Manufest Weaves — Shop',
+    title: 'Manufest Weave — Shop',
   },
   { path: 'origin', redirectTo: 'shop', pathMatch: 'full' },
   { path: 'fabric', redirectTo: 'shop', pathMatch: 'full' },
@@ -169,19 +169,19 @@ export const routes: Routes = [
   {
     path: 'faq',
     loadComponent: () => import('./features/faq/faq.component').then((m) => m.FaqComponent),
-    title: "Manufest Weaves — FAQ's",
+    title: "Manufest Weave — FAQ's",
   },
   {
     path: 'help-center',
     loadComponent: () => import('./features/help-center/help-center.component').then((m) => m.HelpCenterComponent),
-    title: 'Manufest Weaves — Help center',
+    title: 'Manufest Weave — Help center',
   },
   // Cookie settings, offers opt-in and what we collect (2026-10-08) — the
   // footer's "Privacy Settings" and the sign-in screen's Privacy Policy link.
   {
     path: 'privacy',
     loadComponent: () => import('./features/privacy/privacy.component').then((m) => m.PrivacyComponent),
-    title: 'Manufest Weaves — Privacy & cookies',
+    title: 'Manufest Weave — Privacy & cookies',
   },
   // Linked from the sign-in consent checkbox. The Terms of Use text itself
   // hasn't been written yet.

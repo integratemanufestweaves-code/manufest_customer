@@ -85,11 +85,11 @@ export class ProductCardComponent {
     return from == null ? null : formatPrice(from);
   }
 
-  /** The seller's brand, else their name, else "Manufest Weaves" (same
+  /** The seller's brand, else their name, else "Manufest Weave" (same
    * fallback as main's 3f5e169) — shown under the product name. */
   get sellerLabel(): string {
     const seller = this.product.seller;
-    return seller?.brandName?.trim() || seller?.name?.trim() || 'Manufest Weaves';
+    return seller?.brandName?.trim() || seller?.name?.trim() || 'Manufest Weave';
   }
 
   /** Only an explicit `false` from the API counts — a missing flag

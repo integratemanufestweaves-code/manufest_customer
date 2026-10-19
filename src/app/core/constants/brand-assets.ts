@@ -14,7 +14,7 @@
 export const BRAND_ASSETS = {
   /** Boxed logo mark, no wordmark baked in — use anywhere the brand name is
    * already rendered as its own text label nearby (the storefront header
-   * pairs this with its own "Manufest Weaves" text next to it). Reuses the
+   * pairs this with its own "Manufest Weave" text next to it). Reuses the
    * same transparent-background asset as `favicon` below — the old
    * `Logo-light-without-title.png` had an opaque white square baked in
    * behind the mark (confirmed by inspecting its pixels: every corner was

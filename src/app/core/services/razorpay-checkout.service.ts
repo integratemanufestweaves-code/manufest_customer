@@ -42,7 +42,7 @@ export class RazorpayCheckoutService {
           amount: order.amount,
           currency: order.currency,
           order_id: order.orderId,
-          name: 'Manufest Weaves',
+          name: 'Manufest Weave',
           prefill,
           // Matches --color-primary in styles.scss — Checkout.js can't read
           // a CSS custom property (it's a separately-hosted iframe), so the

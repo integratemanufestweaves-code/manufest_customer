@@ -23,5 +23,5 @@ export class ComingSoonComponent {
   readonly pageTitle = (this.route.snapshot.data['pageTitle'] as string) || 'This page';
   readonly description =
     (this.route.snapshot.data['description'] as string) ||
-    "We're still building this part of Manufest Weaves. Check back soon.";
+    "We're still building this part of Manufest Weave. Check back soon.";
 }

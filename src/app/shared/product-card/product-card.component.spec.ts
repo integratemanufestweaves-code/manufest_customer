@@ -200,11 +200,11 @@ describe('ProductCardComponent', () => {
       expect(component.sellerLabel).toBe('Ravi Kumar');
     });
 
-    it('falls back to "Manufest Weaves" when no seller info came back', () => {
+    it('falls back to "Manufest Weave" when no seller info came back', () => {
       component.product = makeSummary();
       fixture.detectChanges();
-      expect(component.sellerLabel).toBe('Manufest Weaves');
-      expect(fixture.nativeElement.querySelector('.card__seller').textContent.trim()).toBe('Manufest Weaves');
+      expect(component.sellerLabel).toBe('Manufest Weave');
+      expect(fixture.nativeElement.querySelector('.card__seller').textContent.trim()).toBe('Manufest Weave');
     });
   });
 
