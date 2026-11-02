@@ -2,8 +2,11 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { Router, provideRouter } from '@angular/router';
+import { Subject, of, throwError } from 'rxjs';
 
 import { ProductListingComponent } from './product-listing.component';
+import { ProductService } from '../../core/services/product.service';
+import { ProductSummary } from '../../core/models/product.models';
 import { PRICE_BANDS, ProductFilters } from '../../core/models/product-filters.models';
 
 function makeFilters(overrides: Partial<ProductFilters> = {}): ProductFilters {
@@ -48,6 +51,66 @@ describe('ProductListingComponent', () => {
       .sections()
       .filter((s): s is Extract<typeof s, { kind: 'facet' }> => s.kind === 'facet')
       .map((s) => s.group.definition.facet);
+
+  describe('when a search finds nothing', () => {
+    const product = { uuid: 'p-1' } as ProductSummary;
+    const emptyPage = { items: [], meta: { limit: 20, nextCursor: null, hasMore: false } };
+    let service: ProductService;
+
+    const search = () => (component as unknown as { fetchProducts(append: boolean): void }).fetchProducts(false);
+
+    beforeEach(() => {
+      service = TestBed.inject(ProductService);
+      component.searchQuery.set('zzz');
+    });
+
+    it('shows the trending products', () => {
+      spyOn(service, 'listProducts').and.returnValue(of(emptyPage));
+      spyOn(service, 'getTrendingProducts').and.returnValue(of([product]));
+      search();
+      expect(component.trending()).toEqual([product]);
+      expect(component.loading()).toBeFalse();
+    });
+
+    it('stays in its loading state until they arrive', () => {
+      const trending = new Subject<ProductSummary[]>();
+      spyOn(service, 'listProducts').and.returnValue(of(emptyPage));
+      spyOn(service, 'getTrendingProducts').and.returnValue(trending);
+      search();
+      expect(component.loading()).toBeTrue();
+      trending.next([product]);
+      expect(component.loading()).toBeFalse();
+    });
+
+    it('falls back to the plain message when they fail', () => {
+      spyOn(service, 'listProducts').and.returnValue(of(emptyPage));
+      spyOn(service, 'getTrendingProducts').and.returnValue(throwError(() => new Error('down')));
+      search();
+      expect(component.trending()).toEqual([]);
+      expect(component.loading()).toBeFalse();
+    });
+
+    it('ignores a trending reply once a newer search has started', () => {
+      const trending = new Subject<ProductSummary[]>();
+      const list = spyOn(service, 'listProducts').and.returnValue(of(emptyPage));
+      spyOn(service, 'getTrendingProducts').and.returnValue(trending);
+      search();
+      list.and.returnValue(of({ ...emptyPage, items: [product] }));
+      search();
+      trending.next([product]);
+      expect(component.trending()).toEqual([]);
+      expect(component.products()).toEqual([product]);
+    });
+
+    it('does not apply to filters with no search term', () => {
+      component.searchQuery.set(null);
+      spyOn(service, 'listProducts').and.returnValue(of(emptyPage));
+      const trending = spyOn(service, 'getTrendingProducts');
+      search();
+      expect(trending).not.toHaveBeenCalled();
+      expect(component.loading()).toBeFalse();
+    });
+  });
 
   describe('Origin filter is hidden', () => {
     it('no Origin group even when origins have products', () => {

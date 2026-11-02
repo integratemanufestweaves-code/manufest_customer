@@ -1,4 +1,27 @@
-import { formatPrice } from './format-price';
+import { formatPrice, formatRoundedUpPrice } from './format-price';
+
+describe('formatRoundedUpPrice', () => {
+  it('rounds any paise up, never down', () => {
+    expect(formatRoundedUpPrice(2730.1)).toBe('₹2,731');
+    expect(formatRoundedUpPrice(2730.5)).toBe('₹2,731');
+    expect(formatRoundedUpPrice(2730.99)).toBe('₹2,731');
+    expect(formatRoundedUpPrice(10.01)).toBe('₹11');
+  });
+
+  it('leaves a whole-rupee price alone', () => {
+    expect(formatRoundedUpPrice(2731)).toBe('₹2,731');
+    expect(formatRoundedUpPrice(0)).toBe('₹0');
+  });
+
+  it('does not add a rupee for float noise', () => {
+    expect(formatRoundedUpPrice(19.99 + 0.01)).toBe('₹20');
+    expect(formatRoundedUpPrice(2000.0000001)).toBe('₹2,000');
+  });
+
+  it('uses Indian digit grouping', () => {
+    expect(formatRoundedUpPrice(100000.2)).toBe('₹1,00,001');
+  });
+});
 
 describe('formatPrice', () => {
   describe('whole-rupee amounts', () => {

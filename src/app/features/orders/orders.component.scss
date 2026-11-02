@@ -124,6 +124,15 @@
   border-radius: 999px;
 }
 
+.order-card__support {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--color-primary);
+  background: var(--color-bg-tint);
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
 .order-card__refund {
   font-size: 0.7rem;
   font-weight: 700;

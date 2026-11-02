@@ -198,6 +198,14 @@
         </div>
       } @else if (error()) {
         <p class="state-message state-message--error">{{ error() }}</p>
+      } @else if (trending().length > 0) {
+        <p class="listing__no-results">Nothing found for “{{ searchQuery() }}”. Here's what customers are buying right now.</p>
+        <h2 class="listing__trending-title">Most trending products</h2>
+        <div class="grid">
+          @for (product of trending(); track product.uuid) {
+            <app-product-card [product]="product" />
+          }
+        </div>
       } @else if (products().length === 0) {
         <div class="state-message">
           @if (searchQuery()) {

@@ -103,6 +103,8 @@ export class ProductListingComponent implements OnInit, OnDestroy {
   readonly error = signal<string | null>(null);
   readonly nextCursor = signal<string | null>(null);
   readonly hasMore = signal(false);
+  /** "Most trending products": fills the page when a search finds nothing. */
+  readonly trending = signal<ProductSummary[]>([]);
 
   readonly searchQuery = signal<string | null>(null);
   /** The on-page search box (mobile only — the header has one on desktop). */
@@ -297,6 +299,7 @@ export class ProductListingComponent implements OnInit, OnDestroy {
     if (!append) {
       this.loading.set(true);
       this.products.set([]);
+      this.trending.set([]);
     }
     this.error.set(null);
 
@@ -323,14 +326,30 @@ export class ProductListingComponent implements OnInit, OnDestroy {
         this.products.set(append ? [...this.products(), ...page.items.filter((p) => !shown.has(p.uuid))] : page.items);
         this.nextCursor.set(page.meta.nextCursor);
         this.hasMore.set(page.meta.hasMore);
-        this.loading.set(false);
         this.loadingMore.set(false);
+        if (!append && page.items.length === 0 && this.searchQuery()) this.fetchTrending(token);
+        else this.loading.set(false);
       },
       error: (err) => {
         if (token !== this.requestToken) return;
         this.error.set(err?.message || 'Could not load products right now.');
         this.loading.set(false);
         this.loadingMore.set(false);
+      },
+    });
+  }
+
+  /** Keeps the page in its loading state until there's something to show.
+   * If this fails, the plain "nothing found" message still appears. */
+  private fetchTrending(token: number): void {
+    this.productService.getTrendingProducts().subscribe({
+      next: (products) => {
+        if (token !== this.requestToken) return;
+        this.trending.set(products);
+        this.loading.set(false);
+      },
+      error: () => {
+        if (token === this.requestToken) this.loading.set(false);
       },
     });
   }

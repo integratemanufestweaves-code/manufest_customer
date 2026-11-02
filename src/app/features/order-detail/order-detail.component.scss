@@ -80,6 +80,38 @@
   }
 }
 
+.support-requested {
+  margin: 8px 0 16px;
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  background: var(--color-bg-tint);
+  font-size: 0.86rem;
+  line-height: 1.5;
+}
+
+.support-form__hint {
+  margin: 0 0 12px;
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+}
+
+.support-form__label {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 0.82rem;
+  font-weight: 500;
+}
+
+.support-form__input {
+  width: 100%;
+  margin-bottom: 12px;
+  padding: 8px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-size: 16px;
+}
+
 .cancel-confirm {
   margin-top: 4px;
   margin-bottom: 16px;

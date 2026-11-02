@@ -12,7 +12,7 @@ import { ReviewService } from '../../core/services/review.service';
 import { AnalyticsService } from '../../core/services/analytics.service';
 import { ProductDetail, ProductVariant, RelatedProduct } from '../../core/models/product.models';
 import { ProductReview } from '../../core/models/review.models';
-import { formatPrice } from '../../core/utils/format-price';
+import { formatRoundedUpPrice } from '../../core/utils/format-price';
 
 /**
  * `GET /public/products/detail/:productUuid` — see
@@ -224,7 +224,7 @@ export class ProductDetailComponent implements OnInit {
   }
 
   formatPrice(n: number): string {
-    return formatPrice(n);
+    return formatRoundedUpPrice(n);
   }
 
   /** Multi-value attributes (occasions, fabrics, weaves) as one line. */

@@ -5,7 +5,7 @@ import { WishlistService } from '../../core/services/wishlist.service';
 import { CartService } from '../../core/services/cart.service';
 import { ProductService } from '../../core/services/product.service';
 import { WishlistItem } from '../../core/models/wishlist.models';
-import { formatPrice } from '../../core/utils/format-price';
+import { formatRoundedUpPrice } from '../../core/utils/format-price';
 
 /**
  * `GET/POST/DELETE /customer/wishlist*` (`wishlist.api.js`) — product-level,
@@ -54,7 +54,7 @@ export class WishlistComponent implements OnInit {
   }
 
   formatPrice(n: number): string {
-    return formatPrice(n);
+    return formatRoundedUpPrice(n);
   }
 
   thumbnailSrc(item: WishlistItem): string | null {
@@ -69,7 +69,9 @@ export class WishlistComponent implements OnInit {
   priceLabel(item: WishlistItem): string | null {
     const { from, to } = item.product.pricing;
     if (from == null) return null;
-    return from === to ? this.formatPrice(from) : `${this.formatPrice(from)} – ${this.formatPrice(to as number)}`;
+    const fromLabel = this.formatPrice(from);
+    const toLabel = this.formatPrice(to as number);
+    return fromLabel === toLabel ? fromLabel : `${fromLabel} – ${toLabel}`;
   }
 
   notifyMe(item: WishlistItem): void {

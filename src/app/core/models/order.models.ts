@@ -72,6 +72,8 @@ export interface OrderSummary {
    * `null` until then. */
   cancelReason: string | null;
   cancelledAt: string | null;
+  /** When the customer asked for a call back, while that request is open. */
+  supportRequestedAt: string | null;
 }
 
 /** Per-item lifecycle, from `order_items.item_status` — one row per

@@ -144,6 +144,16 @@ export class ProductService {
     );
   }
 
+  /** `GET /public/products/trending` — best sellers of the last 30 days,
+   * topped up with the newest products so it's only empty for an empty
+   * catalog. Shown when a search finds nothing. */
+  getTrendingProducts(limit = 12): Observable<ProductSummary[]> {
+    return this.http.get<ApiSuccess<ProductSummary[]>>(`${this.base}/trending`, { params: { limit: String(limit) } }).pipe(
+      map((res) => res.data),
+      catchError((err) => this.rethrow(err)),
+    );
+  }
+
   /** `GET /public/products/filters` — browse taxonomy + live product
    * counts (see `ProductFilters`). `categoryUuid` scopes the counts to one
    * category, for the `/category/:uuid` listing's sidebar. */

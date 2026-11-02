@@ -67,6 +67,15 @@ export class OrderService {
     );
   }
 
+  /** Asks the support team to call about this order. Asking again while a
+   * request is open is harmless: the backend keeps the one already there. */
+  requestSupportCall(orderUuid: string, payload: { callbackPhone: string; message?: string }): Observable<OrderDetail> {
+    return this.http.post<ApiSuccess<OrderDetail>>(`${this.base}/${orderUuid}/support-request`, payload).pipe(
+      map((res) => res.data),
+      catchError((err) => rethrowApiError(err)),
+    );
+  }
+
   /**
    * `POST /:orderUuid/return-request` — order-level, bulk-capable return
    * request (added 2026-09-22 alongside the admin approval + Razorpay

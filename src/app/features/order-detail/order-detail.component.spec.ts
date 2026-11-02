@@ -4,7 +4,8 @@ import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 
 import { OrderDetailComponent } from './order-detail.component';
-import { OrderItem, Shipment } from '../../core/models/order.models';
+import { OrderDetail, OrderItem, Shipment } from '../../core/models/order.models';
+import { OrderService } from '../../core/services/order.service';
 import { ReviewService } from '../../core/services/review.service';
 import { ProductReview } from '../../core/models/review.models';
 import { of, throwError } from 'rxjs';
@@ -160,5 +161,64 @@ describe('OrderDetailComponent — rate this product', () => {
     const component = create();
     component.submitReview();
     expect(review.create).not.toHaveBeenCalled();
+  });
+});
+
+describe('OrderDetailComponent — request a call back', () => {
+  const baseOrder = { uuid: 'o-1', shippingAddress: { phone: '+919876543210' } } as OrderDetail;
+  let requestSupportCall: jasmine.Spy;
+
+  function create() {
+    TestBed.configureTestingModule({
+      imports: [OrderDetailComponent],
+      providers: [
+        provideRouter([]),
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: ActivatedRoute, useValue: { snapshot: { paramMap: convertToParamMap({ orderUuid: 'o-1' }), queryParamMap: convertToParamMap({}) } } },
+      ],
+    });
+    const component = TestBed.createComponent(OrderDetailComponent).componentInstance;
+    requestSupportCall = spyOn(TestBed.inject(OrderService), 'requestSupportCall');
+    component.order.set(baseOrder);
+    return component;
+  }
+
+  it('starts from the delivery number', () => {
+    const component = create();
+    component.openSupportForm();
+    expect(component.supportPhone).toBe('+919876543210');
+    expect(component.showSupportForm()).toBeTrue();
+  });
+
+  it('refuses a bad number without calling the API', () => {
+    const component = create();
+    component.openSupportForm();
+    component.supportPhone = '12345';
+    component.submitSupportRequest();
+    expect(component.supportError()).toBe('Enter a valid 10-digit mobile number.');
+    expect(requestSupportCall).not.toHaveBeenCalled();
+  });
+
+  it('sends the request and shows the flagged order', () => {
+    const flagged = { ...baseOrder, supportRequestedAt: '2026-11-03T10:00:00Z' };
+    const component = create();
+    requestSupportCall.and.returnValue(of(flagged));
+    component.openSupportForm();
+    component.supportMessage = '  Where is it?  ';
+    component.submitSupportRequest();
+    expect(requestSupportCall).toHaveBeenCalledOnceWith('o-1', { callbackPhone: '+919876543210', message: 'Where is it?' });
+    expect(component.order()).toEqual(flagged);
+    expect(component.showSupportForm()).toBeFalse();
+  });
+
+  it('keeps the form open with the error when it fails', () => {
+    const component = create();
+    requestSupportCall.and.returnValue(throwError(() => ({ message: 'Try later' })));
+    component.openSupportForm();
+    component.submitSupportRequest();
+    expect(component.supportError()).toBe('Try later');
+    expect(component.showSupportForm()).toBeTrue();
+    expect(component.supportSubmitting()).toBeFalse();
   });
 });

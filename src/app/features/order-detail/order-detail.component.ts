@@ -13,7 +13,8 @@ import { InvoiceSummary } from '../../core/models/invoice.models';
 import { saveBlob } from '../../core/utils/save-blob';
 import { OrderDetail, OrderItem, Shipment } from '../../core/models/order.models';
 import { formatPrice } from '../../core/utils/format-price';
-import { RETURN_GUIDELINE } from '../../core/constants/customer-support';
+import { CUSTOMER_SUPPORT, RETURN_GUIDELINE } from '../../core/constants/customer-support';
+import { isValidIndianMobile } from '../../core/utils/address-validation';
 
 /** Mirrors `RETURN_WINDOW_DAYS` (backend, `manufest_be/src/config/env.schema.js`,
  * default 7) — added 2026-09-22 alongside `RETURN_WINDOW_EXPIRED`. There's
@@ -80,6 +81,14 @@ export class OrderDetailComponent implements OnInit {
   cancelReason = '';
   readonly cancelling = signal(false);
   readonly cancelError = signal<string | null>(null);
+
+  /** "Request a call back": flags this order for the support team. */
+  readonly showSupportForm = signal(false);
+  supportPhone = '';
+  supportMessage = '';
+  readonly supportHours = CUSTOMER_SUPPORT.hours;
+  readonly supportSubmitting = signal(false);
+  readonly supportError = signal<string | null>(null);
 
   /** Which return reason panel is open, if any — `mode: 'item'` is the
    * inline per-item panel (mirrors the item's own row, same as
@@ -315,6 +324,42 @@ export class OrderDetailComponent implements OnInit {
       error: (err) => {
         this.cancelError.set(err?.message || 'Could not cancel this order.');
         this.cancelling.set(false);
+      },
+    });
+  }
+
+  /** Starts from the delivery number, which the customer can change. */
+  openSupportForm(): void {
+    this.supportPhone = this.order()?.shippingAddress.phone ?? '';
+    this.supportMessage = '';
+    this.supportError.set(null);
+    this.showSupportForm.set(true);
+  }
+
+  closeSupportForm(): void {
+    this.showSupportForm.set(false);
+  }
+
+  submitSupportRequest(): void {
+    const order = this.order();
+    if (!order) return;
+    const callbackPhone = this.supportPhone.trim();
+    if (!isValidIndianMobile(callbackPhone)) {
+      this.supportError.set('Enter a valid 10-digit mobile number.');
+      return;
+    }
+    this.supportError.set(null);
+    this.supportSubmitting.set(true);
+    const message = this.supportMessage.trim();
+    this.orderService.requestSupportCall(order.uuid, { callbackPhone, message: message || undefined }).subscribe({
+      next: (updated) => {
+        this.order.set(updated);
+        this.supportSubmitting.set(false);
+        this.showSupportForm.set(false);
+      },
+      error: (err) => {
+        this.supportError.set(err?.message || 'Could not send your request. Please try again.');
+        this.supportSubmitting.set(false);
       },
     });
   }

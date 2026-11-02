@@ -6,6 +6,11 @@ export type AddressFieldErrors = Partial<Record<AddressField, string>>;
 const INDIAN_MOBILE = /^[6-9][0-9]{9}$/;
 const INDIAN_PIN_CODE = /^[1-9][0-9]{5}$/;
 
+/** Accepts the forms a stored number comes in: bare, +91, 91 or 0 prefixed. */
+export function isValidIndianMobile(phone: string): boolean {
+  return INDIAN_MOBILE.test(nationalMobileDigits(phone));
+}
+
 /** Digits only, minus a leading +91 / 91 / 0, so "+91 98765 43210" and
  * "098765-43210" both check as the 10-digit number they are. */
 function nationalMobileDigits(phone: string): string {

@@ -397,6 +397,17 @@
   }
 }
 
+.listing__no-results {
+  margin: 0 0 20px;
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+}
+
+.listing__trending-title {
+  margin: 0 0 16px;
+  font-size: 1.25rem;
+}
+
 .listing__load-more {
   display: flex;
   justify-content: center;

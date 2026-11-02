@@ -5,7 +5,7 @@ import { CartService } from '../../core/services/cart.service';
 import { WishlistService } from '../../core/services/wishlist.service';
 import { AuthService } from '../../core/services/auth.service';
 import { ProductCardSummary, ProductVariant } from '../../core/models/product.models';
-import { formatPrice } from '../../core/utils/format-price';
+import { formatRoundedUpPrice } from '../../core/utils/format-price';
 
 /**
  * Reusable product tile for grids (Home's "Featured Products", eventually
@@ -82,7 +82,7 @@ export class ProductCardComponent {
    * photo (manufest_be's THUMBNAIL_ORDER_SQL). */
   get priceLabel(): string | null {
     const { from } = this.product.pricing;
-    return from == null ? null : formatPrice(from);
+    return from == null ? null : formatRoundedUpPrice(from);
   }
 
   /** The seller's brand, else their name, else "Manufest Weave" (same

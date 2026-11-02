@@ -50,7 +50,36 @@
       @if (hasReturnableItems && returnPanel()?.mode !== 'all') {
         <button type="button" class="btn btn--outline" (click)="openOrderReturnForm()">Return order</button>
       }
+      @if (!isUnplaced && !orderDetail.supportRequestedAt && !showSupportForm()) {
+        <button type="button" class="btn btn--outline" (click)="openSupportForm()">Request a call back</button>
+      }
     </div>
+
+    @if (orderDetail.supportRequestedAt) {
+      <p class="support-requested" role="status">
+        <strong>Call back requested.</strong> Our support team will call you about this order. {{ supportHours }}.
+      </p>
+    }
+
+    @if (showSupportForm()) {
+      <div class="cancel-confirm">
+        <p class="cancel-confirm__title">Need help with this order?</p>
+        <p class="support-form__hint">Our support team will call you on this number. {{ supportHours }}.</p>
+        @if (supportError()) {
+          <p class="state-message state-message--error" role="alert">{{ supportError() }}</p>
+        }
+        <label class="support-form__label" for="support-phone">Mobile number</label>
+        <input id="support-phone" class="support-form__input" type="tel" inputmode="tel" autocomplete="tel" maxlength="15" name="supportPhone" [(ngModel)]="supportPhone" />
+        <label class="support-form__label" for="support-message">What do you need help with? (optional)</label>
+        <textarea id="support-message" rows="2" maxlength="500" name="supportMessage" [(ngModel)]="supportMessage"></textarea>
+        <div class="cancel-confirm__actions">
+          <button type="button" class="btn btn--primary" [disabled]="supportSubmitting()" (click)="submitSupportRequest()">
+            {{ supportSubmitting() ? 'Sending…' : 'Request call back' }}
+          </button>
+          <button type="button" class="btn btn--outline" [disabled]="supportSubmitting()" (click)="closeSupportForm()">Never mind</button>
+        </div>
+      </div>
+    }
 
     @if (showCancelForm()) {
       <div class="cancel-confirm">

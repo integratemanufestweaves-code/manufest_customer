@@ -92,7 +92,7 @@ describe('ProductCardComponent', () => {
 
     it('shows only the lowest variant price, not a range, when variant prices differ', () => {
       component.product = makeSummary({ pricing: { from: 57.98, to: 64.47 } });
-      expect(component.priceLabel).toBe('₹57.98');
+      expect(component.priceLabel).toBe('₹58');
     });
 
     it('is null when pricing.from is null (no active variant with pricing)', () => {
@@ -100,9 +100,9 @@ describe('ProductCardComponent', () => {
       expect(component.priceLabel).toBeNull();
     });
 
-    it('shows paise when a price has any (never rounds them away)', () => {
-      component.product = makeSummary({ pricing: { from: 1999.6, to: 1999.6 } });
-      expect(component.priceLabel).toBe('₹1,999.60');
+    it('rounds paise up to the next rupee, never down', () => {
+      component.product = makeSummary({ pricing: { from: 1999.1, to: 1999.1 } });
+      expect(component.priceLabel).toBe('₹2,000');
     });
 
     it('omits paise for whole-rupee prices', () => {
