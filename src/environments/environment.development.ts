@@ -14,7 +14,7 @@
  */
 export const environment = {
   production: false,
-  apiBaseUrl: 'https://manufestweaves.in/api/v1',
+  apiBaseUrl: 'https://manufestweave.in/api/v1',
   // apiBaseUrl: 'http://localhost:4000/api/v1',
   csrfCookieName: 'XSRF-TOKEN',
   csrfHeaderName: 'X-XSRF-TOKEN',
@@ -31,5 +31,5 @@ export const environment = {
   // the visitor accepts analytics cookies (core/services/analytics.service.ts).
   gaMeasurementId: '',
   /** Manufacturer-facing manufest_seller app — every "Sell on Manufest" entry point links out here. */
-  sellerAppUrl: 'https://seller.manufestweaves.in',
+  sellerAppUrl: 'https://seller.manufestweave.in',
 };
