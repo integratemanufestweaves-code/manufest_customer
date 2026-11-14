@@ -23,6 +23,22 @@
   z-index: 40;
   background: var(--color-white);
   border-bottom: 1px solid var(--color-border);
+  transition: transform 0.2s ease;
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+}
+
+/* Phones, scrolling down a product list (ScrollChromeService): slide up out
+   of view. Still sticky, so it keeps its place in the page and nothing below
+   jumps. No transform at all while shown — a transformed ancestor would
+   anchor the fixed-position menu drawer to the header instead of the screen. */
+@media (max-width: 767px) {
+  :host-context(.chrome-hidden) .header {
+    transform: translateY(-100%);
+    box-shadow: none;
+  }
 }
 
 .header__row {

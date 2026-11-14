@@ -65,6 +65,24 @@
   }
 </section>
 
+@if (trending().length > 0) {
+  <section class="section container">
+    <div class="section__header">
+      <div>
+        <h2 class="section__title">Trending now</h2>
+        <p class="section__subtitle">Most ordered in the last 48 hours</p>
+      </div>
+      <a routerLink="/shop" [queryParams]="{ sort: 'best_selling' }" class="section__link">View all &rarr;</a>
+    </div>
+
+    <div class="grid">
+      @for (product of trending(); track product.uuid) {
+        <app-product-card [product]="product" />
+      }
+    </div>
+  </section>
+}
+
 @if (recentlyViewed().length > 0) {
   <section class="section container">
     <div class="section__header">

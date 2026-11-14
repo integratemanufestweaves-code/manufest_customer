@@ -55,7 +55,7 @@
               <span class="pd__price">{{ formatPrice(pricing!.sellingPrice) }}</span>
               @if (pricing!.discountPercent > 0) {
                 <span class="pd__price-strike">{{ formatPrice(pricing!.checkoutPrice) }}</span>
-                <span class="pd__price-off">{{ pricing!.discountPercent }}% off</span>
+                <span class="pd__price-off">{{ pricing!.discountPercent * 100 | number: '1.0-1' }}% off</span>
               }
             </div>
           }

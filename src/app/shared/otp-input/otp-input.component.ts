@@ -116,7 +116,9 @@ export class OtpInputComponent implements ControlValueAccessor, OnInit, AfterVie
 
   private fillFrom(index: number, value: string): void {
     const next = [...this.digits()];
-    let i = index;
+    // A whole code is always the whole code — every box offers
+    // one-time-code autofill, so it can land in whichever box has focus.
+    let i = value.length >= this.length() ? 0 : index;
     for (const ch of value) {
       if (i >= this.length()) break;
       next[i++] = ch;

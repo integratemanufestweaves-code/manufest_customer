@@ -33,6 +33,7 @@ export const routes: Routes = [
     path: '',
     loadComponent: () => import('./features/home/home.component').then((m) => m.HomeComponent),
     title: 'Manufest Weave — Direct from manufacturer',
+    data: { autoHideChrome: true }, // phones: header slides away on scroll (ScrollChromeService)
   },
   {
     path: 'product/:productUuid',
@@ -43,11 +44,13 @@ export const routes: Routes = [
     path: 'new-arrivals',
     loadComponent: () => import('./features/product-listing/product-listing.component').then((m) => m.ProductListingComponent),
     title: 'Manufest Weave — New Arrivals',
+    data: { autoHideChrome: true }, // phones: header slides away on scroll (ScrollChromeService)
   },
   {
     path: 'category/:categoryUuid',
     loadComponent: () => import('./features/product-listing/product-listing.component').then((m) => m.ProductListingComponent),
     title: 'Manufest Weave — Shop by Category',
+    data: { autoHideChrome: true }, // phones: header slides away on scroll (ScrollChromeService)
   },
 
   // ---- account / auth ----
@@ -124,6 +127,7 @@ export const routes: Routes = [
     path: 'search',
     loadComponent: () => import('./features/product-listing/product-listing.component').then((m) => m.ProductListingComponent),
     title: 'Manufest Weave — Search',
+    data: { autoHideChrome: true }, // phones: header slides away on scroll (ScrollChromeService)
   },
 
   // ---- browse (nav bar) ----
@@ -135,6 +139,7 @@ export const routes: Routes = [
     path: 'shop',
     loadComponent: () => import('./features/product-listing/product-listing.component').then((m) => m.ProductListingComponent),
     title: 'Manufest Weave — Shop',
+    data: { autoHideChrome: true }, // phones: header slides away on scroll (ScrollChromeService)
   },
   { path: 'origin', redirectTo: 'shop', pathMatch: 'full' },
   { path: 'fabric', redirectTo: 'shop', pathMatch: 'full' },

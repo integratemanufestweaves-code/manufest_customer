@@ -37,6 +37,10 @@ export type ProductThumbnail = Pick<MediaItem, 'url' | 'mediaType'> | null;
 export interface ProductPriceRange {
   from: number | null;
   to: number | null;
+  /** Public list routes only: the `from` variant's price before discount,
+   * and its discount as a fraction (0.1 = 10% off). Absent elsewhere. */
+  fromOriginalPrice?: number | null;
+  fromDiscountPercent?: number;
 }
 
 /** Minimal shape `ProductCardComponent` actually reads (uuid, name, price
@@ -62,6 +66,17 @@ export interface ProductCardSummary {
    * route). Absent on recently-viewed/wishlist rows — the card then shows
    * no stars. */
   rating?: ProductRating;
+  /** Active variants, cheapest first — the card's colour swatches. Public
+   * list routes only; absent on recently-viewed/wishlist rows. */
+  variants?: CardVariant[];
+}
+
+export interface CardVariant {
+  uuid: string;
+  variantName: string | null;
+  size: string | null;
+  colorHex: string | null;
+  isInStock: boolean;
 }
 
 /** Star rating from customers' active reviews — `average` is null (and
@@ -102,6 +117,7 @@ export interface VariantPricing {
   gstPercentOnNetAmount: number;
   gstPriceOnNetAmount: number;
   checkoutPrice: number;
+  /** A fraction, not a percent: 10% off arrives as 0.1 — multiply by 100 to show it. */
   discountPercent: number;
   discountPrice: number;
   sellingPrice: number;

@@ -36,7 +36,7 @@ type FacetSelection = Record<FacetKey, string[]>;
 
 const emptySelection = (): FacetSelection => Object.fromEntries(FACETS.map((f) => [f.facet, []])) as unknown as FacetSelection;
 
-const SORT_VALUES: ProductSort[] = ['recommended', 'newest', 'oldest', 'price_asc', 'price_desc'];
+const SORT_VALUES: ProductSort[] = ['recommended', 'best_selling', 'popular', 'newest', 'price_asc', 'price_desc'];
 
 /** Groups longer than this collapse behind a "+ N more" toggle. */
 const COLLAPSED_OPTION_LIMIT = 5;
@@ -87,10 +87,11 @@ export class ProductListingComponent implements OnInit, OnDestroy {
 
   readonly sortOptions: Array<{ value: ProductSort; label: string }> = [
     { value: 'recommended', label: 'Recommended' },
-    { value: 'newest', label: 'Newest' },
-    { value: 'price_asc', label: 'Price: low to high' },
+    { value: 'best_selling', label: 'Best selling' },
+    { value: 'popular', label: 'Most popular' },
     { value: 'price_desc', label: 'Price: high to low' },
-    { value: 'oldest', label: 'Oldest' },
+    { value: 'price_asc', label: 'Price: low to high' },
+    { value: 'newest', label: 'Newest' },
   ];
 
   /** `/new-arrivals` keeps its own heading; `/shop` is the generic one. */

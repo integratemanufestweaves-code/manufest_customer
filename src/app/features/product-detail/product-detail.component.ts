@@ -1,4 +1,5 @@
 import { Component, computed, DestroyRef, OnInit, inject, signal } from '@angular/core';
+import { DecimalPipe } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Subscription } from 'rxjs';
@@ -53,7 +54,7 @@ function cheapestVariant(variants: ProductVariant[]): ProductVariant | null {
 @Component({
   selector: 'app-product-detail',
   standalone: true,
-  imports: [RouterLink, ProductCardComponent],
+  imports: [RouterLink, ProductCardComponent, DecimalPipe],
   templateUrl: './product-detail.component.html',
   styleUrl: './product-detail.component.scss',
 })

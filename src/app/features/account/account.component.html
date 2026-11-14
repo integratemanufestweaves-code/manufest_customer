@@ -109,6 +109,7 @@
           }
         } @else if (profileMode() === 'edit') {
           <form class="account-form" (ngSubmit)="saveProfile()" novalidate>
+            <p class="upload-limit">Profile photo: JPG, PNG or WebP, up to 5 MB</p>
             <label class="account-form__photo">
               @if (profile()?.profileImage; as photoUrl) {
                 <img class="account-form__photo-preview" [src]="photoUrl" alt="" width="48" height="48" />
@@ -117,7 +118,7 @@
                   <svg viewBox="0 0 24 24" fill="none" width="22" height="22"><circle cx="12" cy="8" r="3.5" stroke="currentColor" stroke-width="1.5"/><path d="M4.5 20c1.4-3.6 4.4-5.5 7.5-5.5s6.1 1.9 7.5 5.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
                 </span>
               }
-              <input type="file" accept="image/*" (change)="onPhotoSelected($event)" [disabled]="photoUploading()" />
+              <input type="file" accept="image/jpeg,image/png,image/webp" (change)="onPhotoSelected($event)" [disabled]="photoUploading()" />
               <span class="account-form__photo-text">
                 {{ photoUploading() ? 'Uploading…' : (profile()?.profileImage ? 'Change profile picture' : 'Add profile picture') }}
                 <small>A square photo works best</small>

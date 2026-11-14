@@ -287,7 +287,7 @@ describe('ProductDetailComponent', () => {
       setup('prod-1');
       const discounted = makeVariant({
         uuid: 'v1',
-        pricing: { sellerPrice: 4000, commissionPercent: 10, commissionPrice: 400, gstPercentForCommission: 18, gstPriceForCommission: 72, netAmount: 4472, gstPercentOnNetAmount: 0, gstPriceOnNetAmount: 0, checkoutPrice: 6000, discountPercent: 20, discountPrice: 1200, sellingPrice: 4800 },
+        pricing: { sellerPrice: 4000, commissionPercent: 10, commissionPrice: 400, gstPercentForCommission: 18, gstPriceForCommission: 72, netAmount: 4472, gstPercentOnNetAmount: 0, gstPriceOnNetAmount: 0, checkoutPrice: 6000, discountPercent: 0.2, discountPrice: 1200, sellingPrice: 4800 },
       });
       spyOn(productService, 'getProductDetail').and.returnValue(of(makeDetail([discounted])));
       fixture.detectChanges();

@@ -101,12 +101,12 @@ describe('ProductService', () => {
     });
 
     it('forwards categoryUuid/priceMin/priceMax/sort together (AND-combinable)', () => {
-      service.listProducts({ categoryUuid: 'cat-1', priceMin: 1000, priceMax: 5000, sort: 'oldest' }).subscribe();
+      service.listProducts({ categoryUuid: 'cat-1', priceMin: 1000, priceMax: 5000, sort: 'best_selling' }).subscribe();
       const req = httpMock.expectOne((r) => r.url === `${base}/list`);
       expect(req.request.params.get('categoryUuid')).toBe('cat-1');
       expect(req.request.params.get('priceMin')).toBe('1000');
       expect(req.request.params.get('priceMax')).toBe('5000');
-      expect(req.request.params.get('sort')).toBe('oldest');
+      expect(req.request.params.get('sort')).toBe('best_selling');
       req.flush({ success: true, data: [] });
     });
 
@@ -161,6 +161,25 @@ describe('ProductService', () => {
       const req = httpMock.expectOne((r) => r.url === `${base}/list`);
       req.error(new ProgressEvent('error'), { status: 0, statusText: 'Unknown Error' });
       expect(error.code).toBe('NETWORK_ERROR');
+    });
+  });
+
+  describe('getTrendingProducts', () => {
+    it('asks for the default 30-day, topped-up list when no hours are given', () => {
+      service.getTrendingProducts(12).subscribe();
+      const req = httpMock.expectOne((r) => r.url.endsWith('/public/products/trending'));
+      expect(req.request.params.get('limit')).toBe('12');
+      expect(req.request.params.has('hours')).toBeFalse();
+      expect(req.request.params.has('fill')).toBeFalse();
+      req.flush({ success: true, data: [] });
+    });
+
+    it('asks for only the last N hours, with no top-up, for the home page row', () => {
+      service.getTrendingProducts(10, 48).subscribe();
+      const req = httpMock.expectOne((r) => r.url.endsWith('/public/products/trending'));
+      expect(req.request.params.get('hours')).toBe('48');
+      expect(req.request.params.get('fill')).toBe('false');
+      req.flush({ success: true, data: [] });
     });
   });
 

@@ -12,6 +12,12 @@ import { AddressFieldErrors, trimAddressForm, validateAddressForm } from '../../
 import { OtpInputComponent } from '../../shared/otp-input/otp-input.component';
 import { OtpTimerComponent } from '../../shared/otp-timer/otp-timer.component';
 
+/** Profile photo limit (2026-11-14): 5MB, the same photo limit every app
+ * uses; manufest_be's tryUploadBase64File enforces it too. Checked here so
+ * a too-big photo fails instantly instead of after the upload. */
+const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
+const PHOTO_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+
 type AccountTab = 'profile' | 'addresses';
 /** `view` = read-only summary, `edit` = the form, `verify-mobile` = entering
  * the code sent to a newly entered mobile number after saving the form. */
@@ -329,6 +335,16 @@ export class AccountComponent implements OnInit, OnDestroy {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
     if (!file) return;
+    input.value = '';
+
+    if (!PHOTO_MIME_TYPES.includes(file.type)) {
+      this.photoWarning.set('Please choose a JPG, PNG or WebP photo.');
+      return;
+    }
+    if (file.size > MAX_PHOTO_BYTES) {
+      this.photoWarning.set('That photo is over 5 MB. Please choose a smaller one.');
+      return;
+    }
 
     this.photoWarning.set(null);
     this.photoUploading.set(true);

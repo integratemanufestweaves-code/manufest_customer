@@ -78,6 +78,17 @@
   }
 }
 
+/* Where sticky page bars (the listing's Filters/Sort bar) sit: under the
+   header, or at the very top while ScrollChromeService has slid the header
+   away on a phone (`html.chrome-hidden`). */
+:root {
+  --chrome-top: var(--header-height);
+}
+
+:root.chrome-hidden {
+  --chrome-top: 0px;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -330,4 +341,35 @@ input[type='radio'] {
   overflow: hidden;
   clip: rect(0 0 0 0);
   white-space: nowrap;
+}
+
+/* Upload size note (2026-11-14) — sits under the page/section title, above
+   every upload area, so the limit is known before a file is picked. Same
+   class in manufest_customer, manufest_seller and manufest_admin. */
+.upload-limit {
+  display: inline-flex;
+  align-self: flex-start; // don't stretch full-width inside column layouts
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 12px;
+  padding: 4px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-bg-tint);
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--color-text-muted);
+
+  &::before {
+    content: 'i';
+    display: inline-grid;
+    place-items: center;
+    flex: none;
+    width: 14px;
+    height: 14px;
+    border: 1px solid currentColor;
+    border-radius: 50%;
+    font-size: 10px;
+    font-weight: 700;
+  }
 }

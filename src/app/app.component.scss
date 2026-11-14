@@ -1,0 +1,8 @@
+/* A block, not the default inline: the header's `position: sticky` is held
+   by this box (header.component.scss's `display: contents` note). As an
+   inline it fell back to <body>, which is only one screen tall
+   (`html, body { height: 100% }`), so the header stopped sticking — and
+   couldn't slide back in on scroll-up — after about a screen of scrolling. */
+:host {
+  display: block;
+}

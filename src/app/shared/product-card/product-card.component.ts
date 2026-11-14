@@ -4,8 +4,10 @@ import { ProductService } from '../../core/services/product.service';
 import { CartService } from '../../core/services/cart.service';
 import { WishlistService } from '../../core/services/wishlist.service';
 import { AuthService } from '../../core/services/auth.service';
-import { ProductCardSummary, ProductVariant } from '../../core/models/product.models';
+import { CardVariant, ProductCardSummary, ProductVariant } from '../../core/models/product.models';
 import { formatRoundedUpPrice } from '../../core/utils/format-price';
+
+const MAX_CARD_SWATCHES = 5;
 
 /**
  * Reusable product tile for grids (Home's "Featured Products", eventually
@@ -15,10 +17,10 @@ import { formatRoundedUpPrice } from '../../core/utils/format-price';
  * (`design-reference/user/home/home-01-desktop.png`) also shows a star
  * rating and review count — shown since 2026-10-07 from `product.rating`
  * (active customer reviews; hidden when there are none) — plus a
- * strikethrough "original" price next to a discounted one, and a "Limited
- * Stock" label, neither of which exists on the public list API today (list
- * summaries carry a `pricing: {from, to}` *range*, not an original-vs-
- * discounted pair; and list summaries carry no per-variant stock data).
+ * strikethrough "original" price next to a discounted one (shown since
+ * 2026-11-14 from `pricing.fromOriginalPrice`/`fromDiscountPercent`), and a
+ * "Limited Stock" label, which the public list API still can't back (list
+ * summaries carry no per-variant stock data).
  * Rather than invent plausible-looking numbers, this card only renders
  * what's real. See manufest_customer's own `.claude/knowledge/01-home-page.md`
  * for the full list of these deviations (same documentation discipline
@@ -83,6 +85,43 @@ export class ProductCardComponent {
   get priceLabel(): string | null {
     const { from } = this.product.pricing;
     return from == null ? null : formatRoundedUpPrice(from);
+  }
+
+  /** The offer on that same cheapest variant (2026-11-14): its pre-discount
+   * price, struck through, and "N% off". Both null when it isn't discounted
+   * or the route doesn't send offer data (recently viewed, wishlist). */
+  get originalPriceLabel(): string | null {
+    const { fromOriginalPrice, fromDiscountPercent } = this.product.pricing;
+    return fromDiscountPercent && fromOriginalPrice ? formatRoundedUpPrice(fromOriginalPrice) : null;
+  }
+
+  /** "3 colours" when every variant is a colour, else "3 options". */
+  get optionsLabel(): string {
+    const variants = this.product.variants ?? [];
+    const noun = variants.every((v) => v.colorHex) ? 'colour' : 'option';
+    return `${variants.length} ${noun}${variants.length === 1 ? '' : 's'}`;
+  }
+
+  variantLabel(variant: CardVariant): string {
+    const name = variant.variantName || variant.size || variant.colorHex || 'Option';
+    return variant.isInStock ? name : `${name} (out of stock)`;
+  }
+
+  /** Colour/size swatches shown on the card (2026-11-14) — only when there's
+   * a real choice, capped so a long list doesn't push the price down.
+   * Clicking one opens the product page on that variant. */
+  get cardVariants(): CardVariant[] {
+    const variants = this.product.variants ?? [];
+    return variants.length > 1 ? variants.slice(0, MAX_CARD_SWATCHES) : [];
+  }
+
+  get moreVariantsCount(): number {
+    return Math.max((this.product.variants?.length ?? 0) - MAX_CARD_SWATCHES, 0);
+  }
+
+  get discountLabel(): string | null {
+    const { fromOriginalPrice, fromDiscountPercent } = this.product.pricing;
+    return fromDiscountPercent && fromOriginalPrice ? `${+(fromDiscountPercent * 100).toFixed(1)}% off` : null;
   }
 
   /** The seller's brand, else their name, else "Manufest Weave" (same
@@ -176,7 +215,7 @@ export class ProductCardComponent {
     });
   }
 
-  openVariant(variant: ProductVariant): void {
+  openVariant(variant: Pick<ProductVariant, 'uuid'>): void {
     this.router.navigate(['/product', this.product.uuid], { queryParams: { variant: variant.uuid } });
   }
 

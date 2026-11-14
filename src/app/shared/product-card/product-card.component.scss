@@ -1,6 +1,14 @@
+// Fill the grid cell so every card in a row is the same height, whatever
+// it shows (rating, strike price, colour swatches).
+:host {
+  display: block;
+  height: 100%;
+}
+
 .card {
   display: flex;
   flex-direction: column;
+  height: 100%;
   background: var(--color-white);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
@@ -13,7 +21,10 @@
   }
 }
 
+// Grows to take the spare height, so the swatches and the button below it
+// line up along the bottom of every card in the row.
 .card__link {
+  flex: 1 0 auto;
   display: flex;
   flex-direction: column;
   color: inherit;
@@ -290,8 +301,114 @@
 }
 
 .card__price {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 8px;
   margin: 4px 0 0;
   font-weight: 700;
   color: var(--color-price);
   font-size: 0.95rem;
+}
+
+// Same look as the product page's .pd__price-strike / .pd__price-off.
+.card__price-strike {
+  text-decoration: line-through;
+  color: var(--color-text-faint);
+  font-weight: 400;
+  font-size: 0.82rem;
+}
+
+.card__price-off {
+  color: var(--color-success);
+  font-weight: 600;
+  font-size: 0.78rem;
+}
+
+.card__options {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: -2px 12px 12px;
+}
+
+// Colour dot: the colour, a white gap, then a thin ring — reads cleanly on
+// white and on very light colours alike.
+.card__option-dot {
+  position: relative;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--swatch);
+  box-shadow: 0 0 0 2px var(--color-white), 0 0 0 3px var(--color-border);
+  cursor: pointer;
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
+
+  &:hover,
+  &:focus-visible {
+    outline: none;
+    transform: scale(1.08);
+    box-shadow: 0 0 0 2px var(--color-white), 0 0 0 3.5px var(--color-text-muted);
+  }
+}
+
+.card__option-chip {
+  padding: 3px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-white);
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+  max-width: 8em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+
+  &:hover,
+  &:focus-visible {
+    outline: none;
+    border-color: var(--color-text-muted);
+    color: var(--color-text);
+  }
+}
+
+// Out of stock: faded, with a diagonal strike through the swatch.
+.card__option--out {
+  opacity: 0.45;
+
+  &.card__option-dot::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: -1px;
+    width: 1.5px;
+    height: 22px;
+    background: var(--color-text-muted);
+    transform: translateX(-50%) rotate(45deg);
+  }
+
+  &.card__option-chip {
+    text-decoration: line-through;
+  }
+}
+
+.card__option-more {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+
+  &:hover {
+    color: var(--color-text);
+  }
+}
+
+.card__options-count {
+  margin-left: auto;
+  font-size: 0.75rem;
+  color: var(--color-text-faint);
 }

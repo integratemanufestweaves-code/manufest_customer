@@ -14,7 +14,7 @@ export interface ProductPage {
 /** `recommended` (manufest_be's default since 2026-10-08) is the fair
  * storefront order: seeded shuffle, sellers spread out so no one seller's
  * uploads fill a page, the signed-in customer's own district last. */
-export type ProductSort = 'recommended' | 'newest' | 'oldest' | 'price_asc' | 'price_desc';
+export type ProductSort = 'recommended' | 'best_selling' | 'popular' | 'newest' | 'price_asc' | 'price_desc';
 
 export interface ListProductsOptions {
   cursor?: string | null;
@@ -146,9 +146,16 @@ export class ProductService {
 
   /** `GET /public/products/trending` — best sellers of the last 30 days,
    * topped up with the newest products so it's only empty for an empty
-   * catalog. Shown when a search finds nothing. */
-  getTrendingProducts(limit = 12): Observable<ProductSummary[]> {
-    return this.http.get<ApiSuccess<ProductSummary[]>>(`${this.base}/trending`, { params: { limit: String(limit) } }).pipe(
+   * catalog. Shown when a search finds nothing. `recentHours` (home page
+   * "Trending now") narrows the window and drops the top-up, so only
+   * products actually ordered in those hours come back — possibly none. */
+  getTrendingProducts(limit = 12, recentHours?: number): Observable<ProductSummary[]> {
+    const params: Record<string, string> = { limit: String(limit) };
+    if (recentHours) {
+      params['hours'] = String(recentHours);
+      params['fill'] = 'false';
+    }
+    return this.http.get<ApiSuccess<ProductSummary[]>>(`${this.base}/trending`, { params }).pipe(
       map((res) => res.data),
       catchError((err) => this.rethrow(err)),
     );

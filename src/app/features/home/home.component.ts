@@ -11,6 +11,9 @@ import { ProductSummary } from '../../core/models/product.models';
 import { Category } from '../../core/models/category.models';
 import { RecentlyViewedItem } from '../../core/models/recently-viewed.models';
 
+/** "Trending now" looks at orders placed in this many hours. */
+const TRENDING_HOURS = 48;
+
 interface TrustBadge {
   title: string;
   desc: string;
@@ -213,6 +216,11 @@ export class HomeComponent implements OnInit {
   readonly productsLoading = signal(true);
   readonly productsError = signal<string | null>(null);
 
+  /** "Trending now" (2026-11-14): the most-ordered products of the last 48
+   * hours, best seller first. Same "no empty section" rule as Recently
+   * Viewed — with no orders in that window (or on error) nothing renders. */
+  readonly trending = signal<ProductSummary[]>([]);
+
   /** Stays empty for a logged-out visitor or a customer with no recorded
    * views yet — the template renders nothing for this section in either
    * case (see this class's header comment), so there's no dedicated
@@ -244,6 +252,11 @@ export class HomeComponent implements OnInit {
         this.productsError.set(err?.message || 'Could not load products right now.');
         this.productsLoading.set(false);
       },
+    });
+
+    this.productService.getTrendingProducts(10, TRENDING_HOURS).subscribe({
+      next: (items) => this.trending.set(items),
+      error: () => this.trending.set([]),
     });
 
     this.categoryService.listCategories().subscribe({

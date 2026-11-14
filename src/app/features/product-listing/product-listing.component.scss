@@ -476,8 +476,37 @@
 }
 
 @media (max-width: 767px) {
+  /* Phones: the Filters/Sort row becomes a thin bar pinned under the
+     header, moving up to the very top while the header is slid away
+     (--chrome-top, ScrollChromeService). `display: contents` lifts it out
+     of the short toolbar box so it can stick for the whole product list. */
   .listing__toolbar {
-    align-items: flex-start;
+    display: contents;
+
+    > div:first-child {
+      margin-bottom: 12px;
+    }
+  }
+
+  .listing__toolbar-actions {
+    position: sticky;
+    top: var(--chrome-top);
+    z-index: 30;
+    justify-content: space-between;
+    margin: 0 -16px 16px;
+    padding: 8px 16px;
+    background: var(--color-white);
+    border-bottom: 1px solid var(--color-border);
+    transition: top 0.2s ease;
+
+    @media (prefers-reduced-motion: reduce) {
+      transition: none;
+    }
+
+    @media (max-width: 480px) {
+      margin-inline: -14px;
+      padding-inline: 14px;
+    }
   }
 }
 

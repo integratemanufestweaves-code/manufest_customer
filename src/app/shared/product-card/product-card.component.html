@@ -32,10 +32,50 @@
         </p>
       }
       @if (priceLabel) {
-        <p class="card__price">{{ priceLabel }}</p>
+        <p class="card__price">
+          {{ priceLabel }}
+          @if (discountLabel) {
+            <span class="card__price-strike"><span class="visually-hidden">Original price </span>{{ originalPriceLabel }}</span>
+            <span class="card__price-off">{{ discountLabel }}</span>
+          }
+        </p>
       }
     </div>
   </a>
+
+  <!-- Outside `.card__link` (buttons can't nest in a link): each swatch
+       opens the product page on that variant. Hidden while the Add-to-cart
+       colour picker below is open, which shows the same choices. -->
+  @if (cardVariants.length && !variantChoices()) {
+    <div class="card__options" role="group" [attr.aria-label]="optionsLabel">
+      @for (variant of cardVariants; track variant.uuid) {
+        @if (variant.colorHex) {
+          <button
+            type="button"
+            class="card__option-dot"
+            [class.card__option--out]="!variant.isInStock"
+            [style.--swatch]="variant.colorHex"
+            (click)="openVariant(variant)"
+            [title]="variantLabel(variant)"
+            [attr.aria-label]="variantLabel(variant)"
+          ></button>
+        } @else {
+          <button
+            type="button"
+            class="card__option-chip"
+            [class.card__option--out]="!variant.isInStock"
+            (click)="openVariant(variant)"
+            [title]="variantLabel(variant)"
+            [attr.aria-label]="variantLabel(variant)"
+          >{{ variant.variantName || variant.size || 'Option' }}</button>
+        }
+      }
+      @if (moreVariantsCount) {
+        <a class="card__option-more" [routerLink]="['/product', product.uuid]">+{{ moreVariantsCount }}</a>
+      }
+      <span class="card__options-count" aria-hidden="true">{{ optionsLabel }}</span>
+    </div>
+  }
 
   <!-- Sibling <button>, not nested inside `.card__link`, so the card stays
        valid markup and the two don't fight over clicks — see this

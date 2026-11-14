@@ -36,13 +36,18 @@ describe('OtpInputComponent', () => {
     fixture.detectChanges();
   }));
 
-  it('renders six single-digit numeric boxes', () => {
+  it('renders six numeric boxes, each offering one-time-code autofill', () => {
     expect(boxes().length).toBe(6);
     boxes().forEach((b) => {
       expect(b.inputMode).toBe('numeric');
-      expect(b.maxLength).toBe(1);
+      expect(b.getAttribute('autocomplete')).toBe('one-time-code');
     });
-    expect(boxes()[0].getAttribute('autocomplete')).toBe('one-time-code');
+  });
+
+  it('fills from the first box when a whole code is autofilled into a later box', () => {
+    type(3, '123456');
+    expect(host.code).toBe('123456');
+    expect(boxes().map((b) => b.value).join('')).toBe('123456');
   });
 
   it('drops non-digits and advances focus on each digit', () => {

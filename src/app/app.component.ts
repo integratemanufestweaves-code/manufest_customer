@@ -6,6 +6,7 @@ import { TestModeBannerComponent } from './shared/test-mode-banner/test-mode-ban
 import { CookieConsentComponent } from './shared/cookie-consent/cookie-consent.component';
 import { AnalyticsService } from './core/services/analytics.service';
 import { MobileKeyboardService } from './core/services/mobile-keyboard.service';
+import { ScrollChromeService } from './core/services/scroll-chrome.service';
 
 @Component({
   selector: 'app-root',
@@ -22,5 +23,7 @@ export class AppComponent {
     inject(AnalyticsService).start(inject(DestroyRef));
     // Hide the phone keyboard once the customer is done typing.
     inject(MobileKeyboardService).start();
+    // Phones: slide the header away while scrolling down product lists.
+    inject(ScrollChromeService).start();
   }
 }

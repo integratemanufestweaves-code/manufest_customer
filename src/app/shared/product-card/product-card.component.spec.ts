@@ -23,6 +23,7 @@ function makeSummary(overrides: Partial<ProductSummary> = {}): ProductSummary {
     lifecycleStatus: overrides.lifecycleStatus ?? 'active',
     thumbnail: overrides.thumbnail ?? null,
     createdAt: overrides.createdAt ?? new Date().toISOString(),
+    variants: overrides.variants,
   };
 }
 
@@ -108,6 +109,77 @@ describe('ProductCardComponent', () => {
     it('omits paise for whole-rupee prices', () => {
       component.product = makeSummary({ pricing: { from: 2000, to: 2000 } });
       expect(component.priceLabel).toBe('₹2,000');
+    });
+  });
+
+  describe('offer', () => {
+    it('shows the original price struck through and the percent off for a discounted product', () => {
+      component.product = makeSummary({ pricing: { from: 4500, to: 4500, fromOriginalPrice: 5000, fromDiscountPercent: 0.1 } });
+      fixture.detectChanges();
+      const el: HTMLElement = fixture.nativeElement;
+      expect(el.querySelector('.card__price-strike')?.textContent).toContain('₹5,000');
+      expect(el.querySelector('.card__price-off')?.textContent).toBe('10% off');
+    });
+
+    it('keeps one decimal for a fractional discount', () => {
+      component.product = makeSummary({ pricing: { from: 875, to: 875, fromOriginalPrice: 1000, fromDiscountPercent: 0.125 } });
+      expect(component.discountLabel).toBe('12.5% off');
+    });
+
+    it('shows no offer when the product is not discounted or the route sends no offer data', () => {
+      component.product = makeSummary({ pricing: { from: 5000, to: 5000, fromOriginalPrice: 5000, fromDiscountPercent: 0 } });
+      expect(component.discountLabel).toBeNull();
+      component.product = makeSummary({ pricing: { from: 5000, to: 5000 } });
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelector('.card__price-off')).toBeNull();
+    });
+  });
+
+  describe('variant swatches', () => {
+    const variant = (uuid: string, colorHex: string | null, isInStock = true) => ({ uuid, variantName: uuid, size: null, colorHex, isInStock });
+
+    it('shows a dot per colour, with out-of-stock ones faded', () => {
+      component.product = makeSummary({ variants: [variant('red', '#ff0000'), variant('blue', '#0000ff', false)] });
+      fixture.detectChanges();
+      const dots = fixture.nativeElement.querySelectorAll('.card__option-dot');
+      expect(dots.length).toBe(2);
+      expect(dots[1].classList).toContain('card__option--out');
+    });
+
+    it('opens the product page on the clicked variant', () => {
+      component.product = makeSummary({ variants: [variant('red', '#ff0000'), variant('blue', '#0000ff')] });
+      fixture.detectChanges();
+      fixture.nativeElement.querySelectorAll('.card__option-dot')[1].click();
+      expect(router.navigate).toHaveBeenCalledWith(['/product', 'prod-1'], { queryParams: { variant: 'blue' } });
+    });
+
+    it('labels the row "N colours" for colours and "N options" otherwise', () => {
+      component.product = makeSummary({ variants: [variant('red', '#ff0000'), variant('blue', '#0000ff')] });
+      expect(component.optionsLabel).toBe('2 colours');
+      component.product = makeSummary({ variants: [variant('red', '#ff0000'), variant('Free size', null)] });
+      expect(component.optionsLabel).toBe('2 options');
+    });
+
+    it('shows a name chip for a variant with no colour', () => {
+      component.product = makeSummary({ variants: [variant('Small', null), variant('Large', null)] });
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelectorAll('.card__option-chip').length).toBe(2);
+    });
+
+    it('caps the swatches at five and counts the rest', () => {
+      component.product = makeSummary({ variants: ['a', 'b', 'c', 'd', 'e', 'f', 'g'].map((c) => variant(c, '#123456')) });
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelectorAll('.card__option-dot').length).toBe(5);
+      expect(fixture.nativeElement.querySelector('.card__option-more').textContent).toContain('+2');
+    });
+
+    it('shows nothing for a single-variant product or when the route sends no variants', () => {
+      component.product = makeSummary({ variants: [variant('only', '#ff0000')] });
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelector('.card__options')).toBeNull();
+      component.product = makeSummary();
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelector('.card__options')).toBeNull();
     });
   });
 
