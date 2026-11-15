@@ -21,9 +21,20 @@
  * transport encryption for API calls, and `credentials.interceptor.ts`'s
  * CSRF cookie has no `Secure` guarantee to rely on over HTTP.
  */
+// manufestweave.in is the main site and manufestweave.com the secondary one; both
+// serve every app. The auth cookies are SameSite=Strict, so the API must be
+// called on the SAME registrable domain the page was opened on - a .com visitor
+// calling the .in API would have its cookies blocked and could never log in.
+// Only these two literal values can ever result (the hostname is never echoed
+// into the URL); localhost / anything else falls back to the main .in site.
+const siteDomain =
+  typeof window !== 'undefined' && /(^|\.)manufestweave\.com$/i.test(window.location.hostname)
+    ? 'manufestweave.com'
+    : 'manufestweave.in';
+
 export const environment = {
   production: true,
-  apiBaseUrl: 'https://manufestweave.in/api/v1',
+  apiBaseUrl: `https://${siteDomain}/api/v1`,
   // apiBaseUrl: 'http://localhost:4000/api/v1',
   csrfCookieName: 'XSRF-TOKEN',
   csrfHeaderName: 'X-XSRF-TOKEN',
@@ -39,5 +50,5 @@ export const environment = {
   // the visitor accepts analytics cookies (core/services/analytics.service.ts).
   gaMeasurementId: '',
   /** Manufacturer-facing manufest_seller app — every "Sell on Manufest" entry point links out here. */
-  sellerAppUrl: 'https://seller.manufestweave.in',
+  sellerAppUrl: `https://seller.${siteDomain}`,
 };

@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 
@@ -59,7 +59,7 @@ const RETURN_WINDOW_DAYS = 7;
   templateUrl: './order-detail.component.html',
   styleUrl: './order-detail.component.scss',
 })
-export class OrderDetailComponent implements OnInit {
+export class OrderDetailComponent implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly orderService = inject(OrderService);
   private readonly paymentService = inject(PaymentService);
@@ -145,6 +145,47 @@ export class OrderDetailComponent implements OnInit {
   readonly downloadingInvoiceUuid = signal<string | null>(null);
   readonly invoiceError = signal<string | null>(null);
 
+  /** While the payment is still being confirmed (the customer's connection may
+   * have dropped mid-payment; the server settles it from Razorpay's webhook or
+   * its reconcile job) the page re-reads the order every few seconds, so it
+   * flips to "placed" on its own instead of needing a manual refresh. Stops
+   * after ~10 minutes — past that the server has abandoned or refunded it. */
+  private static readonly PENDING_POLL_MS = 8000;
+  private static readonly PENDING_POLL_MAX = 75;
+  private pendingPollTimer: ReturnType<typeof setTimeout> | null = null;
+  private pendingPollCount = 0;
+
+  ngOnDestroy(): void {
+    this.clearPendingPoll();
+  }
+
+  private clearPendingPoll(): void {
+    if (this.pendingPollTimer !== null) {
+      clearTimeout(this.pendingPollTimer);
+      this.pendingPollTimer = null;
+    }
+  }
+
+  private schedulePendingPoll(orderUuid: string): void {
+    this.clearPendingPoll();
+    const status = this.order()?.orderStatus;
+    if (status !== 'awaiting_payment' && status !== 'payment_processing') return;
+    if (this.pendingPollCount >= OrderDetailComponent.PENDING_POLL_MAX) return;
+    this.pendingPollTimer = setTimeout(() => {
+      this.pendingPollCount += 1;
+      this.orderService.getOrder(orderUuid).subscribe({
+        next: (order) => {
+          const wasUnplaced = this.isUnplaced;
+          this.order.set(order);
+          if (wasUnplaced && !this.isUnplaced) this.loadInvoices(orderUuid);
+          this.schedulePendingPoll(orderUuid);
+        },
+        // A dropped request is exactly the case being covered — keep trying.
+        error: () => this.schedulePendingPoll(orderUuid),
+      });
+    }, OrderDetailComponent.PENDING_POLL_MS);
+  }
+
   ngOnInit(): void {
     const orderUuid = this.route.snapshot.paramMap.get('orderUuid');
     if (!orderUuid) {
@@ -156,6 +197,7 @@ export class OrderDetailComponent implements OnInit {
   }
 
   private load(orderUuid: string): void {
+    this.pendingPollCount = 0;
     this.loading.set(true);
     this.error.set(null);
     this.orderService.getOrder(orderUuid).subscribe({
@@ -163,6 +205,7 @@ export class OrderDetailComponent implements OnInit {
         this.order.set(order);
         this.loading.set(false);
         this.loadInvoices(orderUuid);
+        this.schedulePendingPoll(orderUuid);
       },
       error: (err) => {
         this.error.set(err?.message || 'Could not load this order.');

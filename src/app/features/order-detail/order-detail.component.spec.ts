@@ -1,4 +1,4 @@
-import { TestBed } from '@angular/core/testing';
+import { TestBed, fakeAsync, tick, discardPeriodicTasks } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
@@ -221,4 +221,87 @@ describe('OrderDetailComponent — request a call back', () => {
     expect(component.showSupportForm()).toBeTrue();
     expect(component.supportSubmitting()).toBeFalse();
   });
+});
+
+// A payment whose confirmation is still on its way (customer's connection
+// dropped mid-payment): the page keeps re-reading the order until the server —
+// webhook or reconcile job — settles it, with no manual refresh.
+describe('OrderDetailComponent — waiting for payment confirmation', () => {
+  let orders: jasmine.SpyObj<OrderService>;
+
+  function create() {
+    TestBed.configureTestingModule({
+      imports: [OrderDetailComponent],
+      providers: [
+        provideRouter([]),
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: OrderService, useValue: orders },
+        { provide: ActivatedRoute, useValue: { snapshot: { paramMap: convertToParamMap({ orderUuid: 'o-1' }), queryParamMap: convertToParamMap({}) } } },
+      ],
+    });
+    const fixture = TestBed.createComponent(OrderDetailComponent);
+    // ngOnInit only - the polling logic is under test, not the template.
+    fixture.componentInstance.ngOnInit();
+    return fixture;
+  }
+
+  const orderWith = (orderStatus: string) => ({ uuid: 'o-1', orderStatus, items: [] }) as unknown as OrderDetail;
+
+  beforeEach(() => {
+    orders = jasmine.createSpyObj<OrderService>('OrderService', ['getOrder']);
+  });
+
+  it('re-reads a payment_processing order until it is placed, then stops', fakeAsync(() => {
+    orders.getOrder.and.returnValues(of(orderWith('payment_processing')), of(orderWith('payment_processing')), of(orderWith('placed')));
+    const fixture = create();
+    expect(orders.getOrder).toHaveBeenCalledTimes(1);
+
+    tick(8000);
+    expect(orders.getOrder).toHaveBeenCalledTimes(2);
+    expect(fixture.componentInstance.isUnplaced).toBeTrue();
+
+    tick(8000);
+    expect(orders.getOrder).toHaveBeenCalledTimes(3);
+    expect(fixture.componentInstance.order()?.orderStatus).toBe('placed');
+
+    tick(60000);
+    expect(orders.getOrder).toHaveBeenCalledTimes(3);
+    fixture.destroy();
+  }));
+
+  it('keeps trying after a dropped request', fakeAsync(() => {
+    orders.getOrder.and.returnValues(of(orderWith('awaiting_payment')), throwError(() => new Error('offline')), of(orderWith('placed')));
+    const fixture = create();
+
+    tick(8000);
+    tick(8000);
+    expect(fixture.componentInstance.order()?.orderStatus).toBe('placed');
+    fixture.destroy();
+  }));
+
+  it('does not poll an order that is already placed, or one whose payment failed', fakeAsync(() => {
+    orders.getOrder.and.returnValue(of(orderWith('placed')));
+    const placed = create();
+    tick(30000);
+    expect(orders.getOrder).toHaveBeenCalledTimes(1);
+    placed.destroy();
+
+    TestBed.resetTestingModule();
+    orders = jasmine.createSpyObj<OrderService>('OrderService', ['getOrder']);
+    orders.getOrder.and.returnValue(of(orderWith('payment_failed')));
+    const failed = create();
+    tick(30000);
+    expect(orders.getOrder).toHaveBeenCalledTimes(1);
+    failed.destroy();
+  }));
+
+  it('stops polling when the page is left', fakeAsync(() => {
+    orders.getOrder.and.returnValue(of(orderWith('payment_processing')));
+    const fixture = create();
+    fixture.destroy();
+    tick(60000);
+    expect(orders.getOrder).toHaveBeenCalledTimes(1);
+    discardPeriodicTasks();
+  }));
 });
