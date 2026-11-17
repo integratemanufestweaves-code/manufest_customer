@@ -24,6 +24,39 @@ export interface CheckoutRequest {
   cartItemUuids?: string[];
 }
 
+/**
+ * `POST /customer/orders/delivery-check` — whether a courier can bring each
+ * checkout line from its seller's pickup address to the chosen address.
+ * `not_deliverable`/`seller_unavailable` block the order (the backend refuses
+ * checkout with `NOT_DELIVERABLE` too); `unknown` = couldn't be checked right
+ * now and doesn't block; `unchecked` = the check is switched off.
+ */
+export type DeliveryStatus = 'deliverable' | 'not_deliverable' | 'seller_unavailable' | 'unknown' | 'unchecked';
+
+export interface DeliveryCheckItem {
+  cartItemUuid: string;
+  status: DeliveryStatus;
+  estimatedDeliveryDays: number | null;
+  /** Courier's estimate as Shiprocket words it, e.g. "Nov 19, 2026". */
+  etd: string | null;
+}
+
+export interface DeliveryCheckResult {
+  postalCode: string;
+  checked: boolean;
+  deliverable: boolean;
+  /** The slowest line's estimate — when the whole order should have arrived. */
+  estimatedDeliveryDays: number | null;
+  message: string | null;
+  items: DeliveryCheckItem[];
+}
+
+export interface DeliveryCheckRequest {
+  addressUuid: string;
+  paymentMethod?: PaymentMethod;
+  cartItemUuids?: string[];
+}
+
 /** Present on `OrderDetail` only while there's actually something to pay
  * for a `razorpay`-method order (`payment.status === 'pending'`) — used to
  * open Razorpay Checkout, both right after `checkout()` and again later
@@ -89,9 +122,58 @@ export type OrderItemStatus =
   | 'cancelled'
   | 'return_requested'
   | 'return_approved'
+  // The return parcel reached the seller; the refund has started.
+  | 'return_received'
   | 'returned'
   | 'replacement_requested'
-  | 'replaced';
+  | 'replaced'
+  // Never reached the customer (manufest_be deliveryIssues.service.js):
+  // the parcel went back to the seller (RTO), or the courier lost it.
+  | 'rto_received'
+  | 'rto_completed'
+  | 'lost';
+
+/** `GET /customer/orders/:orderUuid/returns` — one per return raised
+ * (manufest_be returns.service.js). REQUESTED -> APPROVED (a courier picks
+ * it up) or REJECTED (`adminNote` says why) -> RECEIVED (back with the
+ * seller, refund started) -> COMPLETED. */
+export interface ReturnRequest {
+  uuid: string;
+  orderItemUuid: string;
+  status: 'REQUESTED' | 'APPROVED' | 'REJECTED' | 'RECEIVED' | 'COMPLETED';
+  reason: string;
+  adminNote: string | null;
+  requestedAt: string;
+  reviewedAt: string | null;
+  pickup: {
+    courierName: string | null;
+    awb: string | null;
+    trackingUrl: string | null;
+    pickupScheduledDate: string | null;
+    dispatchStatus: string | null;
+  } | null;
+  receivedAt: string | null;
+  completedAt: string | null;
+}
+
+export type ReturnMediaType = 'video' | 'image';
+
+/** An uploaded evidence file, attached to the return when it's raised. */
+export interface ReturnMediaUpload {
+  uuid: string;
+  mediaType: ReturnMediaType;
+  sizeBytes: number;
+}
+
+/** The customer's "I didn't receive this" report on a delivered item. */
+export interface NotReceivedReport {
+  status: 'OPEN' | 'REFUNDED' | 'DISMISSED';
+  reportedAt: string;
+  note: string | null;
+  resolvedAt: string | null;
+  /** Manufest's reply, shown to the customer. */
+  resolutionNote: string | null;
+}
 
 export interface OrderItem {
   uuid: string;
@@ -116,6 +198,10 @@ export interface OrderItem {
   cancelledAt: string | null;
   deliveredAt: string | null;
   returnedAt: string | null;
+  notReceived?: NotReceivedReport | null;
+  /** Until when "I didn't receive this" is offered (48 hours after
+   * delivery), or null when it isn't. */
+  notReceivedReportableUntil?: string | null;
   /** The customer's own review of this item (one per order item), or
    * `null` if not reviewed yet — order detail only (added 2026-10-07). */
   review: { rating: number } | null;

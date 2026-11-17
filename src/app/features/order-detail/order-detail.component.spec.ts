@@ -249,7 +249,8 @@ describe('OrderDetailComponent — waiting for payment confirmation', () => {
   const orderWith = (orderStatus: string) => ({ uuid: 'o-1', orderStatus, items: [] }) as unknown as OrderDetail;
 
   beforeEach(() => {
-    orders = jasmine.createSpyObj<OrderService>('OrderService', ['getOrder']);
+    orders = jasmine.createSpyObj<OrderService>('OrderService', ['getOrder', 'listReturns']);
+    orders.listReturns.and.returnValue(of([]));
   });
 
   it('re-reads a payment_processing order until it is placed, then stops', fakeAsync(() => {
@@ -288,7 +289,8 @@ describe('OrderDetailComponent — waiting for payment confirmation', () => {
     placed.destroy();
 
     TestBed.resetTestingModule();
-    orders = jasmine.createSpyObj<OrderService>('OrderService', ['getOrder']);
+    orders = jasmine.createSpyObj<OrderService>('OrderService', ['getOrder', 'listReturns']);
+    orders.listReturns.and.returnValue(of([]));
     orders.getOrder.and.returnValue(of(orderWith('payment_failed')));
     const failed = create();
     tick(30000);
@@ -304,4 +306,170 @@ describe('OrderDetailComponent — waiting for payment confirmation', () => {
     expect(orders.getOrder).toHaveBeenCalledTimes(1);
     discardPeriodicTasks();
   }));
+});
+
+describe("OrderDetailComponent — parcels that didn't reach the customer", () => {
+  let reportNotReceived: jasmine.Spy;
+
+  function create() {
+    TestBed.configureTestingModule({
+      imports: [OrderDetailComponent],
+      providers: [
+        provideRouter([]),
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: ActivatedRoute, useValue: { snapshot: { paramMap: convertToParamMap({ orderUuid: 'o-1' }), queryParamMap: convertToParamMap({}) } } },
+      ],
+    });
+    reportNotReceived = spyOn(TestBed.inject(OrderService), 'reportNotReceived');
+    return TestBed.createComponent(OrderDetailComponent).componentInstance;
+  }
+
+  const inHours = (h: number) => new Date(Date.now() + h * 3600 * 1000).toISOString();
+  const delivered = (overrides: Partial<OrderItem> = {}) =>
+    ({ uuid: 'item-1', itemStatus: 'delivered', notReceived: null, notReceivedReportableUntil: inHours(20), ...overrides }) as OrderItem;
+
+  it('offers "I didn\'t receive this" only while the backend allows it', () => {
+    const component = create();
+    expect(component.canReportNotReceived(delivered())).toBeTrue();
+    expect(component.canReportNotReceived(delivered({ notReceivedReportableUntil: null }))).toBeFalse();
+    expect(component.canReportNotReceived(delivered({ notReceivedReportableUntil: inHours(-1) }))).toBeFalse();
+    expect(component.canReportNotReceived(delivered({ itemStatus: 'shipped' }))).toBeFalse();
+  });
+
+  it('sends the trimmed note and shows the updated order', () => {
+    const component = create();
+    const updated = { uuid: 'o-1' } as OrderDetail;
+    reportNotReceived.and.returnValue(of(updated));
+    component.openNotReceivedForm(delivered());
+    component.notReceivedNote = '  Nobody came  ';
+
+    component.submitNotReceived();
+
+    expect(reportNotReceived).toHaveBeenCalledWith('item-1', 'Nobody came');
+    expect(component.order()).toBe(updated);
+    expect(component.notReceivedItemUuid()).toBeNull();
+  });
+
+  it('keeps the form open with the message when it fails', () => {
+    const component = create();
+    reportNotReceived.and.returnValue(throwError(() => ({ code: 'NOT_RECEIVED_WINDOW_CLOSED', message: 'Please contact support.' })));
+    component.openNotReceivedForm(delivered());
+    component.submitNotReceived();
+    expect(component.notReceivedError()).toBe('Please contact support.');
+    expect(component.notReceivedItemUuid()).toBe('item-1');
+  });
+
+  it('tells the customer where their report stands', () => {
+    const component = create();
+    const report = { reportedAt: '', note: null, resolvedAt: null, resolutionNote: null };
+    expect(component.notReceivedStatus(delivered({ notReceived: { ...report, status: 'OPEN' } }))).toContain("We're checking with the courier");
+    expect(component.notReceivedStatus(delivered({ notReceived: { ...report, status: 'REFUNDED', resolutionNote: 'Sorry about that.' } }))).toBe(
+      "We've refunded you for this item. Sorry about that.",
+    );
+    expect(component.notReceivedStatus(delivered())).toBeNull();
+  });
+
+  it('explains returned and lost parcels in plain words', () => {
+    const component = create();
+    expect(component.statusLabel('rto_completed')).toBe('Returned to seller');
+    expect(component.statusLabel('lost')).toBe('Lost in transit');
+    expect(component.returnStatusNote('lost')).toContain('refund');
+  });
+});
+
+describe('OrderDetailComponent — return with unboxing video', () => {
+  let uploadReturnMedia: jasmine.Spy;
+  let requestItemReturn: jasmine.Spy;
+
+  function create() {
+    TestBed.configureTestingModule({
+      imports: [OrderDetailComponent],
+      providers: [
+        provideRouter([]),
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: ActivatedRoute, useValue: { snapshot: { paramMap: convertToParamMap({ orderUuid: 'o-1' }), queryParamMap: convertToParamMap({}) } } },
+      ],
+    });
+    const service = TestBed.inject(OrderService);
+    uploadReturnMedia = spyOn(service, 'uploadReturnMedia');
+    requestItemReturn = spyOn(service, 'requestItemReturn');
+    spyOn(service, 'listReturns').and.returnValue(of([]));
+    const component = TestBed.createComponent(OrderDetailComponent).componentInstance;
+    component.order.set({ uuid: 'o-1' } as OrderDetail);
+    component.openItemReturnForm({ uuid: 'item-1' } as OrderItem);
+    return component;
+  }
+
+  const pick = (file: File) => ({ target: { files: [file], value: 'x' } }) as unknown as Event;
+  const video = (sizeMb = 1, type = 'video/mp4') => new File([new Uint8Array(sizeMb * 1024 * 1024)], 'unbox.mp4', { type });
+
+  it('will not send a return without the uploaded unboxing video', () => {
+    const component = create();
+    component.returnReason = 'Colour is different';
+    component.returnCoverConfirmed = true;
+    component.confirmReturn();
+    expect(component.returnError()).toBe('Add your unboxing video. It is required for a return.');
+    expect(requestItemReturn).not.toHaveBeenCalled();
+  });
+
+  it('refuses a video over the size limit before uploading it', () => {
+    const component = create();
+    component.onReturnVideoSelected(pick(video(51)));
+    expect(component.returnVideo()?.status).toBe('error');
+    expect(component.returnVideo()?.error).toContain('over 50MB');
+    expect(uploadReturnMedia).not.toHaveBeenCalled();
+  });
+
+  it('refuses a file that is not a video', () => {
+    const component = create();
+    component.onReturnVideoSelected(pick(new File(['x'], 'notes.pdf', { type: 'application/pdf' })));
+    expect(component.returnVideo()?.error).toContain('video file');
+  });
+
+  it('uploads the video, then raises the return with it and the uploaded photos', async () => {
+    const component = create();
+    uploadReturnMedia.and.callFake((_uuid: string, payload: { mediaType: string }) =>
+      of({ uuid: payload.mediaType === 'video' ? 'vid-1' : 'pic-1', mediaType: payload.mediaType, sizeBytes: 10 }),
+    );
+    requestItemReturn.and.returnValue(of({ uuid: 'o-1' } as OrderDetail));
+
+    component.onReturnVideoSelected(pick(video()));
+    component.onReturnPhotosSelected(pick(new File(['x'], 'tag.jpg', { type: 'image/jpeg' })));
+    // FileReader is async.
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(component.returnVideo()?.status).toBe('done');
+    const sent = uploadReturnMedia.calls.allArgs().map((args) => args[1]);
+    expect(sent).toContain(jasmine.objectContaining({ mediaType: 'video', fileName: 'unbox.mp4', mimeType: 'video/mp4' }));
+    expect(sent).toContain(jasmine.objectContaining({ mediaType: 'image', fileName: 'tag.jpg' }));
+
+    component.returnReason = '  Colour is different  ';
+    component.returnCoverConfirmed = true;
+    component.confirmReturn();
+
+    expect(requestItemReturn).toHaveBeenCalledWith('item-1', { reason: 'Colour is different', videoMediaUuid: 'vid-1', photoMediaUuids: ['pic-1'] });
+    expect(component.returnPanel()).toBeNull();
+  });
+
+  it('shows where an approved return stands', () => {
+    const component = create();
+    component.returns.set([
+      {
+        uuid: 'r-1',
+        orderItemUuid: 'item-1',
+        status: 'APPROVED',
+        reason: 'x',
+        adminNote: null,
+        requestedAt: '',
+        reviewedAt: null,
+        pickup: { courierName: 'Delhivery', awb: 'A1', trackingUrl: null, pickupScheduledDate: '2026-11-19T04:30:00Z', dispatchStatus: 'pickup_scheduled' },
+        receivedAt: null,
+        completedAt: null,
+      },
+    ]);
+    const text = component.returnProgress({ uuid: 'item-1' } as OrderItem)!;
+    expect(text).toContain('Delhivery will pick it up on');
+    expect(text).toContain('refund starts once it reaches the seller');
+  });
 });

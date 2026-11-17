@@ -3,7 +3,16 @@ import { Injectable, inject } from '@angular/core';
 import { Observable, catchError, map } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { ApiSuccess, OffsetMeta } from '../models/api.models';
-import { CheckoutRequest, OrderDetail, OrderSummary } from '../models/order.models';
+import {
+  CheckoutRequest,
+  DeliveryCheckRequest,
+  DeliveryCheckResult,
+  OrderDetail,
+  OrderSummary,
+  ReturnMediaType,
+  ReturnMediaUpload,
+  ReturnRequest,
+} from '../models/order.models';
 import { rethrowApiError } from './http-error.util';
 
 export interface OrderPage {
@@ -33,6 +42,15 @@ export class OrderService {
 
   checkout(payload: CheckoutRequest): Observable<OrderDetail> {
     return this.http.post<ApiSuccess<OrderDetail>>(`${this.base}/checkout`, payload).pipe(
+      map((res) => res.data),
+      catchError((err) => rethrowApiError(err)),
+    );
+  }
+
+  /** Can a courier deliver these lines to this address? Read-only; checkout
+   * enforces the same answer server-side. */
+  checkDelivery(payload: DeliveryCheckRequest): Observable<DeliveryCheckResult> {
+    return this.http.post<ApiSuccess<DeliveryCheckResult>>(`${this.base}/delivery-check`, payload).pipe(
       map((res) => res.data),
       catchError((err) => rethrowApiError(err)),
     );
@@ -76,21 +94,44 @@ export class OrderService {
     );
   }
 
-  /**
-   * `POST /:orderUuid/return-request` — order-level, bulk-capable return
-   * request (added 2026-09-22 alongside the admin approval + Razorpay
-   * refund flow). Omit `orderItemUuids` to request the whole order back;
-   * pass one uuid to return a single item (replaces the old single-item
-   * `.../order-items/:orderItemUuid/return-request` call — same backend
-   * eligibility rule, every targeted item must currently be `delivered`).
-   * Unlike the old single-item call, this returns the full refreshed
-   * `OrderDetail` directly, so callers don't need a separate reload.
-   */
-  requestReturn(orderUuid: string, payload: { orderItemUuids?: string[]; reason: string }): Observable<OrderDetail> {
-    return this.http.post<ApiSuccess<OrderDetail>>(`${this.base}/${orderUuid}/return-request`, payload).pipe(
+  /** One return-evidence file (the unboxing video, or a photo), sent as
+   * base64. Returns the uuid to attach when raising the return. */
+  uploadReturnMedia(
+    orderItemUuid: string,
+    payload: { mediaType: ReturnMediaType; fileBase64: string; fileName: string; mimeType: string },
+  ): Observable<ReturnMediaUpload> {
+    return this.http.post<ApiSuccess<ReturnMediaUpload>>(`${this.base}/order-items/${orderItemUuid}/return-media`, payload).pipe(
       map((res) => res.data),
       catchError((err) => rethrowApiError(err)),
     );
+  }
+
+  /** Raise a return for one delivered item: reason + the uploaded unboxing
+   * video (required) + photos (optional). Returns the refreshed order. */
+  requestItemReturn(orderItemUuid: string, payload: { reason: string; videoMediaUuid: string; photoMediaUuids: string[] }): Observable<OrderDetail> {
+    return this.http.post<ApiSuccess<OrderDetail>>(`${this.base}/order-items/${orderItemUuid}/return-request`, payload).pipe(
+      map((res) => res.data),
+      catchError((err) => rethrowApiError(err)),
+    );
+  }
+
+  /** Every return raised on this order, with pickup and refund progress. */
+  listReturns(orderUuid: string): Observable<ReturnRequest[]> {
+    return this.http.get<ApiSuccess<ReturnRequest[]>>(`${this.base}/${orderUuid}/returns`).pipe(
+      map((res) => res.data),
+      catchError((err) => rethrowApiError(err)),
+    );
+  }
+
+  /** "I didn't receive this" on a delivered item (within 48 hours of
+   * delivery). Returns the refreshed order. */
+  reportNotReceived(orderItemUuid: string, note: string): Observable<OrderDetail> {
+    return this.http
+      .post<ApiSuccess<OrderDetail>>(`${this.base}/order-items/${orderItemUuid}/not-received`, note ? { note } : {})
+      .pipe(
+        map((res) => res.data),
+        catchError((err) => rethrowApiError(err)),
+      );
   }
 
   requestReplacement(orderItemUuid: string, reason: string): Observable<{ status: string }> {

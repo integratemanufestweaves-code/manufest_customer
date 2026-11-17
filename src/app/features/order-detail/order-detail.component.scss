@@ -281,6 +281,17 @@
   color: var(--color-text-muted);
 }
 
+.order-item__flag {
+  margin: 6px 0 0;
+  padding: 6px 10px;
+  border-left: 3px solid var(--color-primary);
+  border-radius: 4px;
+  background: var(--color-bg-tint);
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: var(--color-text);
+}
+
 .order-item__actions {
   display: flex;
   gap: 14px;
@@ -527,4 +538,52 @@
     opacity: 0.6;
     cursor: default;
   }
+}
+
+// ---- return evidence (unboxing video + photos) ----
+.return-evidence {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 8px 0;
+}
+
+.return-evidence__pick {
+  align-self: flex-start;
+  cursor: pointer;
+
+  input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  &:focus-within .btn {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+}
+
+.return-evidence__file {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  word-break: break-all;
+
+  &--error {
+    color: var(--color-danger);
+  }
+}
+
+.return-evidence__remove {
+  margin-left: 6px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--color-primary);
+  font-size: inherit;
+  text-decoration: underline;
+  cursor: pointer;
 }

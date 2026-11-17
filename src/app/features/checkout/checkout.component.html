@@ -35,7 +35,7 @@
                        it doesn't also select the radio. -->
                   <div class="address-option-wrap">
                   <label class="address-option" [class.address-option--selected]="selectedAddressUuid === address.uuid">
-                    <input type="radio" name="address" [value]="address.uuid" [(ngModel)]="selectedAddressUuid" />
+                    <input type="radio" name="address" [value]="address.uuid" [(ngModel)]="selectedAddressUuid" (ngModelChange)="onDeliveryInputsChange()" />
                     <span class="address-option__body">
                       @if (address.isDefault) {
                         <span class="address-option__default">Default</span>
@@ -154,7 +154,7 @@
           <h2>Payment method</h2>
           <div class="payment-options">
             <label class="payment-option" [class.payment-option--selected]="paymentMethod === 'razorpay'">
-              <input type="radio" name="paymentMethod" value="razorpay" [(ngModel)]="paymentMethod" />
+              <input type="radio" name="paymentMethod" value="razorpay" [(ngModel)]="paymentMethod" (ngModelChange)="onDeliveryInputsChange()" />
               <span>
                 <strong>Pay online</strong>
                 <small>Cards, UPI, NetBanking, or wallets — via Razorpay.</small>
@@ -162,14 +162,14 @@
             </label>
             @if (offlinePaymentsEnabled) {
               <label class="payment-option" [class.payment-option--selected]="paymentMethod === 'cod'">
-                <input type="radio" name="paymentMethod" value="cod" [(ngModel)]="paymentMethod" />
+                <input type="radio" name="paymentMethod" value="cod" [(ngModel)]="paymentMethod" (ngModelChange)="onDeliveryInputsChange()" />
                 <span>
                   <strong>Cash on delivery</strong>
                   <small>Pay when your order arrives.</small>
                 </span>
               </label>
               <label class="payment-option" [class.payment-option--selected]="paymentMethod === 'manual'">
-                <input type="radio" name="paymentMethod" value="manual" [(ngModel)]="paymentMethod" />
+                <input type="radio" name="paymentMethod" value="manual" [(ngModel)]="paymentMethod" (ngModelChange)="onDeliveryInputsChange()" />
                 <span>
                   <strong>Bank transfer</strong>
                   <small>Pay manually — we'll confirm once received, before your order ships.</small>
@@ -190,7 +190,7 @@
 
         <div class="checkout-summary__items">
           @for (item of checkoutItems(); track item.uuid) {
-            <div class="checkout-summary__item" [class.checkout-summary__item--unavailable]="hasStockIssue(item)">
+            <div class="checkout-summary__item" [class.checkout-summary__item--unavailable]="hasStockIssue(item) || isUndeliverable(item)">
               <span class="checkout-summary__media">
                 @if (thumbnailSrc(item); as src) {
                   <img [src]="src" [alt]="item.product.productName" loading="lazy" (error)="onThumbnailError(item)" />
@@ -209,6 +209,15 @@
                   <span class="checkout-summary__item-stock">Out of stock</span>
                 } @else if (hasStockIssue(item)) {
                   <span class="checkout-summary__item-stock">Only {{ item.quantityAvailable }} available</span>
+                }
+                @if (deliveryFor(item); as d) {
+                  @if (d.status === 'not_deliverable') {
+                    <span class="checkout-summary__item-stock">Can't be delivered to {{ delivery()?.postalCode }}</span>
+                  } @else if (d.status === 'seller_unavailable') {
+                    <span class="checkout-summary__item-stock">Not available for delivery right now</span>
+                  } @else if (d.status === 'deliverable' && d.etd) {
+                    <span class="checkout-summary__item-delivery">Delivery by {{ d.etd }}</span>
+                  }
                 }
               </span>
               <span class="checkout-summary__item-price">{{ item.lineTotal != null ? formatPrice(item.lineTotal) : '—' }}</span>
@@ -234,6 +243,11 @@
             One or more items above are out of stock or below the quantity you selected. Go back to your cart to remove or adjust them before placing this order.
           </p>
         }
+        @if (deliveryChecking()) {
+          <p class="checkout-summary__note">Checking delivery to your PIN code…</p>
+        } @else if (deliveryBlocked()) {
+          <p class="state-message state-message--error">{{ delivery()?.message }}</p>
+        }
         @if (placeOrderError()) {
           <p class="state-message state-message--error">{{ placeOrderError() }}</p>
         }
@@ -241,7 +255,7 @@
         <button
           type="button"
           class="btn btn--primary btn--full"
-          [disabled]="placingOrder() || processingPayment() || !selectedAddressUuid || hasAnyStockIssue()"
+          [disabled]="placingOrder() || processingPayment() || !selectedAddressUuid || hasAnyStockIssue() || deliveryChecking() || deliveryBlocked()"
           (click)="placeOrder()"
         >
           {{ processingPayment() ? 'Processing payment…' : placingOrder() ? 'Placing order…' : 'Place order' }}

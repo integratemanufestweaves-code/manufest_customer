@@ -12,7 +12,7 @@ import { RazorpayCheckoutService } from '../../core/services/razorpay-checkout.s
 import { ProductService } from '../../core/services/product.service';
 import { AnalyticsItem, AnalyticsService } from '../../core/services/analytics.service';
 import { Address, AddressRequest } from '../../core/models/customer.models';
-import { OrderDetail, PaymentMethod } from '../../core/models/order.models';
+import { DeliveryCheckItem, DeliveryCheckResult, OrderDetail, PaymentMethod } from '../../core/models/order.models';
 import { CartItem } from '../../core/models/cart.models';
 import { formatPrice } from '../../core/utils/format-price';
 import { AddressFieldErrors, trimAddressForm, validateAddressForm } from '../../core/utils/address-validation';
@@ -150,6 +150,24 @@ export class CheckoutComponent implements OnInit {
   readonly placingOrder = signal(false);
   readonly placeOrderError = signal<string | null>(null);
 
+  /**
+   * Delivery check for the selected address (`POST
+   * /customer/orders/delivery-check`): can a courier bring each item from
+   * its seller's pickup PIN to this PIN? Re-run whenever the address or
+   * payment method changes. A line that can't be delivered blocks "Place
+   * order" (the backend refuses it too, `NOT_DELIVERABLE`). If the check
+   * itself fails (network) nothing is blocked here — checkout still
+   * enforces it server-side.
+   */
+  readonly delivery = signal<DeliveryCheckResult | null>(null);
+  readonly deliveryChecking = signal(false);
+  /** Ignores an older response that arrives after a newer request. */
+  private deliveryRequestSeq = 0;
+  readonly deliveryBlocked = computed(() => {
+    const result = this.delivery();
+    return Boolean(result && !result.deliverable);
+  });
+
   private readonly brokenThumbnails = signal<ReadonlySet<string>>(new Set());
 
   ngOnInit(): void {
@@ -169,6 +187,7 @@ export class CheckoutComponent implements OnInit {
         this.selectedAddressUuid = defaultAddress?.uuid || null;
         this.addressesLoading.set(false);
         this.showAddressForm.set(addresses.length === 0);
+        this.checkDelivery();
       },
       error: (err) => {
         this.error.set(err?.message || 'Could not load your saved addresses.');
@@ -249,6 +268,50 @@ export class CheckoutComponent implements OnInit {
     });
   }
 
+  /** Address radio or payment method changed (COD changes which couriers qualify). */
+  onDeliveryInputsChange(): void {
+    this.placeOrderError.set(null);
+    this.checkDelivery();
+  }
+
+  checkDelivery(): void {
+    const addressUuid = this.selectedAddressUuid;
+    const seq = ++this.deliveryRequestSeq;
+    if (!addressUuid) {
+      this.delivery.set(null);
+      this.deliveryChecking.set(false);
+      return;
+    }
+    this.deliveryChecking.set(true);
+    this.orderService
+      .checkDelivery({
+        addressUuid,
+        paymentMethod: this.paymentMethod,
+        ...(this.selectedUuids ? { cartItemUuids: this.selectedUuids } : {}),
+      })
+      .subscribe({
+        next: (result) => {
+          if (seq !== this.deliveryRequestSeq) return;
+          this.delivery.set(result);
+          this.deliveryChecking.set(false);
+        },
+        error: () => {
+          if (seq !== this.deliveryRequestSeq) return;
+          this.delivery.set(null);
+          this.deliveryChecking.set(false);
+        },
+      });
+  }
+
+  deliveryFor(item: CartItem): DeliveryCheckItem | null {
+    return this.delivery()?.items.find((d) => d.cartItemUuid === item.uuid) ?? null;
+  }
+
+  isUndeliverable(item: CartItem): boolean {
+    const status = this.deliveryFor(item)?.status;
+    return status === 'not_deliverable' || status === 'seller_unavailable';
+  }
+
   formatPrice(n: number): string {
     return formatPrice(n);
   }
@@ -273,6 +336,7 @@ export class CheckoutComponent implements OnInit {
       this.placeOrderError.set('Choose a delivery address first.');
       return;
     }
+    if (this.deliveryBlocked()) return;
     this.placeOrderError.set(null);
     this.placingOrder.set(true);
 
@@ -299,6 +363,11 @@ export class CheckoutComponent implements OnInit {
           if (err?.code === 'INSUFFICIENT_STOCK') {
             this.placeOrderError.set('Insufficient stock — one of the items in this order sold out just now. Go back to your cart to review it.');
             this.cartService.refresh();
+          } else if (err?.code === 'NOT_DELIVERABLE') {
+            // Courier coverage changed since the page's own check — re-run it
+            // so the affected item is marked.
+            this.placeOrderError.set(err?.message || "We can't deliver one of these items to this address.");
+            this.checkDelivery();
           } else {
             this.placeOrderError.set(err?.message || 'Could not place your order.');
           }

@@ -14,7 +14,19 @@ import { RazorpayCheckoutService } from '../../core/services/razorpay-checkout.s
 import { AuthService } from '../../core/services/auth.service';
 import { CartItem, CartView } from '../../core/models/cart.models';
 import { Address } from '../../core/models/customer.models';
-import { OrderDetail } from '../../core/models/order.models';
+import { DeliveryCheckResult, OrderDetail } from '../../core/models/order.models';
+
+function deliverableFor(items: CartItem[], overrides: Partial<DeliveryCheckResult> = {}): DeliveryCheckResult {
+  return {
+    postalCode: '600001',
+    checked: true,
+    deliverable: true,
+    estimatedDeliveryDays: 4,
+    message: null,
+    items: items.map((i) => ({ cartItemUuid: i.uuid, status: 'deliverable' as const, estimatedDeliveryDays: 4, etd: 'Nov 20, 2026' })),
+    ...overrides,
+  };
+}
 
 function makeItem(overrides: Partial<CartItem> = {}): CartItem {
   return {
@@ -75,12 +87,73 @@ describe('CheckoutComponent', () => {
     spyOn(cartService, 'refresh'); // no-op: avoid a real HTTP round trip in ngOnInit
   });
 
-  function initWith(items: CartItem[], addresses: Address[] = [makeAddress()], selection: string[] | null = null): void {
+  function initWith(
+    items: CartItem[],
+    addresses: Address[] = [makeAddress()],
+    selection: string[] | null = null,
+    delivery: DeliveryCheckResult = deliverableFor(items),
+  ): void {
     (cartService as any).cartSignal.set(makeCart(items));
     spyOn(cartService, 'checkoutSelection').and.returnValue(selection);
     spyOn(customerService, 'listAddresses').and.returnValue(of(addresses));
+    spyOn(orderService, 'checkDelivery').and.returnValue(of(delivery));
     fixture.detectChanges(); // ngOnInit
   }
+
+  describe('delivery check (seller pickup PIN -> address PIN)', () => {
+    const placeButton = () => fixture.debugElement.query(By.css('.checkout-summary .btn--primary')).nativeElement as HTMLButtonElement;
+
+    it('checks the default address once addresses load, with the checkout selection', () => {
+      const a = makeItem({ uuid: 'a' });
+      initWith([a], [makeAddress({ uuid: 'addr-9' })], ['a']);
+      expect(orderService.checkDelivery).toHaveBeenCalledWith({ addressUuid: 'addr-9', paymentMethod: 'razorpay', cartItemUuids: ['a'] });
+    });
+
+    it('shows the delivery estimate for a deliverable item and keeps Place order enabled', () => {
+      const a = makeItem({ uuid: 'a' });
+      initWith([a]);
+      fixture.detectChanges();
+      expect(fixture.nativeElement.textContent).toContain('Delivery by Nov 20, 2026');
+      expect(placeButton().disabled).toBeFalse();
+    });
+
+    it('marks an undeliverable item, shows the reason and disables Place order', () => {
+      const a = makeItem({ uuid: 'a' });
+      initWith(
+        [a],
+        [makeAddress()],
+        null,
+        deliverableFor([a], {
+          deliverable: false,
+          message: 'We can\'t deliver "Kanchipuram Silk Saree" to PIN code 600001 yet.',
+          items: [{ cartItemUuid: 'a', status: 'not_deliverable', estimatedDeliveryDays: null, etd: null }],
+        }),
+      );
+      fixture.detectChanges();
+      expect(component.isUndeliverable(a)).toBeTrue();
+      expect(fixture.nativeElement.textContent).toContain("Can't be delivered to 600001");
+      expect(fixture.nativeElement.textContent).toContain('to PIN code 600001 yet');
+      expect(placeButton().disabled).toBeTrue();
+    });
+
+    it('re-checks when the customer picks another address', () => {
+      const a = makeItem({ uuid: 'a' });
+      initWith([a], [makeAddress({ uuid: 'addr-1' }), makeAddress({ uuid: 'addr-2', isDefault: false })]);
+      component.selectedAddressUuid = 'addr-2';
+      component.onDeliveryInputsChange();
+      expect(orderService.checkDelivery).toHaveBeenCalledTimes(2);
+      expect((orderService.checkDelivery as jasmine.Spy).calls.mostRecent().args[0].addressUuid).toBe('addr-2');
+    });
+
+    it('a failed check does not block (checkout still enforces it server-side)', () => {
+      const a = makeItem({ uuid: 'a' });
+      initWith([a]);
+      (orderService.checkDelivery as jasmine.Spy).and.returnValue(throwError(() => new Error('network')));
+      component.checkDelivery();
+      expect(component.deliveryBlocked()).toBeFalse();
+      expect(component.deliveryChecking()).toBeFalse();
+    });
+  });
 
   describe('stock-issue detection (same boundary rules as cart)', () => {
     it('quantity === quantityAvailable is not a stock issue', () => {

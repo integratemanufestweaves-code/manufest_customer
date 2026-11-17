@@ -11,7 +11,7 @@ import { ReviewService } from '../../core/services/review.service';
 import { InvoiceService } from '../../core/services/invoice.service';
 import { InvoiceSummary } from '../../core/models/invoice.models';
 import { saveBlob } from '../../core/utils/save-blob';
-import { OrderDetail, OrderItem, Shipment } from '../../core/models/order.models';
+import { OrderDetail, OrderItem, ReturnMediaType, ReturnRequest, Shipment } from '../../core/models/order.models';
 import { formatPrice } from '../../core/utils/format-price';
 import { CUSTOMER_SUPPORT, RETURN_GUIDELINE } from '../../core/constants/customer-support';
 import { isValidIndianMobile } from '../../core/utils/address-validation';
@@ -23,6 +23,32 @@ import { isValidIndianMobile } from '../../core/utils/address-validation';
  * own check is what's actually authoritative on every return-request call
  * regardless of what this constant says. */
 const RETURN_WINDOW_DAYS = 7;
+
+/** Return evidence limits — manufest_be RETURN_VIDEO_MAX_MB (default 50) /
+ * RETURN_PHOTO_MAX_COUNT (default 4) and the 5MB photo cap. The backend
+ * checks again; these only stop a doomed upload early. */
+export const RETURN_VIDEO_MAX_MB = 50;
+export const RETURN_PHOTO_MAX_COUNT = 4;
+const RETURN_PHOTO_MAX_MB = 5;
+
+/** One evidence file in the return form, from picking it to its upload. */
+export interface EvidenceFile {
+  key: string;
+  name: string;
+  status: 'uploading' | 'done' | 'error';
+  uuid: string | null;
+  error: string | null;
+}
+
+/** File -> bare base64 (no data: prefix), what the upload route takes. */
+function readAsBase64(file: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result).replace(/^data:[^,]*,/, ''));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+}
 
 /**
  * `GET /customer/orders/list_by_id/:orderUuid` (`orders.api.js`) — full
@@ -90,17 +116,22 @@ export class OrderDetailComponent implements OnInit, OnDestroy {
   readonly supportSubmitting = signal(false);
   readonly supportError = signal<string | null>(null);
 
-  /** Which return reason panel is open, if any — `mode: 'item'` is the
-   * inline per-item panel (mirrors the item's own row, same as
-   * replacement); `mode: 'all'` is the header-level "Return order" panel
-   * that requests every currently-`delivered` item in one bulk call. */
-  readonly returnPanel = signal<{ mode: 'item'; orderItemUuid: string } | { mode: 'all' } | null>(null);
+  /** Which item's return form is open, if any. Returns are raised per item
+   * (2026-11-18): each needs its own unboxing video. */
+  readonly returnPanel = signal<{ mode: 'item'; orderItemUuid: string } | null>(null);
   returnReason = '';
   /** The customer confirms the package came in a Manufest cover (RETURN_GUIDELINE). */
   returnCoverConfirmed = false;
   readonly returnGuideline = RETURN_GUIDELINE;
   readonly returnSubmitting = signal(false);
   readonly returnError = signal<string | null>(null);
+  readonly returnVideo = signal<EvidenceFile | null>(null);
+  readonly returnPhotos = signal<EvidenceFile[]>([]);
+  readonly returnVideoMaxMb = RETURN_VIDEO_MAX_MB;
+  readonly returnPhotoMaxCount = RETURN_PHOTO_MAX_COUNT;
+  /** Returns raised on this order, with pickup/refund progress. */
+  readonly returns = signal<ReturnRequest[]>([]);
+  private evidenceSeq = 0;
 
   /** `orderItemUuid` currently showing its inline replacement reason form —
    * `null` when none is open. Replacement is unrelated to the refund flow
@@ -205,6 +236,7 @@ export class OrderDetailComponent implements OnInit, OnDestroy {
         this.order.set(order);
         this.loading.set(false);
         this.loadInvoices(orderUuid);
+        this.loadReturns(orderUuid);
         this.schedulePendingPoll(orderUuid);
       },
       error: (err) => {
@@ -212,6 +244,42 @@ export class OrderDetailComponent implements OnInit, OnDestroy {
         this.loading.set(false);
       },
     });
+  }
+
+  /** Best-effort: without it the items just show their plain status. */
+  private loadReturns(orderUuid: string): void {
+    this.orderService.listReturns(orderUuid).subscribe({
+      next: (list) => this.returns.set(list),
+      error: () => this.returns.set([]),
+    });
+  }
+
+  /** The latest return raised for this item, if any. */
+  returnFor(item: OrderItem): ReturnRequest | null {
+    return this.returns().find((r) => r.orderItemUuid === item.uuid) ?? null;
+  }
+
+  /** Where the customer's return stands, in plain words. */
+  returnProgress(item: OrderItem): string | null {
+    const ret = this.returnFor(item);
+    if (!ret) return null;
+    switch (ret.status) {
+      case 'REQUESTED':
+        return "Return requested. We're checking your unboxing video.";
+      case 'REJECTED':
+        return `Return not approved${ret.adminNote ? `: ${ret.adminNote}` : '.'}`;
+      case 'APPROVED': {
+        const pickup = ret.pickup;
+        if (pickup?.pickupScheduledDate) {
+          return `Return approved. ${pickup.courierName || 'A courier'} will pick it up on ${this.formatDate(pickup.pickupScheduledDate)}. Keep it packed in its Manufest cover. Your refund starts once it reaches the seller.`;
+        }
+        return "Return approved. We're booking a courier to pick it up; you'll get the date soon. Your refund starts once it reaches the seller.";
+      }
+      case 'RECEIVED':
+        return 'The seller received your return. Your full refund has been started.';
+      default:
+        return 'Return complete. Your full refund has been started.';
+    }
   }
 
   /** Best-effort: a failure here just leaves the invoices card hidden. */
@@ -252,7 +320,14 @@ export class OrderDetailComponent implements OnInit, OnDestroy {
   }
 
   statusLabel(status: string): string {
-    return status.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase());
+    const labels: Record<string, string> = {
+      return_approved: 'Return approved',
+      return_received: 'Return received',
+      rto_received: 'Returned to seller',
+      rto_completed: 'Returned to seller',
+      lost: 'Lost in transit',
+    };
+    return labels[status] ?? status.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase());
   }
 
   /** Customer-facing wording for a parcel's courier status. */
@@ -286,12 +361,70 @@ export class OrderDetailComponent implements OnInit, OnDestroy {
       case 'return_requested':
         return 'Awaiting approval';
       case 'return_approved':
-        return 'Approved — refund is being processed';
+      case 'return_received':
+        // returnProgress() shows the pickup / refund detail.
+        return null;
       case 'returned':
         return 'Return complete';
+      case 'rto_received':
+      case 'rto_completed':
+        return "Couldn't be delivered and went back to the seller. Your full refund has been started.";
+      case 'lost':
+        return 'The courier lost this parcel. Your full refund has been started.';
       default:
         return null;
     }
+  }
+
+  // ---- "I didn't receive this" ----
+
+  readonly notReceivedItemUuid = signal<string | null>(null);
+  notReceivedNote = '';
+  readonly notReceivedSubmitting = signal(false);
+  readonly notReceivedError = signal<string | null>(null);
+
+  /** Offered for a short time after delivery (the backend says until when). */
+  canReportNotReceived(item: OrderItem): boolean {
+    const until = item.notReceivedReportableUntil;
+    return item.itemStatus === 'delivered' && !item.notReceived && !!until && Date.parse(until) > Date.now();
+  }
+
+  /** What we tell the customer about their report. */
+  notReceivedStatus(item: OrderItem): string | null {
+    const report = item.notReceived;
+    if (!report) return null;
+    if (report.status === 'OPEN') return "You told us this didn't reach you. We're checking with the courier and will update you here.";
+    const reply = report.resolutionNote ? ` ${report.resolutionNote}` : '';
+    if (report.status === 'REFUNDED') return `We've refunded you for this item.${reply}`;
+    return `We checked with the courier.${reply}`;
+  }
+
+  openNotReceivedForm(item: OrderItem): void {
+    this.notReceivedItemUuid.set(item.uuid);
+    this.notReceivedNote = '';
+    this.notReceivedError.set(null);
+  }
+
+  closeNotReceivedForm(): void {
+    this.notReceivedItemUuid.set(null);
+  }
+
+  submitNotReceived(): void {
+    const orderItemUuid = this.notReceivedItemUuid();
+    if (!orderItemUuid || this.notReceivedSubmitting()) return;
+    this.notReceivedSubmitting.set(true);
+    this.notReceivedError.set(null);
+    this.orderService.reportNotReceived(orderItemUuid, this.notReceivedNote.trim()).subscribe({
+      next: (updated) => {
+        this.notReceivedSubmitting.set(false);
+        this.notReceivedItemUuid.set(null);
+        this.order.set(updated);
+      },
+      error: (err) => {
+        this.notReceivedSubmitting.set(false);
+        this.notReceivedError.set(err?.message || 'Could not send this. Please try again.');
+      },
+    });
   }
 
   thumbnailSrc(item: OrderItem): string | null {
@@ -318,19 +451,6 @@ export class OrderDetailComponent implements OnInit, OnDestroy {
   checkPaymentAgain(): void {
     const order = this.order();
     if (order) this.load(order.uuid);
-  }
-
-  /** Whether at least one item is still eligible for a return request —
-   * gates the header-level "Return order" button. Requires both
-   * `delivered` and still within `RETURN_WINDOW_DAYS` — the backend
-   * silently excludes an expired item from an implicit "return everything"
-   * call rather than erroring, so this stays consistent with that. */
-  get hasReturnableItems(): boolean {
-    const order = this.order();
-    if (!order) return false;
-    return order.sellerGroups.some((group) =>
-      group.items.some((item) => item.itemStatus === 'delivered' && this.isWithinReturnWindow(item.deliveredAt)),
-    );
   }
 
   isWithinReturnWindow(deliveredAt: string | null): boolean {
@@ -452,25 +572,87 @@ export class OrderDetailComponent implements OnInit, OnDestroy {
     this.returnReason = '';
     this.returnCoverConfirmed = false;
     this.returnError.set(null);
-  }
-
-  openOrderReturnForm(): void {
-    this.returnPanel.set({ mode: 'all' });
-    this.returnReason = '';
-    this.returnCoverConfirmed = false;
-    this.returnError.set(null);
+    this.returnVideo.set(null);
+    this.returnPhotos.set([]);
   }
 
   closeReturnForm(): void {
+    if (this.returnSubmitting()) return;
     this.returnPanel.set(null);
+  }
+
+  /** Any evidence file still uploading — the form waits for it. */
+  get returnUploading(): boolean {
+    return this.returnVideo()?.status === 'uploading' || this.returnPhotos().some((p) => p.status === 'uploading');
+  }
+
+  onReturnVideoSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) return;
+    let error: string | null = null;
+    if (!file.type.startsWith('video/')) error = 'Choose a video file (MP4, MOV or WebM).';
+    else if (file.size > RETURN_VIDEO_MAX_MB * 1024 * 1024) error = `The video is over ${RETURN_VIDEO_MAX_MB}MB. Record a shorter clip or at a lower quality.`;
+    const entry: EvidenceFile = { key: `v${++this.evidenceSeq}`, name: file.name, status: error ? 'error' : 'uploading', uuid: null, error };
+    this.returnVideo.set(entry);
+    if (!error) this.uploadEvidence('video', file, entry.key);
+  }
+
+  onReturnPhotosSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const files = Array.from(input.files ?? []);
+    input.value = '';
+    const room = RETURN_PHOTO_MAX_COUNT - this.returnPhotos().filter((p) => p.status !== 'error').length;
+    files.slice(0, Math.max(room, 0)).forEach((file) => {
+      let error: string | null = null;
+      if (!file.type.startsWith('image/')) error = 'Not a photo.';
+      else if (file.size > RETURN_PHOTO_MAX_MB * 1024 * 1024) error = `Over ${RETURN_PHOTO_MAX_MB}MB.`;
+      const entry: EvidenceFile = { key: `p${++this.evidenceSeq}`, name: file.name, status: error ? 'error' : 'uploading', uuid: null, error };
+      this.returnPhotos.update((list) => [...list, entry]);
+      if (!error) this.uploadEvidence('image', file, entry.key);
+    });
+    if (files.length > room) this.returnError.set(`You can add up to ${RETURN_PHOTO_MAX_COUNT} photos.`);
+  }
+
+  removeReturnPhoto(key: string): void {
+    this.returnPhotos.update((list) => list.filter((p) => p.key !== key));
+  }
+
+  private uploadEvidence(mediaType: ReturnMediaType, file: File, key: string): void {
+    const panel = this.returnPanel();
+    if (!panel) return;
+    const update = (patch: Partial<EvidenceFile>) => {
+      if (mediaType === 'video') this.returnVideo.update((v) => (v?.key === key ? { ...v, ...patch } : v));
+      else this.returnPhotos.update((list) => list.map((p) => (p.key === key ? { ...p, ...patch } : p)));
+    };
+    readAsBase64(file)
+      .then((fileBase64) => {
+        this.orderService
+          .uploadReturnMedia(panel.orderItemUuid, { mediaType, fileBase64, fileName: file.name, mimeType: file.type })
+          .subscribe({
+            next: (media) => update({ status: 'done', uuid: media.uuid }),
+            error: (err) => update({ status: 'error', error: err?.message || 'Upload failed. Try again.' }),
+          });
+      })
+      .catch(() => update({ status: 'error', error: 'Could not read this file.' }));
   }
 
   confirmReturn(): void {
     const order = this.order();
     const panel = this.returnPanel();
-    if (!order || !panel) return;
+    if (!order || !panel || this.returnSubmitting()) return;
+    const video = this.returnVideo();
     if (!this.returnReason.trim()) {
-      this.returnError.set('Tell us why you\'re returning this.');
+      this.returnError.set("Tell us why you're returning this.");
+      return;
+    }
+    if (video?.status !== 'done' || !video.uuid) {
+      this.returnError.set(video?.status === 'uploading' ? 'Wait for the video to finish uploading.' : 'Add your unboxing video. It is required for a return.');
+      return;
+    }
+    if (this.returnUploading) {
+      this.returnError.set('Wait for the photos to finish uploading.');
       return;
     }
     if (!this.returnCoverConfirmed) {
@@ -479,14 +661,16 @@ export class OrderDetailComponent implements OnInit, OnDestroy {
     }
     this.returnError.set(null);
     this.returnSubmitting.set(true);
+    const photoMediaUuids = this.returnPhotos()
+      .filter((p) => p.status === 'done' && p.uuid)
+      .map((p) => p.uuid as string);
 
-    const orderItemUuids = panel.mode === 'item' ? [panel.orderItemUuid] : undefined;
-
-    this.orderService.requestReturn(order.uuid, { orderItemUuids, reason: this.returnReason.trim() }).subscribe({
+    this.orderService.requestItemReturn(panel.orderItemUuid, { reason: this.returnReason.trim(), videoMediaUuid: video.uuid, photoMediaUuids }).subscribe({
       next: (updated) => {
         this.order.set(updated);
         this.returnSubmitting.set(false);
         this.returnPanel.set(null);
+        this.loadReturns(order.uuid);
       },
       error: (err) => {
         this.returnError.set(err?.message || 'Could not submit this return request.');
